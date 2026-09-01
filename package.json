@@ -9,6 +9,15 @@
   "files": [
     "lib"
   ],
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "dsh-power-suite",
+    "dsh-session",
+    "session-search",
+    "cjk-search",
+    "fts5"
+  ],
   "license": "BSD-3-Clause",
   "peerDependencies": {
     "@deepseek-ai/dsh-llm": "0.1.2-alpha.3",
