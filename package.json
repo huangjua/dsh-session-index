@@ -1,7 +1,7 @@
 {
   "name": "@dsh-external/dsh-session-index",
   "version": "0.0.1",
-  "description": "Token-efficient DSH session index: scan/search/summarize compressed session.jsonl.zstd history",
+  "description": "CJK-capable full-text session search, non-blocking indexing, and bookmarking for DSH session histories",
   "private": true,
   "type": "module",
   "main": "./lib/index.js",
