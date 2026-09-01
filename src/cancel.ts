@@ -1,0 +1,54 @@
+/**
+ * cancel.ts — 取消竞争原语
+ *
+ * ported from openai/codex@9ded177 reference/codex/codex-rs/async-utils/src/lib.rs
+ * （OrCancelExt：tokio::select! { _ = token.cancelled() => Cancelled, res = self => Ok(res) }）
+ *
+ * 只做“取消信号竞争”，不打断 worker 内部 CPU 任务；worker 侧每处理完一个 chunk
+ * 检查一次 signal.aborted，对应 Codex 的 cooperative cancellation。
+ */
+
+export class CancelError extends Error {
+  override name = 'CancelError'
+
+  constructor(message = 'operation aborted') {
+    super(message)
+  }
+}
+
+/** 若信号已中止则抛 CancelError（worker 内逐行/逐 chunk 调用）。 */
+export function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new CancelError()
+}
+
+/** 判断错误是否为取消（含 DOMException AbortError）。 */
+export function isCancelError(e: unknown): boolean {
+  return (
+    e instanceof CancelError ||
+    (e instanceof DOMException && e.name === 'AbortError') ||
+    (e instanceof Error && (e.name === 'AbortError' || e.name === 'CancelError'))
+  )
+}
+
+/**
+ * 让 promise 与取消信号竞争：signal 先触发则拒绝（CancelError），
+ * promise 先完成则正常 settle 并移除监听。
+ */
+export function orCancel<T>(p: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return p
+  if (signal.aborted) return Promise.reject(new CancelError())
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new CancelError())
+    signal.addEventListener('abort', onAbort, { once: true })
+    p.then(
+      (v) => {
+        signal.removeEventListener('abort', onAbort)
+        resolve(v)
+      },
+      (e) => {
+        signal.removeEventListener('abort', onAbort)
+        reject(e)
+      },
+    )
+  })
+}
