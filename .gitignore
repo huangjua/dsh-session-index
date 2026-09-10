@@ -3,3 +3,6 @@ lib/
 *.tsbuildinfo
 *.tgz
 .test-build/
+
+*.bak"
+*.bak-*

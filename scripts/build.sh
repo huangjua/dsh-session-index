@@ -10,11 +10,17 @@ cd "$ROOT"
 # 未显式指定 DSH_CHECKOUT 时，优先使用本插件 pnpm 锁定的编译器和依赖。
 # 这样不会把一个不完整或旧的宿主 checkout 当成构建输入，更不会改写其链接。
 CHECKOUT="${DSH_CHECKOUT:-}"
+# 完整性 = 后续 link_pkg 真正要用的路径都存在。宿主 checkout 常被裁剪成 stub
+# （packages/ 下只剩软链），此时软链指向别处、链接后会得到混版依赖——必须
+# 判为不完整，退回 pnpm 锁定的依赖。
 checkout_is_complete() {
   [ -d "$1/packages" ] \
     && [ -e "$1/vendor/cordis" ] \
     && [ -e "$1/vendor/cosmokit" ] \
     && [ -e "$1/vendor/schemastery" ] \
+    && [ -e "$1/packages/core/tools/package.json" ] \
+    && [ -e "$1/packages/llm/llm/package.json" ] \
+    && [ -e "$1/packages/core/system-prompt/package.json" ] \
     && { [ -x "$1/node_modules/.bin/tsc" ] || [ -f "$1/node_modules/.bin/tsc.cmd" ]; }
 }
 if [ -n "$CHECKOUT" ] && ! checkout_is_complete "$CHECKOUT"; then

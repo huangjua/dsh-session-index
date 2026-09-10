@@ -8,10 +8,10 @@ import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 const root = process.cwd()
-const alpha = '0.1.2-alpha.3'
+const target = '0.1.5-rc.1'
 const expected = {
-  '@deepseek-ai/dsh-llm': alpha,
-  '@deepseek-ai/dsh-tools': alpha,
+  '@deepseek-ai/dsh-llm': target,
+  '@deepseek-ai/dsh-tools': target,
   '@deepseek-ai/cordis': '4.0.2',
   '@deepseek-ai/schemastery': '3.18.2',
 }
@@ -60,7 +60,7 @@ for (const [name, version] of Object.entries(expected)) {
   }
   const expectedSpecifier = (name === '@deepseek-ai/cordis' || name === '@deepseek-ai/schemastery')
     ? version
-    : alpha
+    : target
   if (entry.specifier !== expectedSpecifier) {
     fail(`pnpm-lock.yaml importer ${name} specifier is ${String(entry.specifier)}, expected ${expectedSpecifier}`)
   }
@@ -101,8 +101,8 @@ function visit(name, base) {
 
 for (const name of Object.keys(expected)) visit(name, root)
 for (const [name, found] of versions) {
-  if (found.size !== 1 || !found.has(alpha)) {
-    fail(`resolver-visible ${name} versions are ${[...found].join(', ')}, expected only ${alpha}`)
+  if (found.size !== 1 || !found.has(target)) {
+    fail(`resolver-visible ${name} versions are ${[...found].join(', ')}, expected only ${target}`)
   }
 }
 for (const name of ['@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-tools']) {
@@ -114,5 +114,5 @@ if (errors.length > 0) {
   for (const message of errors) console.error(`- ${message}`)
   process.exitCode = 1
 } else {
-  console.log(`COMPATIBLE: DSH ${alpha}; Cordis ${expected['@deepseek-ai/cordis']}; Schemastery ${expected['@deepseek-ai/schemastery']}`)
+  console.log(`COMPATIBLE: DSH ${target}; Cordis ${expected['@deepseek-ai/cordis']}; Schemastery ${expected['@deepseek-ai/schemastery']}`)
 }

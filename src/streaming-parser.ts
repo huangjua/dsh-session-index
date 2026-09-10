@@ -110,7 +110,7 @@ export async function streamJsonlLines(
     emit()
   }
 
-  // ── native 路径（node:zlib 逐帧），失败整体回退 fzstd ──
+  // ── native 路径（node:zlib 逐帧）；仅当尚未向 caller 喂出任何行时才回退 fzstd ──
   if (forcedDecoder !== 'fzstd') {
     try {
       const ns: NativeDecodeStats = await nativeDecodeZstd(file, feed, {
@@ -124,7 +124,15 @@ export async function streamJsonlLines(
     } catch (e) {
       if (e instanceof StopStreaming) return stats
       if (stats.stopped) return stats
-      // 回退：重置状态，走 fzstd 流式
+      // Fix ③（2026-09-10 回归修复）：回退只在"还没向 caller 喂过任何一行"时才安全。
+      // parseHead / parseFull / parseSearch 各自 new 一个 SessionLogCompatibility 并
+      // 在 onLine 里推进它；native 路径一旦喂出过行（包括 onLine 自己抛错的情况），
+      // caller 的状态已被推进，从文件头重放必然撞上 expectedSeq，恒抛
+      // "malformed event envelope at seq N"（N = 真实错误位置 +1），把真实原因
+      // （未知事件类型 / 消息契约不符）整条掩盖——全量构建的 error 字段因此失去
+      // 诊断价值。已喂过行时直接上抛原始错误。
+      if (stats.lines > 0) throw e
+      // 回退：重置状态，走 fzstd 流式（仅首帧损坏等"零行喂出"场景）
       decoder = new TextDecoder('utf-8')
       buffer = ''
       stats.lines = 0

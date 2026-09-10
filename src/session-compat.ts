@@ -9,9 +9,57 @@
  * event is accepted only when its writer marks it `ignorable: true`, which is
  * the alpha.3 forward-compatibility guard. Unknown required events and any
  * unknown event that attempts to join the surface are rejected.
+ *
+ * 2026-09-10 regression fix (alpha.3 boundary corrections).  A full pass over
+ * all 403 real session logs showed the gate itself was wrong in two places,
+ * which made 354 files unparseable ("unindexable") and starved the FTS index:
+ *
+ * - tool/result role: the writer is dsh-llm `createToolResultMessage()`, which
+ *   goes through `createUserMessage({ source: { kind: 'tool', callId } })`, so
+ *   the message role is always 'user' and provenance lives in
+ *   `source.kind === 'tool'` + `callId`.  The vocabulary previously demanded
+ *   role 'tool', so every session that ever ran a tool failed.  Both historical
+ *   values are accepted now ('user' from the writer; 'tool' kept for the
+ *   earlier alpha.3 form); the source check is unchanged.
+ * - vocabulary: `tool/code-dispatch-start` / `tool/code-dispatch` (run_code
+ *   sub-call tracing, written without `ignorable: true`) were missing from the
+ *   log-only list, so every session that used run_code failed.  Both are
+ *   official alpha.3 events and are now part of the list below.
+ *
+ * Two further deviations exist in real logs and are tolerated here (verified
+ * against the corpus rather than assumed): `tool/result` may carry an empty
+ * `callId` (the model emitted an empty tool name and DSH persisted the
+ * ToolNotFoundError result verbatim), and a plugin-authored `user/message`
+ * notice may omit `message.id` (the index anchors messages by event `seq`, so
+ * no consumer depends on the id).  The forward-compatibility guard is
+ * otherwise unchanged: an unknown required event still rejects the file.
+ *
+ * 2026-09-10 format-v2/v3 support (DSH 0.1.5-rc.1).  The same reader now also
+ * accepts the modern physical generations.  DSH names each generation on disk
+ * — v0 keeps `session.jsonl.zstd`, later generations carry `session.vN.jsonl.zstd`
+ * — and the reader dispatches on the header `version` field:
+ *
+ * - v0 (and v1, which shares its event shapes): the legacy format above, with
+ *   `assistant/chunk` events and the packed `text-chunks` / `reasoning-chunks` /
+ *   `tool-call-chunks` storage rows.
+ * - v2/v3: no packed rows and no `assistant/chunk` — the v1→v2 migration folds a
+ *   chunk run into `assistant/attempt` plus an `assistant/message` that embeds
+ *   its own `stream`.  The header key set is closed and `isSeeded` +
+ *   `delegationDepth` are required.  v3 promotes the system prompt out of
+ *   `request/header` into `system/message`, the fourth surface type, and renames
+ *   the PTC tracing events (`tool/code-dispatch*` → `tool/ptc-dispatch*`).
+ *   Surface replacement ops are encoded as `{op:'replace',start,end}` in v2 and
+ *   `{op:'replace',startSeq,endSeq}` in v3; both are normalized to `start`/`end`
+ *   internally.
+ *
+ * Across every generation the index treats `system/message` as surface-only:
+ * it joins the fold (replacements may target it) but contributes no searchable
+ * text, matching the pre-v3 behaviour where the system prompt lived in the
+ * opaque `request/header` event.
  */
 
-export type SessionCompatibilityVersion = 'alpha3'
+/** Physical generation accepted by this reader. `alpha3` covers legacy v0/v1. */
+export type SessionCompatibilityVersion = 'alpha3' | 'v2' | 'v3'
 
 export interface SessionHeaderView {
   id: string
@@ -23,7 +71,7 @@ export interface SessionHeaderView {
 
 export interface CompatibleMessage {
   seq: number
-  type: 'user/message' | 'assistant/message' | 'tool/result'
+  type: 'user/message' | 'assistant/message' | 'tool/result' | 'system/message'
   data: Record<string, unknown>
 }
 
@@ -39,9 +87,20 @@ const SURFACE_TYPES = new Set<CompatibleMessage['type']>([
   'assistant/message',
   'tool/result',
 ])
-const EVENT_KEYS = new Set(['type', 'seq', 'time', 'data', 'surfaceOp', 'sourceEventSeqs', 'ignorable'])
+/** v3 promoted the system prompt onto the surface as a fourth message type. */
+const SURFACE_TYPES_V3 = new Set<CompatibleMessage['type']>([
+  ...SURFACE_TYPES,
+  'system/message',
+])
+const LEGACY_EVENT_KEYS = new Set(['type', 'seq', 'time', 'data', 'surfaceOp', 'sourceEventSeqs', 'ignorable'])
+/** Physical envelope for v2/v3 rows: same keys, closed set, `ignorable` must be true. */
+const MODERN_EVENT_KEYS = LEGACY_EVENT_KEYS
 // Official alpha.3 log-only vocabulary, including the built-in external
 // plugin events. Surface types are handled separately below.
+// `tool/code-dispatch-start` / `tool/code-dispatch` (run_code sub-call tracing)
+// were missing here and are added by the 2026-09-10 regression fix — see the
+// file header.  They are written without `ignorable: true`, so under the
+// forward-compatibility guard every run_code session was rejected outright.
 const KNOWN_LOG_ONLY_TYPES = new Set([
   'agent-preset/selected', 'agent/inbox/spliced', 'approval/asked', 'approval/decided', 'approval/policy',
   'assistant/chunk', 'command/done', 'command/run', 'compaction/end', 'compaction/prune',
@@ -52,7 +111,28 @@ const KNOWN_LOG_ONLY_TYPES = new Set([
   'subagent/descriptor', 'subagent/model-selection-policy', 'team/member', 'team/message/delivered',
   'team/message/queued', 'team/task', 'todo/write', 'tool/call', 'tool-workflow/agent-end',
   'tool-workflow/agent-start', 'tool-workflow/run-end', 'tool-workflow/run-start', 'turn/end', 'turn/start',
+  'tool/code-dispatch-start', 'tool/code-dispatch',
   'web/deepseek-search-llm-request',
+])
+
+// Event vocabulary for the modern generations, taken from the released v3
+// catalog (`KNOWN_SESSION_EVENT_TYPES` in @deepseek-ai/dsh-session
+// 0.1.5-rc.1) minus the four surface types.  `tool/code-dispatch*` are the v2
+// physical names that v3 renamed to `tool/ptc-dispatch*`; `assistant/chunk`
+// never survives into v2+ logs (the v1→v2 migration consumes it) but is kept
+// here so a stray legacy row cannot cost a whole file.
+const MODERN_LOG_ONLY_TYPES = new Set([
+  'agent-preset/selected', 'agent/inbox/spliced', 'approval/asked', 'approval/decided', 'approval/policy',
+  'assistant/attempt', 'assistant/chunk', 'command/done', 'command/run', 'compaction/end', 'compaction/prune',
+  'compaction/start', 'compaction/summary', 'deliverables/presented', 'feedback/message-delete',
+  'feedback/message-put', 'feedback/record', 'goal/change', 'hook/invoked', 'hook/result', 'llm/retry',
+  'llm/retry-started', 'model/selection', 'permission/preset', 'plan/mode', 'request/context', 'request/header',
+  'sandbox/mode', 'schedule/change', 'session/end-seed', 'session/title', 'session/title-llm-request',
+  'session-log-deepseek/delivery-accepted', 'step/end', 'step/start', 'subagent/catalog', 'subagent/descriptor',
+  'subagent/model-selection-policy', 'team/member', 'team/message/delivered', 'team/message/queued', 'team/task',
+  'todo/write', 'tool/call', 'tool/ptc-dispatch', 'tool/ptc-dispatch-start', 'tool/code-dispatch',
+  'tool/code-dispatch-start', 'tool-workflow/agent-end', 'tool-workflow/agent-start', 'tool-workflow/run-end',
+  'tool-workflow/run-start', 'turn/end', 'turn/start', 'web/deepseek-search-llm-request',
 ])
 
 function record(value: unknown, label: string): Record<string, unknown> {
@@ -176,9 +256,19 @@ function assertMessageShape(event: Record<string, unknown>): void {
   const type = event.type as CompatibleMessage['type']
   const data = record(event.data, `${type} data`)
   const message = type === 'user/message' ? data : record(data.message, `${type} message`)
-  const expectedRole = type === 'assistant/message' ? 'assistant' : type === 'tool/result' ? 'tool' : 'user'
-  if (typeof message.id !== 'string' || message.id.length === 0 || message.role !== expectedRole
-    || !Array.isArray(message.content)) {
+  // tool/result is written by dsh-llm `createToolResultMessage()` →
+  // `createUserMessage({ source: { kind: 'tool', callId } })`, so its role is
+  // 'user'; 'tool' is kept for the earlier alpha.3 form. Provenance stays in
+  // the source check below (`kind === 'tool'` + callId), unchanged.
+  const roleOk = type === 'tool/result'
+    ? message.role === 'user' || message.role === 'tool'
+    : type === 'system/message'
+      ? message.role === 'system'
+      : message.role === (type === 'assistant/message' ? 'assistant' : 'user')
+  // `id` may be absent on plugin-authored user/message notices (real logs);
+  // present values must still be non-empty strings.
+  const idOk = message.id === undefined || (typeof message.id === 'string' && message.id.length > 0)
+  if (!idOk || !roleOk || !Array.isArray(message.content)) {
     throw new SessionCompatibilityError(`${type} has an invalid message`)
   }
   const source = record(message.source, `${type} source`)
@@ -190,18 +280,45 @@ function assertMessageShape(event: Record<string, unknown>): void {
       || typeof source.model !== 'string' || source.model.length === 0)) {
     throw new SessionCompatibilityError('assistant/message must have a model source')
   }
+  // The system prompt is written by the owning plugin (`system/message` with a
+  // plugin source in v3); other kinds on this type are not a shape this reader
+  // has any reason to accept.
+  if (type === 'system/message'
+    && (source.kind !== 'plugin' || typeof source.plugin !== 'string' || source.plugin.length === 0)) {
+    throw new SessionCompatibilityError('system/message must have a plugin source')
+  }
+  // callId may legitimately be empty: when the model emits a tool call with an
+  // empty name, DSH persists the ToolNotFoundError tool/result verbatim with
+  // callId ''.  The kind check keeps the tool provenance requirement.
   if (type === 'tool/result'
-    && (source.kind !== 'tool' || typeof source.callId !== 'string' || source.callId.length === 0)) {
+    && (source.kind !== 'tool' || typeof source.callId !== 'string')) {
     throw new SessionCompatibilityError('tool/result must have a tool source')
   }
 }
 
+/** Keys of a modern surface replacement op, in either released encoding. */
+function normalizeReplaceOp(op: unknown, label: string): unknown {
+  if (op === 'append') return op
+  const replace = record(op, `${label} surfaceOp`)
+  if (replace.op !== 'replace') throw new SessionCompatibilityError(`${label} has an invalid surfaceOp`)
+  // v2 encodes start/end, v3 startSeq/endSeq.  Both name earlier surface nodes.
+  const start = Object.hasOwn(replace, 'start') ? replace.start : replace.startSeq
+  const end = Object.hasOwn(replace, 'end') ? replace.end : replace.endSeq
+  if (!isEventSeq(start) || !isEventSeq(end)) {
+    throw new SessionCompatibilityError(`${label} has an invalid surface replacement range`)
+  }
+  return { op: 'replace', start, end }
+}
+
 /**
- * Validates an alpha.3 JSONL log and folds its current model-visible surface.
- * The raw log is never modified and non-surface extension events remain opaque.
+ * Validates one JSONL session log (legacy v0/v1 or modern v2/v3) and folds its
+ * current model-visible surface.  The raw log is never modified and
+ * non-surface extension events remain opaque.
  */
 export class SessionLogCompatibility {
   private _header: SessionHeaderView | undefined
+  private _version: SessionCompatibilityVersion = 'alpha3'
+  private _generation = 0
   private expectedSeq = 0
   private readonly surface: Record<string, unknown>[] = []
 
@@ -211,7 +328,12 @@ export class SessionLogCompatibility {
   }
 
   get version(): SessionCompatibilityVersion {
-    return 'alpha3'
+    return this._version
+  }
+
+  /** Physical format generation read from the header (0/1 legacy, 2/3 modern). */
+  get generation(): number {
+    return this._generation
   }
 
   consumeLine(value: unknown): Record<string, unknown>[] {
@@ -219,7 +341,9 @@ export class SessionLogCompatibility {
       this.consumeHeader(value)
       return []
     }
-    const decoded = decodeStorageRecord(value)
+    // Packed chunk rows only exist in the legacy generations; a modern row is
+    // already one logical event.
+    const decoded = this._generation >= 2 ? [record(value, 'session event')] : decodeStorageRecord(value)
     for (const event of decoded) this.consumeEvent(event)
     return decoded
   }
@@ -235,7 +359,17 @@ export class SessionLogCompatibility {
 
   private consumeHeader(value: unknown): void {
     const header = record(value, 'session header')
-    if (header.type !== 'session' || header.version !== 0 || typeof header.id !== 'string' || header.id.length === 0
+    const version = header.version
+    if (typeof version !== 'number' || !Number.isSafeInteger(version) || version < 0 || Object.is(version, -0)) {
+      throw new SessionCompatibilityError('unsupported or malformed session header')
+    }
+    if (version >= 2) this.consumeModernHeader(header)
+    else this.consumeLegacyHeader(header, version)
+  }
+
+  /** v0 (and its v1 successor): open key set, `version: 0/1`. */
+  private consumeLegacyHeader(header: Record<string, unknown>, version: number): void {
+    if (header.type !== 'session' || version > 1 || typeof header.id !== 'string' || header.id.length === 0
       || !isSafeEpoch(header.createdAt)
       || (header.delegationDepth !== undefined && !isEventSeq(header.delegationDepth))
       || (header.cwd !== undefined && typeof header.cwd !== 'string')
@@ -243,11 +377,47 @@ export class SessionLogCompatibility {
       || (header.seedLength !== undefined && !isEventSeq(header.seedLength))
       || (header.origin !== undefined && header.origin !== 'subagent')
       || (header.agentPreset !== undefined && typeof header.agentPreset !== 'string')) {
-      throw new SessionCompatibilityError('unsupported or malformed alpha.3 session header')
+      throw new SessionCompatibilityError('unsupported or malformed legacy session header')
     }
     if (Object.hasOwn(header, 'sandboxMode') || Object.hasOwn(header, 'approvalPolicy')) {
       throw new SessionCompatibilityError('session header uses retired policy baseline fields')
     }
+    this._version = 'alpha3'
+    this._generation = version
+    this._header = {
+      id: header.id,
+      createdAt: header.createdAt,
+      cwd: typeof header.cwd === 'string' ? header.cwd : '',
+      agentPreset: typeof header.agentPreset === 'string' ? header.agentPreset : '',
+      ...typeof header.parentSession === 'string' ? { parentSession: header.parentSession } : {},
+    }
+  }
+
+  /**
+   * v2/v3: closed header shape.  `isSeeded` and `delegationDepth` are required
+   * (a seeded log carries an inherited prefix up to its `session/end-seed`
+   * marker), and `seedLength` is gone.
+   */
+  private consumeModernHeader(header: Record<string, unknown>): void {
+    const version = header.version as number
+    const allowed = new Set(['type', 'version', 'id', 'createdAt', 'isSeeded', 'delegationDepth',
+      'cwd', 'parentSession', 'origin', 'agentPreset'])
+    if (version > 3 || header.type !== 'session' || typeof header.id !== 'string' || header.id.length === 0
+      || !isSafeEpoch(header.createdAt)
+      || typeof header.isSeeded !== 'boolean'
+      || !isEventSeq(header.delegationDepth)
+      || Object.keys(header).some(key => !allowed.has(key))
+      || (header.cwd !== undefined && typeof header.cwd !== 'string')
+      || (header.parentSession !== undefined && typeof header.parentSession !== 'string')
+      || (header.origin !== undefined && header.origin !== 'subagent')
+      || (header.agentPreset !== undefined && typeof header.agentPreset !== 'string')) {
+      throw new SessionCompatibilityError(`unsupported or malformed v${version} session header`)
+    }
+    if (Object.hasOwn(header, 'sandboxMode') || Object.hasOwn(header, 'approvalPolicy')) {
+      throw new SessionCompatibilityError('session header uses retired policy baseline fields')
+    }
+    this._version = version === 2 ? 'v2' : 'v3'
+    this._generation = version
     this._header = {
       id: header.id,
       createdAt: header.createdAt,
@@ -258,7 +428,15 @@ export class SessionLogCompatibility {
   }
 
   private consumeEvent(source: Record<string, unknown>): void {
-    if (Object.keys(source).some(key => !EVENT_KEYS.has(key)) || typeof source.type !== 'string'
+    if (this._generation >= 2) {
+      this.consumeModernEvent(source)
+      return
+    }
+    this.consumeLegacyEvent(source)
+  }
+
+  private consumeLegacyEvent(source: Record<string, unknown>): void {
+    if (Object.keys(source).some(key => !LEGACY_EVENT_KEYS.has(key)) || typeof source.type !== 'string'
       || !isEventSeq(source.seq) || source.seq !== this.expectedSeq
       || !Number.isSafeInteger(source.time) || !Object.hasOwn(source, 'data')
       || (Object.hasOwn(source, 'ignorable') && source.ignorable !== true)) {
@@ -276,6 +454,40 @@ export class SessionLogCompatibility {
         throw new SessionCompatibilityError(`non-surface event "${event.type}" carries surface metadata`)
       }
       if (!KNOWN_LOG_ONLY_TYPES.has(event.type as string) && event.ignorable !== true) {
+        throw new SessionCompatibilityError(`unknown required event type "${event.type}" at seq ${event.seq}`)
+      }
+      return
+    }
+    assertMessageShape(event)
+    this.foldSurface(event)
+  }
+
+  /**
+   * One v2/v3 row.  The envelope is already one event (no packing), the key set
+   * is closed, and `assistant/chunk` never appears.  Replacement ops are
+   * normalized to `{op:'replace',start,end}` before folding so both released
+   * encodings share one fold.
+   */
+  private consumeModernEvent(source: Record<string, unknown>): void {
+    if (Object.keys(source).some(key => !MODERN_EVENT_KEYS.has(key)) || typeof source.type !== 'string'
+      || !isEventSeq(source.seq) || source.seq !== this.expectedSeq
+      || !Number.isSafeInteger(source.time) || !Object.hasOwn(source, 'data')
+      || (Object.hasOwn(source, 'ignorable') && source.ignorable !== true)) {
+      throw new SessionCompatibilityError(`malformed v${this._generation} event envelope at seq ${this.expectedSeq}`)
+    }
+    this.expectedSeq += 1
+    const surfaceTypes = this._generation === 3 ? SURFACE_TYPES_V3 : SURFACE_TYPES
+    let event = Object.hasOwn(source, 'sourceEventSeqs')
+      ? { ...source, sourceEventSeqs: decodeSourceEventSeqRanges(source.sourceEventSeqs, source.seq) }
+      : source
+    if (event.surfaceOp !== undefined) {
+      event = { ...event, surfaceOp: normalizeReplaceOp(event.surfaceOp, `event "${event.type}" at seq ${event.seq}`) }
+    }
+    if (!surfaceTypes.has(event.type as CompatibleMessage['type'])) {
+      if (event.surfaceOp !== undefined || event.sourceEventSeqs !== undefined) {
+        throw new SessionCompatibilityError(`non-surface event "${event.type}" carries surface metadata`)
+      }
+      if (!MODERN_LOG_ONLY_TYPES.has(event.type as string) && event.ignorable !== true) {
         throw new SessionCompatibilityError(`unknown required event type "${event.type}" at seq ${event.seq}`)
       }
       return
@@ -338,6 +550,10 @@ export class SessionLogCompatibility {
 
 /** Extract indexable text from the message forms that the plugin exposes. */
 export function textFromCompatibleMessage(message: CompatibleMessage): string {
+  // `system/message` is deliberately searchable-free: before v3 the system
+  // prompt lived in the opaque `request/header` event and never reached the
+  // index, and v3 logs would otherwise repeat the same prompt in every session.
+  if (message.type === 'system/message') return ''
   const content = message.type === 'user/message'
     ? message.data.content
     : message.type === 'assistant/message'

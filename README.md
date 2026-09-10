@@ -117,10 +117,21 @@ SessionIndexBuilder (Singleton per root + indexFile)
 <summary><b>🧪 Building & Testing</b></summary>
 
 ```bash
-pnpm run check:dsh-contract  # Contract validation
-pnpm run build               # Build TypeScript to lib/
-npm test                     # Run 214 test cases
+pnpm install --frozen-lockfile  # dependencies are pnpm-managed (peer deps: DSH 0.1.5-rc.1)
+pnpm run check:dsh-contract     # Contract validation against the locked DSH runtime
+pnpm run build                  # Build TypeScript to lib/
+pnpm test                       # Run the test suite
 ```
+
+**DSH compatibility.** The plugin targets DSH `0.1.5-rc.1` (session format v3) and reads
+every durable generation it has seen on disk: legacy `session.jsonl.zstd` (v0/v1),
+`session.v2.jsonl.zstd` and `session.v3.jsonl.zstd`. When a session directory holds
+more than one generation (DSH keeps the pre-migration file), only the highest one is
+indexed. v3 changed three load-bearing things the reader now models: the closed header
+(`isSeeded` + `delegationDepth`), `system/message` as the fourth surface type (folded,
+never indexed as text), and `{op:'replace',startSeq,endSeq}` replacements (v2 used
+`start`/`end`). The v3 fixture under `test/fixtures/` is migrated from a real v0 log by
+DSH's own restore path, not hand-written.
 
 </details>
 

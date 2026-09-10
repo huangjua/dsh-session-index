@@ -13,6 +13,7 @@ import { join, basename, dirname, isAbsolute, resolve } from 'node:path'
 import * as fzstd from 'fzstd'
 import { throwIfAborted } from './cancel.js'
 import { SessionLogCompatibility, textFromCompatibleMessage } from './session-compat.js'
+import type { SessionCompatibilityVersion } from './session-compat.js'
 
 export interface SessionMeta {
   id: string
@@ -46,7 +47,7 @@ export interface SessionMeta {
   /** 本次构建解析失败：保留旧条目，只追加 error */
   error?: string
   /** Audited JSONL compatibility gate that accepted this log. */
-  compatibility?: 'alpha3'
+  compatibility?: SessionCompatibilityVersion
   /**
    * The raw file remains untouched, but this entry must not be surfaced or
    * searched because a required/unknown event made semantic reconstruction
@@ -206,8 +207,26 @@ export function findSessionFiles(root: string): string[] {
 }
 
 /**
+ * 规范代际日志名：v0 = `session.jsonl.zstd`，vN = `session.vN.jsonl.zstd`（N ≥ 1，
+ * 无前导零）。与 @deepseek-ai/dsh-session-format 的 `sessionFormatLogFilename`
+ * 一致：小写 `v`、无前导零、`.v0` 与临时/大写名都不算规范代际。
+ */
+const GENERATION_LOG_RE = /^session(?:\.v([1-9]\d*))?\.jsonl\.zstd$/
+
+function generationOf(name: string): number | undefined {
+  const match = GENERATION_LOG_RE.exec(name)
+  if (!match) return undefined
+  return match[1] === undefined ? 0 : Number(match[1])
+}
+
+/**
  * 异步扫描会话文件 + 指纹（size, mtimeMs, ctimeMs）。
  * 每 20 个文件让出一次主线程并检查取消；超 cap（默认 10000）停止并置 truncated。
+ *
+ * DSH 升级时会把旧代际日志原地迁移成新文件，旧文件不删除（例如同一会话目录
+ * 同时存在 `session.jsonl.zstd` 与 `session.v3.jsonl.zstd`），DSH 自身按最高
+ * 代际读取。索引同样只收每个目录的最高代际：低代际条目随后走 merge 的 prune
+ * 路径（连同 FTS 行），否则同一会话会在搜索结果里出现两次。
  */
 export async function scanSessionFiles(
   root: string,
@@ -254,6 +273,21 @@ export async function scanSessionFiles(
     }
   }
   await walk(root)
+  // 每个会话目录只保留最高代际的规范日志；非规范名的 .jsonl.zstd 一律保留。
+  const bestByDir = new Map<string, { file: string; version: number }>()
+  for (const f of files) {
+    const version = generationOf(basename(f.file))
+    if (version === undefined) continue
+    const dir = dirname(f.file)
+    const best = bestByDir.get(dir)
+    if (!best || version > best.version) bestByDir.set(dir, { file: f.file, version })
+  }
+  const kept = files.filter((f) => {
+    const version = generationOf(basename(f.file))
+    return version === undefined || bestByDir.get(dirname(f.file))?.file === f.file
+  })
+  files.length = 0
+  files.push(...kept)
   files.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0))
   return { files, truncated }
 }

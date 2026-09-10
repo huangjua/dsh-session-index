@@ -116,10 +116,19 @@ SessionIndexBuilder (单例)
 <summary><b>🧪 构建与测试</b></summary>
 
 ```bash
-pnpm run check:dsh-contract  # 校验依赖契约
-pnpm run build               # 编译 src → lib
-npm test                     # 运行 214 项测试用例
+pnpm install --frozen-lockfile  # 依赖全部由 pnpm 管理（peer 依赖：DSH 0.1.5-rc.1）
+pnpm run check:dsh-contract     # 校验依赖契约
+pnpm run build                  # 编译 src → lib
+pnpm test                       # 运行全部测试用例
 ```
+
+**DSH 兼容性。** 插件目标运行时为 DSH `0.1.5-rc.1`（会话格式 v3），同时读取磁盘上出现过的
+全部代际：遗留 `session.jsonl.zstd`（v0/v1）、`session.v2.jsonl.zstd`、`session.v3.jsonl.zstd`。
+同一会话目录里旧代际文件不会被 DSH 删除，索引只收最高代际，避免同一会话重复出现。
+v3 的三处关键差异都已在读取器中建模：闭合 header（`isSeeded` + `delegationDepth`）、
+`system/message` 作为第四种 surface 类型（参与折叠、不参与正文索引）、
+`{op:'replace',startSeq,endSeq}` 替换编码（v2 为 `start`/`end`）。
+`test/fixtures/` 下的 v3 夹具由真实 v0 日志经 DSH 自带迁移链生成，非手写形状。
 
 </details>
 
