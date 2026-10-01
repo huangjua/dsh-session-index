@@ -114,25 +114,9 @@ const markMatches = (raw: string, q: string): string => {
 const sessionIdFromFile = (file: string): string => basename(dirname(file))
 
 /**
- * STAGE-1 Part A：FTS 先行入库但 index.json 尚未刷新（或索引已 prune）时的兜底
- * meta，仅够排序与输出用（lastTime=0 → 时间衰减落到 RECENCY_UNKNOWN 温和下限）。
+ * C11：删除无引用的 synthMeta——FTS 命中若缺少索引条目，搜索路径直接
+ * `if (!meta) continue` 丢弃，从不合成兜底 meta（函数建成后从未被接线）。
  */
-const synthMeta = (h: FtsHit): SessionMeta => ({
-  id: h.sessionId || sessionIdFromFile(h.sessionFile),
-  file: h.sessionFile,
-  workspace: h.workspace,
-  title: h.title,
-  size: 0,
-  mtimeMs: 0,
-  createdAt: 0,
-  lastTime: 0,
-  firstUserText: '',
-  lastAssistantText: '',
-  agentPreset: '',
-  counts: {},
-  toolNames: [],
-  toolCallCounts: {},
-})
 
 /** session_list 扫描上限（Codex MAX_SCAN_FILES=10000；DSH 暂定 2000） */
 const MAX_LIST_SCAN = 2000

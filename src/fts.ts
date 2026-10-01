@@ -29,6 +29,8 @@
  */
 import { mkdirSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+// C11：命中标记常量与 snippet 生成的单一事实源（本文件 re-export 给旧引用方）
+import { MATCH_OPEN, MATCH_CLOSE, excerptAroundMatch } from './core.js'
 
 export interface FtsMessageRow {
   sessionFile: string
@@ -86,9 +88,9 @@ export interface FtsSessionMeta {
   parentSession?: string
 }
 
-const MAX_TEXT = 4000
-const MAX_ROWS_PER_SESSION = 200_000
-/** 异步链批量写入的每批行数：~2000 行一次事务 chunk，批间 setImmediate 让出主线程 */
+/** 异步链批量写入的每批行数：~2000 行一次事务 chunk，批间 setImmediate 让出主线程
+ * （C11：删掉无引用的 MAX_TEXT / MAX_ROWS_PER_SESSION——真实上限在
+ * streaming-parser.ts 的 MAX_FTS_ROWS / MAX_FTS_TEXT，两处常量早已语义漂移） */
 const SYNC_CHUNK = 2000
 
 type DatabaseSyncCtor = new (path: string) => FtsDbLike
@@ -690,9 +692,7 @@ INSERT OR IGNORE INTO state_meta(key, value) VALUES ('schema_version', '2');
 
 /* ── 工具函数 ─────────────────────────────────────────────────────── */
 
-/** 命中片段标记（Hermes MATCH_OPEN/CLOSE，dsh-local-memory 同款 >>> <<<） */
-export const MATCH_OPEN = '>>>'
-export const MATCH_CLOSE = '<<<'
+/** 命中片段标记与 snippet 生成见 core.ts（C11 统一），本文件 re-export。 */
 
 /**
  * P1.3：Hermes `_sanitize_fts5_query` 移植（原样照抄，不改净化语义）：
@@ -746,21 +746,7 @@ function escapeLike(s: string): string {
   return s.replace(/[\\%_]/g, (c) => '\\' + c)
 }
 
-/** 对应 search.rs::excerpt_around_match（normalize 后取 48/96 字符上下文）。 */
-export function excerptAroundMatch(text: string, query: string, charsBefore: number, charsAfter: number): string {
-  const normalized = text.split(/\s+/).filter(Boolean).join(' ')
-  const idx = normalized.toLowerCase().indexOf(query.toLowerCase())
-  if (idx === -1) {
-    return normalized.slice(0, charsBefore + charsAfter + 40)
-  }
-  const start = Math.max(0, idx - charsBefore)
-  const end = Math.min(normalized.length, idx + query.length + charsAfter)
-  let snippet = ''
-  if (start > 0) snippet += '… '
-  // P1.4：命中区间用 >>> <<< 包住（Hermes MATCH_OPEN/CLOSE，dsh-local-memory 同款）
-  snippet += normalized.slice(start, idx)
-  snippet += MATCH_OPEN + normalized.slice(idx, idx + query.length) + MATCH_CLOSE
-  snippet += normalized.slice(idx + query.length, end)
-  if (end < normalized.length) snippet += ' …'
-  return snippet.slice(0, 400)
-}
+/* C11：命中标记常量与 snippet 生成统一到 core.ts（两份实现曾各自漂移：
+ * 本文件做空白归一化 + "…"，streaming-parser 不归一化 + "..."）。
+ * fts.ts re-export 保持对外 API 不变。 */
+export { MATCH_OPEN, MATCH_CLOSE, excerptAroundMatch } from './core.js'

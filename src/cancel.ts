@@ -33,6 +33,10 @@ export function isCancelError(e: unknown): boolean {
 /**
  * 让 promise 与取消信号竞争：signal 先触发则拒绝（CancelError），
  * promise 先完成则正常 settle 并移除监听。
+ *
+ * @internal C11：生产路径未使用（builder 的取消走 WorkerPool + throwIfAborted），
+ * 仅 cancel.test.ts 覆盖其语义。保留是为了让"promise 与信号竞争"这一语义有
+ * 单一实现可用，勿误判为死代码删除；若未来接入，请优先在 builder 的 await 点使用。
  */
 export function orCancel<T>(p: Promise<T>, signal?: AbortSignal): Promise<T> {
   if (!signal) return p

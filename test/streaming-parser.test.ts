@@ -289,21 +289,21 @@ describe('STAGE-1 Part C（codex/ccfullsearch 边界 + alpha.3 帧切分）', ()
     assert.ok(hits[0].snippet.includes('needle'))
   })
 
-  it('snippet 首尾截断：命中靠后带 "... " 前缀、命中靠前带 " ..." 后缀，命中区间带 >>> <<<', async () => {
+  it('snippet 首尾截断：命中靠后带 "… " 前缀、命中靠前带 " …" 后缀，命中区间带 >>> <<<（C11 与 FTS 路径同款）', async () => {
     const tail = await mkFile([
       user('A'.repeat(200) + ' needle', 2), // 命中在尾部 → 只有前缀
     ])
     const hTail = await parseSearch(tail, 'needle', { maxSnippets: 1 })
-    assert.ok(hTail[0].snippet.startsWith('... '), `尾部命中应带前缀：${JSON.stringify(hTail[0].snippet)}`)
-    assert.ok(!hTail[0].snippet.endsWith(' ...'), '尾部命中不应带后缀')
+    assert.ok(hTail[0].snippet.startsWith('… '), `尾部命中应带前缀：${JSON.stringify(hTail[0].snippet)}`)
+    assert.ok(!hTail[0].snippet.endsWith(' …'), '尾部命中不应带后缀')
     assert.ok(hTail[0].snippet.includes('>>>needle<<<'), '命中区间应带 >>> <<< 标记')
 
     const head = await mkFile([
       user('needle ' + 'B'.repeat(200), 2), // 命中在头部 → 只有后缀
     ])
     const hHead = await parseSearch(head, 'needle', { maxSnippets: 1 })
-    assert.ok(!hHead[0].snippet.startsWith('... '), '头部命中不应带前缀')
-    assert.ok(hHead[0].snippet.endsWith(' ...'), `头部命中应带后缀：${JSON.stringify(hHead[0].snippet)}`)
+    assert.ok(!hHead[0].snippet.startsWith('… '), '头部命中不应带前缀')
+    assert.ok(hHead[0].snippet.endsWith(' …'), `头部命中应带后缀：${JSON.stringify(hHead[0].snippet)}`)
   })
 
   it('JSON.parse 失败行拒绝整个 alpha.3 日志（不能跳过未知 seq 语义）', async () => {

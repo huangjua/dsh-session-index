@@ -199,12 +199,21 @@ export class SessionIndexBuilder {
         : null
     delay?.enable()
     const emitProgress = (phase: BuildProgress['phase'], processed: number, total: number) => {
+      // C11：delayMs 观测口径修正——旧实现直接读 delay.max（全程累积峰值，
+      // 进度里几乎不动、看不出当前卡顿）。改为每次进度事件取"本窗口峰值"
+      // 并 reset 直方图；全程峰值仍累计进 report.maxEventLoopDelayMs。
+      let windowMax = 0
+      if (delay) {
+        windowMax = Math.round(delay.max / 1e6)
+        if (windowMax > report.maxEventLoopDelayMs) report.maxEventLoopDelayMs = windowMax
+        delay.reset()
+      }
       this.currentProgress = {
         phase,
         processed,
         total,
         scannedBytes: report.scannedBytes,
-        delayMs: delay ? Math.round(delay.max / 1e6) : 0,
+        delayMs: windowMax,
       }
       options.onProgress?.(this.currentProgress)
     }
@@ -429,7 +438,11 @@ export class SessionIndexBuilder {
     } finally {
       if (marker) await marker.release()
       delay?.disable()
-      report.maxEventLoopDelayMs = delay ? Math.round(delay.max / 1e6) : 0
+      // C11：全程峰值已在 emitProgress 里累计（直方图被周期性 reset，此处不能再覆盖）
+      if (delay) {
+        const tail = Math.round(delay.max / 1e6)
+        if (tail > report.maxEventLoopDelayMs) report.maxEventLoopDelayMs = tail
+      }
       report.durationMs = Date.now() - t0
       report.partialCommitted = quickCommitted && report.status === 'cancelled'
       this.currentProgress = null
