@@ -14,7 +14,7 @@
  * - 取消：orCancel 语义 + worker 逐 chunk cooperative cancel；取消不提交最终快照。
  */
 import { join, dirname, basename } from 'node:path'
-import { statSync } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import { monitorEventLoopDelay } from 'node:perf_hooks'
 import { RunMarker, atomicWriteJson, cleanupStaleTemps } from './atomic-write.js'
 import { WorkerPool } from './worker-pool.js'
@@ -313,7 +313,7 @@ export class SessionIndexBuilder {
           },
           signal,
           (p, t) => emitProgress('full', p, t),
-          (f, r, fpBefore, spec) => {
+          async (f, r, fpBefore, spec) => {
             if (r.aborted) return // 取消：跳过失败记账（failed/errors 不被取消信号污染）
             if (!r.ok) {
               // Retain only a diagnostic marker.  Required unknown events and
@@ -328,8 +328,9 @@ export class SessionIndexBuilder {
               options.onSessionRemoved?.(f.file)
               return
             }
-            // 发布前复检：解析期间指纹又变 → raced，保留旧值
-            const cur = currentFingerprint(f.file)
+            // 发布前复检：解析期间指纹又变 → raced，保留旧值。
+            // C8：改异步 stat（fs.promises），避免主线程同步阻塞
+            const cur = await currentFingerprintAsync(f.file)
             if (
               !cur ||
               !fpBefore ||
@@ -426,13 +427,15 @@ export class SessionIndexBuilder {
     makeSpec: (f: ScanFile) => WorkerTaskSpec,
     signal: AbortSignal | undefined,
     onTick: (processed: number, total: number) => void,
-    onResult: (f: ScanFile, r: PoolResult, fpBefore: ScanFile | null, spec: WorkerTaskSpec) => void,
+    onResult: (f: ScanFile, r: PoolResult, fpBefore: ScanFile | null, spec: WorkerTaskSpec) => void | Promise<void>,
   ): Promise<void> {
     let done = 0
     onTick(0, files.length)
     const tasks = files.map(async (f) => {
-      // 解析前指纹：用于发布前竞态复检（解析期间文件被改写 → raced）
-      const fpBefore = currentFingerprint(f.file)
+      // C8：直接复用 scan 阶段指纹（ScanFile 已含 size/mtimeMs/ctimeMs）——
+      // 旧实现此处对每个文件再 statSync 一次，10000 文件上限下主线程连续阻塞
+      // 数千次同步 stat（Phase A/B 各一轮），与 p95 < 23ms 目标冲突。
+      const fpBefore: ScanFile | null = f
       this.testHooks?.onFileRead?.(f.file)
       let spec = makeSpec(f)
       let r = await this.runWithRetry(spec, signal)
@@ -442,7 +445,7 @@ export class SessionIndexBuilder {
         spec = { ...spec, startOffset: 0, delta: false }
         r = await this.runWithRetry(spec, signal)
       }
-      onResult(f, r, fpBefore, spec)
+      await onResult(f, r, fpBefore, spec)
       done++
       if (done % 20 === 0) {
         onTick(done, files.length)
@@ -606,9 +609,10 @@ function mergeDelta(prev: SessionMeta, d: FullSummary, f: ScanFile): SessionMeta
   }
 }
 
-function currentFingerprint(file: string): ScanFile | null {
+/** 解析后复检指纹（C8：异步 stat，主线程不被同步 stat 阻塞）。 */
+async function currentFingerprintAsync(file: string): Promise<ScanFile | null> {
   try {
-    const st = statSync(file)
+    const st = await stat(file)
     return { file, size: st.size, mtimeMs: st.mtimeMs, ctimeMs: st.ctimeMs }
   } catch {
     return null
