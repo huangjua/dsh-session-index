@@ -7,7 +7,7 @@
  *  - 维护轻量索引（不存正文，只存元数据/摘要字段）
  *  - 提供元数据搜索与按需全文搜索
  */
-import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, readdirSync, statSync, openSync, fsyncSync, closeSync } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { join, basename, dirname, isAbsolute, resolve } from 'node:path'
 import * as fzstd from 'fzstd'
@@ -336,10 +336,20 @@ export function loadIndex(indexFile: string): SessionIndex | null {
   }
 }
 
+/** 同步写索引（legacy 同步路径/测试用；生产路径走 builder 的 atomicWriteJson）。
+ *  C10：补齐 fsync + 唯一 tmp 名——旧实现无 fsync、固定 tmp 名，跨进程并发时
+ *  可能互相踩踏，且崩溃时可能留下未落盘的 tmp。 */
+let saveIndexSeq = 0
 export function saveIndex(indexFile: string, index: SessionIndex): void {
   mkdirSync(dirname(indexFile), { recursive: true })
-  const tmp = indexFile + '.tmp'
-  writeFileSync(tmp, JSON.stringify(index), 'utf8')
+  const tmp = `${indexFile}.tmp.${process.pid}.${saveIndexSeq++}`
+  const fd = openSync(tmp, 'wx')
+  try {
+    writeFileSync(fd, JSON.stringify(index), 'utf8')
+    fsyncSync(fd)
+  } finally {
+    closeSync(fd)
+  }
   renameSync(tmp, indexFile)
   invalidateIndexCache(indexFile)
 }
