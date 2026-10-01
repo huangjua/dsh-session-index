@@ -22,6 +22,7 @@ import { excerptAroundMatch } from './core.js'
 import {
   SessionLogCompatibility,
   textFromCompatibleMessage,
+  type CompatResumeState,
   type SessionCompatibilityVersion,
 } from './session-compat.js'
 
@@ -327,9 +328,15 @@ export interface FullSummary {
   /** P2 FTS：collectMessages=true 时收集的消息行（user/assistant 文本 + tool 名） */
   messages?: FtsMessageRow[]
   compatibility: SessionCompatibilityVersion
-  /** C9b：本次解析（可能是 delta 窗口）内出现**跨越窗口边界**的 surface 替换
-   * （replace 引用了窗口外的旧帧）→ 增量结果不可信，调用方应回退全量重解析。
-   * 窗口内的 replace（如 tool/result 就地更新）不置此标记，增量结果可信。 */
+  /**
+   * C9：本次解析（可能是 delta 窗口）内发生过 surface 替换——delta 结果不可信，
+   * 调用方应回退全量重解析。
+   *
+   * 保守判据（实测代价可忽略：24 个真实会话 1,145,638 事件里仅 13 次 replace，
+   * 0.0011%，且近窗口内为 0）。**跨窗口** replace 另有结构性兜底：窗口内的
+   * surface 数组不含被替换的原帧，`foldSurface` 找不到 start/end 会直接抛错，
+   * 走调用方既有的 `!r.ok` → 全量回退路径。
+   */
   hadSurfaceReplace?: boolean
   /** C9b：已解析到的最大事件 seq（delta 合并后写回 indexedSeq，作为下次窗口起点）。 */
   lastSeq?: number
@@ -346,15 +353,19 @@ export async function parseFull(
     startOffset?: number
     /** P2 FTS：为 true 时逐条收集 user/assistant 文本与 tool 名（供 SQLite FTS） */
     collectMessages?: boolean
-    /** C9b：delta 窗口的起始事件 seq（上次解析到的 lastSeq + 1）。传入后，
-     * 只有 replace 的起始 seq **小于**此值（跨窗口引用旧帧）才标记
-     * hadSurfaceReplace；窗口内的 replace 视为可信增量。 */
-    deltaBaseSeq?: number
+    /**
+     * C9b（resume delta）：续读状态。传入后按"上一轮已解析到这里"播种 compat，
+     * 使**不含 header 的增量窗口**（startOffset > 0）可被解析。
+     *
+     * 必要性：DSH 会话文件 append-only 且只有第一帧带 header（实测 349 个真实
+     * 文件 0 个在后续帧重复写 header）。没有它，窗口首行会被当成 header 解析并抛
+     * "unsupported or malformed session header"——这正是此前 delta 恒失败的原因。
+     */
+    resume?: CompatResumeState
   } = {},
 ): Promise<FullSummary> {
   const lastTextLimit = options.lastTextLimit ?? 2000
   const collectMessages = options.collectMessages ?? false
-  const deltaBaseSeq = options.deltaBaseSeq ?? 0
   const out: FullSummary = {
     id: '',
     createdAt: 0,
@@ -381,6 +392,9 @@ export async function parseFull(
     })
   }
   const compat = new SessionLogCompatibility()
+  // C9b：增量窗口没有 header 行，先按上一轮结果播种（version/generation/header/
+  // expectedSeq）。全量解析不播种，仍走完整 header 校验。
+  if (options.resume) compat.resume(options.resume)
   await streamJsonlLines(
     file,
     (line) => {
@@ -428,11 +442,8 @@ export async function parseFull(
     }
   }
   out.compatibility = compat.version
-  // C9b：仅当 replace 引用窗口外旧帧（起始 seq < 窗口起点）时才判为不可信。
-  // 窗口内的 replace（tool/result 就地更新等）在增量视图里同样可见 → 增量可信。
-  if (compat.replaceOps > 0 && compat.minReplaceStart < deltaBaseSeq) {
-    out.hadSurfaceReplace = true
-  }
+  // C9：窗口内出现 surface 替换 → 保守回退全量（判据宽松但代价实测可忽略）。
+  if (compat.replaceOps > 0) out.hadSurfaceReplace = true
   out.lastSeq = compat.lastSeq
   if (messages) out.messages = messages
   return out

@@ -11,6 +11,7 @@
 import { parentPort } from 'node:worker_threads'
 import { parseHead, parseFull, parseSearch } from './streaming-parser.js'
 import type { HeadSummary, FullSummary, SearchHit } from './streaming-parser.js'
+import type { CompatResumeState } from './session-compat.js'
 
 interface TaskMessage {
   type: 'task'
@@ -22,8 +23,8 @@ interface TaskMessage {
   maxDecompressedBytes?: number
   startOffset?: number
   collectMessages?: boolean
-  /** C9b：delta 窗口起始事件 seq */
-  startSeq?: number
+  /** C9b：delta 续读状态（窗口无 header，需播种 version/generation/header/seq） */
+  resume?: CompatResumeState
 }
 
 type TaskData = HeadSummary | FullSummary | SearchHit[]
@@ -55,8 +56,8 @@ if (parentPort) {
             maxDecompressedBytes,
             startOffset: task.startOffset,
             collectMessages: task.collectMessages,
-            // C9b：窗口起点（仅 delta 时有意义；全量时为 0，窗口内 replace 同样可信）
-            deltaBaseSeq: task.startSeq,
+            // C9b：增量窗口不含 header，需按上一轮结果播种 compat 状态
+            resume: task.resume,
           })
         } else if (task.mode === 'search') {
           data = await parseSearch(task.file, task.query || '', {

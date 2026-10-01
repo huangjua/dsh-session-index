@@ -738,12 +738,14 @@ export function apply(ctx: Context, config: Config): void {
           raced?: number
           failed?: number
           scannedBytes?: number
+          deltaParsed?: number
+          deltaFallbacks?: number
           durationMs?: number
           partialCommitted?: boolean
           errors?: string[]
         } | null
         if (last) {
-          lines.push(`lastBuild: status=${last.status} added=${last.added ?? 0} updated=${last.updated ?? 0} skipped=${last.skipped ?? 0} removed=${last.removed ?? 0} raced=${last.raced ?? 0} failed=${last.failed ?? 0} scannedBytes=${last.scannedBytes ?? 0} durationMs=${last.durationMs ?? 0}${last.partialCommitted ? ' partialCommitted' : ''}`)
+          lines.push(`lastBuild: status=${last.status} added=${last.added ?? 0} updated=${last.updated ?? 0} skipped=${last.skipped ?? 0} removed=${last.removed ?? 0} raced=${last.raced ?? 0} failed=${last.failed ?? 0} scannedBytes=${last.scannedBytes ?? 0} deltaParsed=${last.deltaParsed ?? 0} deltaFallbacks=${last.deltaFallbacks ?? 0} durationMs=${last.durationMs ?? 0}${last.partialCommitted ? ' partialCommitted' : ''}`)
           if (last.errors?.length) lines.push(`errors=${last.errors.length}`)
         }
         if (v.detailMissing) lines.push(`detailMissing=${v.detailMissing}（自动补扫中）`)

@@ -118,6 +118,14 @@ export interface BuildReport {
   pruned: number
   errors: string[]
   scannedBytes: number
+  /**
+   * C9b：本次构建**成功走完增量窗口**的文件数（真正只解了新增帧）。
+   * 与 `scannedBytes` 配合可判定增量是否生效：scannedBytes 记的是"逻辑上纳入
+   * 考虑的文件总大小"，增量生效时它会明显小于全量（旧实现恒等于全量）。
+   */
+  deltaParsed?: number
+  /** C9b：delta 尝试后回退全量重解析的文件数（replace 命中 / 偏移失效）。 */
+  deltaFallbacks?: number
   indexFile: string
   durationMs: number
   maxEventLoopDelayMs: number

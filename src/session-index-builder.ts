@@ -20,6 +20,7 @@ import { RunMarker, atomicWriteJson, cleanupStaleTemps } from './atomic-write.js
 import { WorkerPool } from './worker-pool.js'
 import type { WorkerTaskSpec, TaskResult } from './worker-pool.js'
 import type { HeadSummary, FullSummary } from './streaming-parser.js'
+import { generationOfVersion, type CompatResumeState } from './session-compat.js'
 import { isCancelError, throwIfAborted } from './cancel.js'
 import { loadIndex, scanSessionFiles, invalidateIndexCache } from './core.js'
 import type { SessionMeta, SessionIndex, BuildReport, ScanFile } from './core.js'
@@ -78,6 +79,8 @@ const emptyReport = (indexFile: string): BuildReport => ({
   pruned: 0,
   errors: [],
   scannedBytes: 0,
+  deltaParsed: 0,
+  deltaFallbacks: 0,
   indexFile,
   durationMs: 0,
   maxEventLoopDelayMs: 0,
@@ -311,13 +314,17 @@ export class SessionIndexBuilder {
         await this.runPoolTasks(
           fullFiles,
           (f) => {
-            // C9：增量（delta）重启用——活跃会话每 5s 被 watcher 触发重建时，
-            // 只解新增帧而不是整文件（此前 delta 被硬禁用为 false，整条管线
-            // 建成但未启用）。安全边界（保守）：
-            //  - 仅 append-only 追加帧可信；窗口内一旦出现 surface 替换
-            //    （hadSurfaceReplace），它可能遮蔽窗口外的旧帧 → 回退全量；
+            // C9/C9b：增量（delta）重启用——活跃会话每 5s 被 watcher 触发重建时，
+            // 只解新增帧而不是整文件。安全边界：
+            //  - 窗口**不含 header**（DSH 只有第一帧写 header，实测 349 个真实文件
+            //    0 个例外）→ 必须用上一轮的 version/generation/header/lastSeq 播种
+            //    compat，否则窗口首行会被当成 header 解析并抛错（此前 delta 恒失败
+            //    的真正原因）；
+            //  - 窗口内出现 surface 替换（hadSurfaceReplace）→ 回退全量；
+            //  - 跨窗口 replace 另有结构性兜底：窗口 surface 数组不含被替换原帧，
+            //    foldSurface 找不到 start/end 直接抛错 → 走 !r.ok 全量回退；
             //  - 文件被替换/截断（size < indexedBytes）、force、首次解析、
-            //    detailMissing、unindexable → 一律全量。
+            //    detailMissing、unindexable、旧索引缺 indexedSeq → 一律全量。
             const deltaEnabled = options.deltaEnabled !== false
             const prev = byFile.get(f.file)
             const delta =
@@ -327,12 +334,14 @@ export class SessionIndexBuilder {
               !prev.unindexable &&
               !prev.detailMissing &&
               (prev.indexedBytes ?? 0) > 0 &&
+              prev.indexedSeq !== undefined &&
               f.size >= (prev.indexedBytes ?? 0)
             return {
               mode: 'full' as const,
               file: f.file,
               startOffset: delta ? (prev?.indexedBytes ?? 0) : 0,
               delta,
+              resume: delta ? resumeStateOf(prev!) : undefined,
               collectMessages: !!options.collectMessages,
             }
           },
@@ -369,6 +378,10 @@ export class SessionIndexBuilder {
               return
             }
             report.fullParsed++
+            // C9b：增量生效性观测——真正走完窗口的记 deltaParsed，尝试后回退的记
+            // deltaFallbacks（此前无任何字段能回答"增量到底有没有生效"）。
+            if (spec.delta) report.deltaParsed = (report.deltaParsed ?? 0) + 1
+            else if (spec.deltaFellBack) report.deltaFallbacks = (report.deltaFallbacks ?? 0) + 1
             // scannedBytes 每个文件只计一次（head 已计过的跳过）
             if (!parsedFiles.has(f.file)) report.scannedBytes += f.size
             parsedFiles.add(f.file)
@@ -477,7 +490,8 @@ export class SessionIndexBuilder {
         r.ok &&
         Boolean((r.data as FullSummary | undefined)?.hadSurfaceReplace)
       if (!r.aborted && spec.delta && (!r.ok || deltaHitReplace)) {
-        spec = { ...spec, startOffset: 0, delta: false }
+        // 回退全量：必须一并清掉 resume（否则全量解析会跳过 header 校验）
+        spec = { ...spec, startOffset: 0, delta: false, deltaFellBack: true, resume: undefined }
         r = await this.runWithRetry(spec, signal)
       }
       await onResult(f, r, fpBefore, spec)
@@ -605,6 +619,8 @@ function fullMeta(f: ScanFile, d: FullSummary): SessionMeta {
     toolNames,
     toolCallCounts: d.toolCallCounts,
     indexedBytes: f.size,
+    // C9b：记录窗口终点，供下次 delta 播种 expectedSeq
+    indexedSeq: d.lastSeq,
   }
 }
 
@@ -641,6 +657,31 @@ function mergeDelta(prev: SessionMeta, d: FullSummary, f: ScanFile): SessionMeta
     toolNames: Object.keys(toolCallCounts).sort(),
     toolCallCounts,
     indexedBytes: f.size,
+    // C9b：窗口内无新事件时 lastSeq 回落到窗口起点-1（= prev.indexedSeq），
+    // 即索引终点不前移——语义正确（没有解析到新事件）。
+    indexedSeq: d.lastSeq ?? prev.indexedSeq,
+  }
+}
+
+/**
+ * C9b：构造 delta 续读状态。窗口不含 header，compat 需按上一轮结果播种：
+ * version（compatibility）、generation（由 version 反推）、header 视图与
+ * expectedSeq（= indexedSeq + 1）。
+ *
+ * 仅在 `indexedSeq !== undefined` 时调用（旧索引无此字段 → 全量迁移一次）。
+ */
+function resumeStateOf(prev: SessionMeta): CompatResumeState {
+  return {
+    version: prev.compatibility ?? 'alpha3',
+    generation: generationOfVersion(prev.compatibility),
+    header: {
+      id: prev.id,
+      createdAt: prev.createdAt,
+      cwd: prev.workspace,
+      agentPreset: prev.agentPreset,
+      ...prev.parentSession !== undefined ? { parentSession: prev.parentSession } : {},
+    },
+    baseSeq: (prev.indexedSeq ?? -1) + 1,
   }
 }
 
