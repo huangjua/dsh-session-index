@@ -27,6 +27,8 @@ export interface WorkerTaskSpec {
   startOffset?: number
   /** 仅 builder 内部记账用：本次是否为 delta 解析（worker 无需感知） */
   delta?: boolean
+  /** C9b：delta 窗口的起始事件 seq（worker 内 parseFull 用它判定 replace 是否跨窗口） */
+  startSeq?: number
   /** P2 FTS：full 模式下收集消息行（user/assistant 文本 + tool 名） */
   collectMessages?: boolean
 }

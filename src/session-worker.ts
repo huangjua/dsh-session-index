@@ -22,6 +22,8 @@ interface TaskMessage {
   maxDecompressedBytes?: number
   startOffset?: number
   collectMessages?: boolean
+  /** C9b：delta 窗口起始事件 seq */
+  startSeq?: number
 }
 
 type TaskData = HeadSummary | FullSummary | SearchHit[]
@@ -53,6 +55,8 @@ if (parentPort) {
             maxDecompressedBytes,
             startOffset: task.startOffset,
             collectMessages: task.collectMessages,
+            // C9b：窗口起点（仅 delta 时有意义；全量时为 0，窗口内 replace 同样可信）
+            deltaBaseSeq: task.startSeq,
           })
         } else if (task.mode === 'search') {
           data = await parseSearch(task.file, task.query || '', {

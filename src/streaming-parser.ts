@@ -327,9 +327,12 @@ export interface FullSummary {
   /** P2 FTS：collectMessages=true 时收集的消息行（user/assistant 文本 + tool 名） */
   messages?: FtsMessageRow[]
   compatibility: SessionCompatibilityVersion
-  /** C9：本次解析（可能是 delta 窗口）内发生过 surface 替换——delta 结果不可信，
-   * 调用方应回退全量重解析（替换可能遮蔽窗口外的旧帧内容）。 */
+  /** C9b：本次解析（可能是 delta 窗口）内出现**跨越窗口边界**的 surface 替换
+   * （replace 引用了窗口外的旧帧）→ 增量结果不可信，调用方应回退全量重解析。
+   * 窗口内的 replace（如 tool/result 就地更新）不置此标记，增量结果可信。 */
   hadSurfaceReplace?: boolean
+  /** C9b：已解析到的最大事件 seq（delta 合并后写回 indexedSeq，作为下次窗口起点）。 */
+  lastSeq?: number
 }
 
 export async function parseFull(
@@ -343,10 +346,15 @@ export async function parseFull(
     startOffset?: number
     /** P2 FTS：为 true 时逐条收集 user/assistant 文本与 tool 名（供 SQLite FTS） */
     collectMessages?: boolean
+    /** C9b：delta 窗口的起始事件 seq（上次解析到的 lastSeq + 1）。传入后，
+     * 只有 replace 的起始 seq **小于**此值（跨窗口引用旧帧）才标记
+     * hadSurfaceReplace；窗口内的 replace 视为可信增量。 */
+    deltaBaseSeq?: number
   } = {},
 ): Promise<FullSummary> {
   const lastTextLimit = options.lastTextLimit ?? 2000
   const collectMessages = options.collectMessages ?? false
+  const deltaBaseSeq = options.deltaBaseSeq ?? 0
   const out: FullSummary = {
     id: '',
     createdAt: 0,
@@ -420,7 +428,12 @@ export async function parseFull(
     }
   }
   out.compatibility = compat.version
-  if (compat.replaceOps > 0) out.hadSurfaceReplace = true
+  // C9b：仅当 replace 引用窗口外旧帧（起始 seq < 窗口起点）时才判为不可信。
+  // 窗口内的 replace（tool/result 就地更新等）在增量视图里同样可见 → 增量可信。
+  if (compat.replaceOps > 0 && compat.minReplaceStart < deltaBaseSeq) {
+    out.hadSurfaceReplace = true
+  }
+  out.lastSeq = compat.lastSeq
   if (messages) out.messages = messages
   return out
 }

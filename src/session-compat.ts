@@ -342,6 +342,9 @@ export class SessionLogCompatibility {
   private _generation = 0
   /** C9：本次解析窗口内发生的 surface 替换次数（delta 安全性判据） */
   private _replaceOps = 0
+  /** C9b：窗口内 replace 的**最小起始 seq**——仅当它小于 delta 窗口起点
+   * （即替换引用了窗口外的旧帧）时，增量结果才不可信需回退全量。 */
+  private _minReplaceStart = Number.POSITIVE_INFINITY
   private expectedSeq = 0
   private readonly surface: Record<string, unknown>[] = []
 
@@ -359,9 +362,21 @@ export class SessionLogCompatibility {
     return this._generation
   }
 
-  /** C9：窗口内是否发生过 surface 替换（delta 增量遇到它必须回退全量）。 */
+  /** C9：窗口内是否发生过 surface 替换。 */
   get replaceOps(): number {
     return this._replaceOps
+  }
+
+  /** C9b：窗口内 replace 的最小起始 seq（无 replace 时为 +Infinity）。
+   * 与 delta 窗口起点比较：小于起点 = 替换跨越窗口边界 → 必须回退全量。 */
+  get minReplaceStart(): number {
+    return this._minReplaceStart
+  }
+
+  /** C9b：已消费的最大事件 seq（下次 delta 的窗口起点 = 本值 + 1）。
+   * 未消费任何事件时为 -1（调用方按 0 起点处理）。 */
+  get lastSeq(): number {
+    return this.expectedSeq - 1
   }
 
   consumeLine(value: unknown): Record<string, unknown>[] {
@@ -553,6 +568,11 @@ export class SessionLogCompatibility {
     const start = this.surface.findIndex(candidate => candidate.seq === replace.start)
     const end = this.surface.findIndex(candidate => candidate.seq === replace.end)
     if (start < 0 || end < start) throw new SessionCompatibilityError(`invalid surface replacement range at seq ${event.seq}`)
+    // C9b：记录最小起始 seq（窗口内 replace 不改变可信性，跨窗口的才回退）
+    if (this._replaceOps > 0) {
+      const rs = Number(replace.start)
+      if (Number.isFinite(rs) && rs < this._minReplaceStart) this._minReplaceStart = rs
+    }
     const shadowed = this.surface.slice(start, end + 1)
     const sourceSet = new Set((sources ?? []) as number[])
     if (shadowed.some(candidate => !sourceSet.has(candidate.seq as number))) {

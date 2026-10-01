@@ -74,6 +74,12 @@ export interface SessionMeta {
    * 缺省/0 → 全量重解析（旧索引迁移 / detailMissing 条目 / 文件被替换）。
    */
   indexedBytes?: number
+  /**
+   * C9b：已解析到的最大事件 seq（与 indexedBytes 配套）。
+   * 下次增量的窗口起点 = indexedSeq + 1；用于判定 delta 窗口内的 surface
+   * replace 是否跨越窗口边界（引用窗口外旧帧 → 必须回退全量）。
+   */
+  indexedSeq?: number
   /** 构建期间文件被改写：条目保留旧值 */
   raced?: boolean
   /** 本次构建解析失败：保留旧条目，只追加 error */
