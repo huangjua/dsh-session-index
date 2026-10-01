@@ -4,5 +4,5 @@ lib/
 *.tgz
 .test-build/
 
-*.bak"
+*.bak
 *.bak-*
