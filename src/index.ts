@@ -347,8 +347,14 @@ export function apply(ctx: Context, config: Config): void {
             // builder.build 的 force 兜底（非 force 在飞时不吸收）+ 这里的事后复检：
             // 任何一步被打断都不会让 FTS 永久缺会话。
             const idx = loadIndex(indexFile)
-            if (idx && f.sessionCount() < idx.sessions.length) {
-              log(`[session-index] FTS backfill (db=${f.sessionCount()} index=${idx.sessions.length})`)
+            // C3 回填收敛：unindexable 条目保留在 index 但没有 FTS 行（builder 经
+            // onSessionRemoved 删行，永久性）；detailMissing 条目尚未全量解析（可自愈）。
+            // 两者都不构成"FTS 落后"信号——否则存在一个坏文件就会每次启动 force 全量
+            // 重建 + 3 次重试，永不收敛（unindexable 恒在 → 判据恒真）。
+            const ftsEligible = (s: SessionMeta): boolean => !s.unindexable && !s.detailMissing
+            const idxEligible = idx?.sessions.filter(ftsEligible).length ?? 0
+            if (idx && f.sessionCount() < idxEligible) {
+              log(`[session-index] FTS backfill (db=${f.sessionCount()} index=${idxEligible})`)
               const backfill = async (attempt: number): Promise<void> => {
                 try {
                   const r = await builder.build(ftsBuildOptions({ force: true }))
@@ -357,8 +363,9 @@ export function apply(ctx: Context, config: Config): void {
                   log(`[session-index] FTS backfill failed: ${String(e)}`)
                 }
                 const nowIdx = loadIndex(indexFile)
-                if (nowIdx && f.sessionCount() < nowIdx.sessions.length && attempt < 3) {
-                  log(`[session-index] FTS still behind (db=${f.sessionCount()} index=${nowIdx.sessions.length}); retry ${attempt + 1}/3`)
+                const nowEligible = nowIdx?.sessions.filter(ftsEligible).length ?? 0
+                if (nowIdx && f.sessionCount() < nowEligible && attempt < 3) {
+                  log(`[session-index] FTS still behind (db=${f.sessionCount()} index=${nowEligible}); retry ${attempt + 1}/3`)
                   await new Promise((r) => setTimeout(r, 1000))
                   await backfill(attempt + 1)
                 }
