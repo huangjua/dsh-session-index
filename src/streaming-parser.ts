@@ -22,6 +22,7 @@ import { excerptAroundMatch } from './core.js'
 import {
   SessionLogCompatibility,
   textFromCompatibleMessage,
+  type CompatResumeState,
   type SessionCompatibilityVersion,
 } from './session-compat.js'
 
@@ -327,9 +328,18 @@ export interface FullSummary {
   /** P2 FTS：collectMessages=true 时收集的消息行（user/assistant 文本 + tool 名） */
   messages?: FtsMessageRow[]
   compatibility: SessionCompatibilityVersion
-  /** C9：本次解析（可能是 delta 窗口）内发生过 surface 替换——delta 结果不可信，
-   * 调用方应回退全量重解析（替换可能遮蔽窗口外的旧帧内容）。 */
+  /**
+   * C9：本次解析（可能是 delta 窗口）内发生过 surface 替换——delta 结果不可信，
+   * 调用方应回退全量重解析。
+   *
+   * 保守判据（实测代价可忽略：24 个真实会话 1,145,638 事件里仅 13 次 replace，
+   * 0.0011%，且近窗口内为 0）。**跨窗口** replace 另有结构性兜底：窗口内的
+   * surface 数组不含被替换的原帧，`foldSurface` 找不到 start/end 会直接抛错，
+   * 走调用方既有的 `!r.ok` → 全量回退路径。
+   */
   hadSurfaceReplace?: boolean
+  /** C9b：已解析到的最大事件 seq（delta 合并后写回 indexedSeq，作为下次窗口起点）。 */
+  lastSeq?: number
 }
 
 export async function parseFull(
@@ -343,6 +353,15 @@ export async function parseFull(
     startOffset?: number
     /** P2 FTS：为 true 时逐条收集 user/assistant 文本与 tool 名（供 SQLite FTS） */
     collectMessages?: boolean
+    /**
+     * C9b（resume delta）：续读状态。传入后按"上一轮已解析到这里"播种 compat，
+     * 使**不含 header 的增量窗口**（startOffset > 0）可被解析。
+     *
+     * 必要性：DSH 会话文件 append-only 且只有第一帧带 header（实测 349 个真实
+     * 文件 0 个在后续帧重复写 header）。没有它，窗口首行会被当成 header 解析并抛
+     * "unsupported or malformed session header"——这正是此前 delta 恒失败的原因。
+     */
+    resume?: CompatResumeState
   } = {},
 ): Promise<FullSummary> {
   const lastTextLimit = options.lastTextLimit ?? 2000
@@ -373,6 +392,9 @@ export async function parseFull(
     })
   }
   const compat = new SessionLogCompatibility()
+  // C9b：增量窗口没有 header 行，先按上一轮结果播种（version/generation/header/
+  // expectedSeq）。全量解析不播种，仍走完整 header 校验。
+  if (options.resume) compat.resume(options.resume)
   await streamJsonlLines(
     file,
     (line) => {
@@ -420,7 +442,9 @@ export async function parseFull(
     }
   }
   out.compatibility = compat.version
+  // C9：窗口内出现 surface 替换 → 保守回退全量（判据宽松但代价实测可忽略）。
   if (compat.replaceOps > 0) out.hadSurfaceReplace = true
+  out.lastSeq = compat.lastSeq
   if (messages) out.messages = messages
   return out
 }

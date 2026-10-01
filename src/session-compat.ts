@@ -332,6 +332,28 @@ function normalizeReplaceOp(op: unknown, label: string): unknown {
 }
 
 /**
+ * C9b（resume delta）：续读状态。
+ *
+ * DSH 会话文件是 append-only，且**只有第一帧带 header**（实测 349 个真实文件：
+ * 0 个在后续帧重复写 header）。因此"只解新增帧"的窗口里没有 header 行——若不
+ * 播种状态，`consumeLine` 会把窗口首个事件当 header 解析并抛
+ * "unsupported or malformed session header"（这正是此前 delta 恒失败的原因）。
+ */
+export interface CompatResumeState {
+  version: SessionCompatibilityVersion
+  /** 物理代际（0/1 legacy，2/3/4 modern）：决定行解码方式与 surface 事件表。 */
+  generation: number
+  header: SessionHeaderView
+  /** 窗口首事件的期望 seq（上一轮解析到的 lastSeq + 1）。 */
+  baseSeq: number
+}
+
+/** 版本名 → 物理代际（`SessionMeta` 只持久化 `compatibility` 字符串）。 */
+export function generationOfVersion(version: SessionCompatibilityVersion | undefined): number {
+  return version === 'v2' ? 2 : version === 'v3' ? 3 : version === 'v4' ? 4 : 0
+}
+
+/**
  * Validates one JSONL session log (legacy v0/v1 or modern v2/v3) and folds its
  * current model-visible surface.  The raw log is never modified and
  * non-surface extension events remain opaque.
@@ -359,9 +381,27 @@ export class SessionLogCompatibility {
     return this._generation
   }
 
-  /** C9：窗口内是否发生过 surface 替换（delta 增量遇到它必须回退全量）。 */
+  /** C9：窗口内是否发生过 surface 替换。 */
   get replaceOps(): number {
     return this._replaceOps
+  }
+
+  /** C9b：已消费的最大事件 seq（下次 delta 的窗口起点 = 本值 + 1）。
+   * 未消费任何事件时为 -1（调用方按 0 起点处理）。 */
+  get lastSeq(): number {
+    return this.expectedSeq - 1
+  }
+
+  /**
+   * C9b（resume delta）：以"上一轮解析结果"播种状态，使**不含 header 的续读
+   * 窗口**可被解析。仅由 parseFull 的 delta 路径调用；全量解析绝不调用
+   * （它必须自己读到 header 并完成完整校验）。
+   */
+  resume(state: CompatResumeState): void {
+    this._version = state.version
+    this._generation = state.generation
+    this._header = state.header
+    this.expectedSeq = state.baseSeq
   }
 
   consumeLine(value: unknown): Record<string, unknown>[] {

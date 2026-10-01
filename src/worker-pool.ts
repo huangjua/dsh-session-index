@@ -13,6 +13,7 @@ import os from 'node:os'
 import { CancelError, isCancelError } from './cancel.js'
 import { parseHead, parseFull, parseSearch } from './streaming-parser.js'
 import type { HeadSummary, FullSummary, SearchHit } from './streaming-parser.js'
+import type { CompatResumeState } from './session-compat.js'
 
 export type WorkerTaskMode = 'head' | 'full' | 'search'
 export type WorkerTaskData = HeadSummary | FullSummary | SearchHit[]
@@ -27,6 +28,10 @@ export interface WorkerTaskSpec {
   startOffset?: number
   /** 仅 builder 内部记账用：本次是否为 delta 解析（worker 无需感知） */
   delta?: boolean
+  /** 仅 builder 内部记账用：本次是 delta 回退后的全量重解析（观测用） */
+  deltaFellBack?: boolean
+  /** C9b：delta 续读状态（窗口无 header，需播种 version/generation/header/seq） */
+  resume?: CompatResumeState
   /** P2 FTS：full 模式下收集消息行（user/assistant 文本 + tool 名） */
   collectMessages?: boolean
 }
@@ -260,6 +265,7 @@ export class WorkerPool {
         maxSnippets: pending.spec.maxSnippets,
         maxDecompressedBytes: pending.spec.maxDecompressedBytes,
         startOffset: pending.spec.startOffset,
+        resume: pending.spec.resume,
         collectMessages: pending.spec.collectMessages,
       })
     } catch (e) {
@@ -297,6 +303,7 @@ export class WorkerPool {
           data = await parseFull(pending.spec.file, {
             signal,
             startOffset: pending.spec.startOffset,
+            resume: pending.spec.resume,
             collectMessages: pending.spec.collectMessages,
           })
         else if (pending.spec.mode === 'search')

@@ -74,6 +74,12 @@ export interface SessionMeta {
    * 缺省/0 → 全量重解析（旧索引迁移 / detailMissing 条目 / 文件被替换）。
    */
   indexedBytes?: number
+  /**
+   * C9b：已解析到的最大事件 seq（与 indexedBytes 配套）。
+   * 下次增量的窗口起点 = indexedSeq + 1；用于判定 delta 窗口内的 surface
+   * replace 是否跨越窗口边界（引用窗口外旧帧 → 必须回退全量）。
+   */
+  indexedSeq?: number
   /** 构建期间文件被改写：条目保留旧值 */
   raced?: boolean
   /** 本次构建解析失败：保留旧条目，只追加 error */
@@ -112,6 +118,14 @@ export interface BuildReport {
   pruned: number
   errors: string[]
   scannedBytes: number
+  /**
+   * C9b：本次构建**成功走完增量窗口**的文件数（真正只解了新增帧）。
+   * 与 `scannedBytes` 配合可判定增量是否生效：scannedBytes 记的是"逻辑上纳入
+   * 考虑的文件总大小"，增量生效时它会明显小于全量（旧实现恒等于全量）。
+   */
+  deltaParsed?: number
+  /** C9b：delta 尝试后回退全量重解析的文件数（replace 命中 / 偏移失效）。 */
+  deltaFallbacks?: number
   indexFile: string
   durationMs: number
   maxEventLoopDelayMs: number
