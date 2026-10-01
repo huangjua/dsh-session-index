@@ -11,9 +11,9 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { join, basename, dirname } from 'node:path'
+import { join, basename, dirname, resolve, isAbsolute } from 'node:path'
 import { homedir } from 'node:os'
-import { statSync } from 'node:fs'
+import { statSync, mkdirSync } from 'node:fs'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import {
@@ -44,7 +44,7 @@ import {
   bookmarkMatches,
   sortBookmarks,
   defaultLabel,
-  defaultBookmarkFile,
+  BOOKMARK_FILE_NAME,
   BOOKMARK_LIST_LIMIT_DEFAULT,
   BOOKMARK_LIST_LIMIT_MAX,
 } from './bookmark.js'
@@ -52,7 +52,7 @@ import {
 import {
   createHostLlmProvider,
   createLlmSummaryService,
-  defaultSummaryCacheFile,
+  SUMMARY_CACHE_FILE_NAME,
 } from './llm-summary.js'
 
 export const name = '@dsh-external/dsh-session-index'
@@ -61,6 +61,10 @@ export const inject = ['tools']
 export interface Config {
   sessionsRoot: string
   indexFile: string
+  /** 派生数据的落盘目录（index.json / fts.db / bookmarks.jsonl / llm-summary.jsonl）。
+   * 缺省空 → `$DSH_HOME/session-index`；设为绝对路径可把整份索引搬到别的盘
+   * （例如 C 盘吃紧时指向大容量盘），目录不存在会自动创建。 */
+  dataDir: string
   maxHits: number
   maxSnippetsPerSession: number
   /** P2.1：FTS 总开关（默认开）。false 时完全跳过 createSessionFts（不 import
@@ -80,6 +84,7 @@ export interface Config {
 export const Config: Schemastery<any, any> = z.object({
   sessionsRoot: z.string().default(''),
   indexFile: z.string().default(''),
+  dataDir: z.string().default(''),
   maxHits: z.number().min(1).max(500).default(50),
   maxSnippetsPerSession: z.number().min(1).max(20).default(3),
   ftsEnabled: z.boolean().default(true),
@@ -182,8 +187,18 @@ const metaRolePass = (s: SessionMeta, role: SearchFilter['role'] | undefined): b
 
 export function apply(ctx: Context, config: Config): void {
   const dshHome = process.env.DSH_HOME || join(homedir(), '.dsh')
+  // 派生数据目录：默认 $DSH_HOME/session-index；dataDir 可把整份索引移出系统盘。
+  const dataDir = config.dataDir
+    ? (isAbsolute(config.dataDir) ? resolve(config.dataDir) : resolve(process.cwd(), config.dataDir))
+    : join(dshHome, 'session-index')
+  try {
+    mkdirSync(dataDir, { recursive: true })
+  } catch (error) {
+    // 目录建不出来不阻断装载：后续写入会各自报错，这里只留一条诊断。
+    console.warn(`[session-index] cannot create dataDir ${dataDir}: ${String(error)}`)
+  }
   const sessionsRoot = resolveRoot(config.sessionsRoot)
-  const indexFile = config.indexFile || join(dshHome, 'session-index', 'index.json')
+  const indexFile = config.indexFile || join(dataDir, 'index.json')
 
   /* ── STAGE-4：可选 LLM 一句话摘要（红线 3 修订的唯一例外路径）────────────
    * 服务只挂 session_summary 工具路径与 status 健康快照；构建/扫描路径零调用。
@@ -217,7 +232,7 @@ export function apply(ctx: Context, config: Config): void {
   const llmSummary = createLlmSummaryService({
     enabled: llmSummaryEnabled,
     provider: resolveLlmProvider,
-    cacheFile: defaultSummaryCacheFile(dshHome),
+    cacheFile: join(dataDir, SUMMARY_CACHE_FILE_NAME),
   })
 
   let log: (msg: string) => void
@@ -233,7 +248,7 @@ export function apply(ctx: Context, config: Config): void {
 
   /* ── P2：SQLite + FTS5 全文索引（异步启用，失败静默降级）────────────── */
   let fts: SessionFts | null = null
-  const ftsDbPath = join(dshHome, 'session-index', 'fts.db')
+  const ftsDbPath = join(dataDir, 'fts.db')
   /** 统一 build 选项：任何构建都带上 FTS 钩子（collectMessages + 解析/删除回调）
  * 与 P3 保留过滤（retentionDays 进底座：任何顺序的构建（watcher 事件/对账/
  * 回填/保留专用）都按策略过滤超龄条目——实测竞态：若只有保留专用构建带
@@ -1316,7 +1331,7 @@ export function apply(ctx: Context, config: Config): void {
   })
 
   /* ── 工具 5：书签（STAGE-2 Part A：B3 书签导航 + C4 aider 幂等去重）──────── */
-  const bookmarkFile = defaultBookmarkFile(dshHome)
+  const bookmarkFile = join(dataDir, BOOKMARK_FILE_NAME)
   const toolBookmark = defineTool({
     name: 'session_index_bookmark',
     description:

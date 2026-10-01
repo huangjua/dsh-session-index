@@ -1,0 +1,9 @@
+# dsh-session-index bundle 层：插入会话索引插件行。
+# 由 profile 的 dsh.profile.bundles 选中后自动应用（或经 `dsh plugin add` 安装）。
+# dataDir：派生索引（index.json / fts.db / bookmarks.jsonl / llm-summary.jsonl）
+# 落在 E 盘，避免占用已接近写满的 C 盘；目录不存在时插件会自行创建。
+- insert:
+    - id: dsh-session-index
+      name: '@dsh-external/dsh-session-index'
+      config:
+        dataDir: 'E:/Do Something/DSH备份/session-index-data'

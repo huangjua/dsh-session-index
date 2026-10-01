@@ -137,6 +137,8 @@ async function setup(opts: SetupOpts = {}): Promise<Env> {
   apply(ctx as never, {
     sessionsRoot,
     indexFile: join(home, 'session-index', 'index.json'),
+    // dataDir 显式指向测试 home（与上方 preseedWatermark 的 fts.db 路径严格一致）
+    dataDir: join(home, 'session-index'),
     maxHits: 10,
     maxSnippetsPerSession: 3,
     ftsEnabled: opts.ftsEnabled ?? true,
