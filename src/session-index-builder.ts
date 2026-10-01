@@ -660,6 +660,12 @@ function mergeDelta(prev: SessionMeta, d: FullSummary, f: ScanFile): SessionMeta
     // C9b：窗口内无新事件时 lastSeq 回落到窗口起点-1（= prev.indexedSeq），
     // 即索引终点不前移——语义正确（没有解析到新事件）。
     indexedSeq: d.lastSeq ?? prev.indexedSeq,
+    // C9b 后续：清掉一次性标记——历史 raced/error/unindexable 经 `...prev`
+    // 展开会被 mergeDelta 永久携带，导致 merge 记账（`!meta.raced`）之后
+    // 每一轮 updated 都恒为 0。本次成功解析本身就是这些标记过期的证明。
+    raced: undefined,
+    error: undefined,
+    unindexable: undefined,
   }
 }
 

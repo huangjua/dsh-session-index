@@ -620,6 +620,10 @@ export function apply(ctx: Context, config: Config): void {
         raced: last.raced,
         failed: last.failed,
         scannedBytes: last.scannedBytes,
+        // C9b 后续：观测管道修复——漏拷这两个字段导致 status 渲染行恒显
+        // deltaParsed=0/deltaFallbacks=0（builder 计数正确，只是没送达渲染层）。
+        deltaParsed: last.deltaParsed,
+        deltaFallbacks: last.deltaFallbacks,
         durationMs: last.durationMs,
         maxEventLoopDelayMs: last.maxEventLoopDelayMs,
         partialCommitted: last.partialCommitted ?? false,
