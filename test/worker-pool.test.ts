@@ -12,6 +12,7 @@ import { join } from 'node:path'
 import { WorkerPool, mapLimit } from '../src/worker-pool.js'
 import { isCancelError } from '../src/cancel.js'
 import type { HeadSummary, FullSummary, SearchHit } from '../src/streaming-parser.js'
+import { getEventListeners } from 'node:events'
 
 const SAMPLE = fileURLToPath(new URL('../../test/fixtures/sample-session.jsonl.zstd', import.meta.url))
 const SAMPLE_JSONL = fileURLToPath(new URL('../../test/fixtures/sample-session.jsonl', import.meta.url))
@@ -75,6 +76,20 @@ describe('WorkerPool（worker_threads 路径）', () => {
         ),
       )
       assert.equal(results.filter((r) => r.ok).length, 6)
+    } finally {
+      pool.terminate()
+    }
+  })
+
+  it('C5：共享 signal 连跑多任务，settle 后 abort 监听器不累积', async () => {
+    const pool = new WorkerPool({ workerUrl: WORKER_URL, size: 2 })
+    try {
+      const signal = new AbortController().signal
+      for (let i = 0; i < 20; i++) {
+        await pool.run({ mode: 'head', file: SAMPLE }, signal)
+      }
+      const n = (getEventListeners as (t: object, type: string) => unknown[])(signal, 'abort').length
+      assert.equal(n, 0, `settle 后监听器应清零，实际 ${n}（旧实现按任务数累积）`)
     } finally {
       pool.terminate()
     }

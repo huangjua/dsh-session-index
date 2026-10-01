@@ -125,13 +125,31 @@ pnpm test                       # Run the test suite
 
 **DSH compatibility.** The plugin targets DSH `0.1.5-rc.1` (session format v3) and reads
 every durable generation it has seen on disk: legacy `session.jsonl.zstd` (v0/v1),
-`session.v2.jsonl.zstd` and `session.v3.jsonl.zstd`. When a session directory holds
+`session.v2.jsonl.zstd`, `session.v3.jsonl.zstd` and — since the 2026-10-01 v4 port —
+`session.v4.jsonl.zstd` (DSH 0.2.0-rc.2). When a session directory holds
 more than one generation (DSH keeps the pre-migration file), only the highest one is
 indexed. v3 changed three load-bearing things the reader now models: the closed header
 (`isSeeded` + `delegationDepth`), `system/message` as the fourth surface type (folded,
 never indexed as text), and `{op:'replace',startSeq,endSeq}` replacements (v2 used
 `start`/`end`). The v3 fixture under `test/fixtures/` is migrated from a real v0 log by
 DSH's own restore path, not hand-written.
+
+**Session v4 (2026-10-01).** Ported against the released `@deepseek-ai/dsh-session-format-v3-to-v4`
+specification: the header gate accepts `version: 4` (same logical fields — the edge only
+advances the version); `liftToolResult` promotes `tool/result` to a real tool role
+(`role:'tool'`, message-level `toolCallId`, the wrapper's `content` lifted into
+`message.content`), so replacement ops compare the lifted payload while v2/v3 keep the
+wrapper comparison; `system/message` provenance became a direct kind
+(`system-prompt` / `runtime-context`) instead of `{kind:'plugin', plugin:…}`;
+`developer/message` joined the surface (`SURFACE_TYPES_V4`); `workspace/changes` joined the
+modern log-only vocabulary. Regression: 321 real logs (v0=284 / v3=14 / v4=23) pass
+`parseHead`, `parseFull` and `parseSearch` with zero failures.
+
+**Installability.** The package declares `dsh.bundle.patch` (`./cordis.patch.yml`) so the
+DSH plugin installer accepts it as a bundle, and its DSH peers read
+`>=0.1.7-rc.1 <0.3.0` — the client evaluates them with
+`semver.satisfies(runtime, range, { includePrerelease: true })`, which both `0.1.7-rc.1`
+and `0.2.0-rc.2` satisfy.
 
 </details>
 

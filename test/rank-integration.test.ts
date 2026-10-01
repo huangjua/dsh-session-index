@@ -108,6 +108,8 @@ async function setup(opts: SetupOpts = {}): Promise<Env> {
   apply(ctx as never, {
     sessionsRoot,
     indexFile: join(home, 'session-index', 'index.json'),
+    // dataDir 显式指向测试 home（不能留空依赖 DSH_HOME 兜底——避免污染真实 ~/.dsh）
+    dataDir: join(home, 'session-index'),
     maxHits: 10,
     maxSnippetsPerSession: 3,
     ftsEnabled: opts.ftsEnabled ?? true,

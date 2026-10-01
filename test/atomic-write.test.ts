@@ -47,13 +47,19 @@ describe('atomicWriteJson', () => {
     assert.ok(!names.some((n) => n.includes('.tmp.')))
   })
 
-  it('backup 选项：生成 index.json.bak 硬链（已有则忽略）', async () => {
+  it('backup 选项：.bak 随每次提交滚动（保存上一次版本，C4）', async () => {
     const file = join(dir, 'bak.json')
+    // 第 1 次写：无旧文件可备份 → 不产生 .bak（ENOENT 被忽略）
     await atomicWriteJson(file, { v: 1 }, { backup: true })
+    await assert.rejects(stat(`${file}.bak`))
+    // 第 2 次写：备份发生在 rename 前 → .bak = 旧版本 v1，file = 新版本 v2
     await atomicWriteJson(file, { v: 2 }, { backup: true })
-    const bak = await stat(`${file}.bak`)
-    assert.equal(bak.nlink >= 1, true)
+    assert.equal(JSON.parse(await readFile(`${file}.bak`, 'utf8')).v, 1)
     assert.equal(JSON.parse(await readFile(file, 'utf8')).v, 2)
+    // 第 3 次写：.bak 滚动到 v2（旧实现此处仍是 v1——EEXIST 被吞，永不更新）
+    await atomicWriteJson(file, { v: 3 }, { backup: true })
+    assert.equal(JSON.parse(await readFile(`${file}.bak`, 'utf8')).v, 2)
+    assert.equal(JSON.parse(await readFile(file, 'utf8')).v, 3)
   })
 })
 

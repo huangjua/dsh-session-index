@@ -104,16 +104,29 @@ export class WorkerPool {
         return
       }
       const controller = new AbortController()
+      // C5：调用方 signal 的 abort 监听必须在任务 settle 时自摘——once:true 只在
+      // 触发时移除，正常完成的构建（signal 从不 abort）会按文件数累积监听器
+      // （>10 触发 MaxListeners 告警）。挂到 wrapped resolve/reject 出口全覆盖。
+      const onCallerAbort = (): void => controller.abort()
+      const removeCallerAbort = (): void => {
+        signal?.removeEventListener('abort', onCallerAbort)
+      }
       const pending: PendingTask = {
         id: this.seq++,
         spec,
-        resolve: resolve as (r: TaskResult) => void,
-        reject,
+        resolve: (r: TaskResult) => {
+          removeCallerAbort()
+          resolve(r as TaskResult<T>)
+        },
+        reject: (e: unknown) => {
+          removeCallerAbort()
+          reject(e)
+        },
         controller,
         dispatched: false,
       }
       if (signal) {
-        signal.addEventListener('abort', () => controller.abort(), { once: true })
+        signal.addEventListener('abort', onCallerAbort)
       }
       controller.signal.addEventListener(
         'abort',

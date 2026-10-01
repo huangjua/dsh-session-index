@@ -137,6 +137,8 @@ async function setup(opts: SetupOpts = {}): Promise<Env> {
   apply(ctx as never, {
     sessionsRoot,
     indexFile: join(home, 'session-index', 'index.json'),
+    // dataDir 显式指向测试 home（与上方 preseedWatermark 的 fts.db 路径严格一致）
+    dataDir: join(home, 'session-index'),
     maxHits: 10,
     maxSnippetsPerSession: 3,
     ftsEnabled: opts.ftsEnabled ?? true,
@@ -237,7 +239,8 @@ describe('ftsEnabled（P2.1/2.2）', () => {
     assert.equal(typeof h.sessions, 'number')
     assert.equal(typeof h.messages, 'number')
     assert.ok(h.dbSizeBytes > 0, `dbSizeBytes=${h.dbSizeBytes}`)
-    assert.equal(h.schemaVersion, '1')
+    // C2：新库直接按 schema v2 建表（无 unicode61 表）；旧库启动时自动迁移 v1→v2
+    assert.equal(h.schemaVersion, '2')
     assert.equal(typeof h.lastOptimizeAt, 'number')
     assert.ok(h.lastOptimizeAt >= 0)
     // P3 可观测字段也在快照里

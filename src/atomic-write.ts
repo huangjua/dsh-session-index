@@ -51,9 +51,13 @@ export async function atomicWriteJson(
     }
     if (options.backup) {
       try {
-        await link(indexFile, `${indexFile}.bak`)
+        // C4：.bak 必须随每次提交滚动更新——旧实现 link() 在 .bak 已存在时 EEXIST
+        // 被吞，备份永远停留在第一次成功时的版本，回滚防线名存实亡。先 unlink 再 link。
+        const bak = `${indexFile}.bak`
+        await unlink(bak).catch(() => { /* ENOENT = 首次备份，正常 */ })
+        await link(indexFile, bak)
       } catch {
-        /* 备份失败不阻断（EEXIST/无权限等） */
+        /* 备份失败不阻断（无权限等） */
       }
     }
     await rename(tmp, indexFile)

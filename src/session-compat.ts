@@ -59,7 +59,7 @@
  */
 
 /** Physical generation accepted by this reader. `alpha3` covers legacy v0/v1. */
-export type SessionCompatibilityVersion = 'alpha3' | 'v2' | 'v3'
+export type SessionCompatibilityVersion = 'alpha3' | 'v2' | 'v3' | 'v4'
 
 export interface SessionHeaderView {
   id: string
@@ -71,7 +71,7 @@ export interface SessionHeaderView {
 
 export interface CompatibleMessage {
   seq: number
-  type: 'user/message' | 'assistant/message' | 'tool/result' | 'system/message'
+  type: 'user/message' | 'assistant/message' | 'tool/result' | 'system/message' | 'developer/message'
   data: Record<string, unknown>
 }
 
@@ -91,6 +91,15 @@ const SURFACE_TYPES = new Set<CompatibleMessage['type']>([
 const SURFACE_TYPES_V3 = new Set<CompatibleMessage['type']>([
   ...SURFACE_TYPES,
   'system/message',
+])
+/**
+ * v4 adds `developer/message` to the surface (official released V4 codec:
+ * SURFACE_TYPES = system/message, user/message, developer/message,
+ * assistant/message, tool/result).
+ */
+const SURFACE_TYPES_V4 = new Set<CompatibleMessage['type']>([
+  ...SURFACE_TYPES_V3,
+  'developer/message',
 ])
 const LEGACY_EVENT_KEYS = new Set(['type', 'seq', 'time', 'data', 'surfaceOp', 'sourceEventSeqs', 'ignorable'])
 /** Physical envelope for v2/v3 rows: same keys, closed set, `ignorable` must be true. */
@@ -132,7 +141,7 @@ const MODERN_LOG_ONLY_TYPES = new Set([
   'subagent/model-selection-policy', 'team/member', 'team/message/delivered', 'team/message/queued', 'team/task',
   'todo/write', 'tool/call', 'tool/ptc-dispatch', 'tool/ptc-dispatch-start', 'tool/code-dispatch',
   'tool/code-dispatch-start', 'tool-workflow/agent-end', 'tool-workflow/agent-start', 'tool-workflow/run-end',
-  'tool-workflow/run-start', 'turn/end', 'turn/start', 'web/deepseek-search-llm-request',
+  'tool-workflow/run-start', 'turn/end', 'turn/start', 'workspace/changes', 'web/deepseek-search-llm-request',
 ])
 
 function record(value: unknown, label: string): Record<string, unknown> {
@@ -252,19 +261,23 @@ function jsonEqual(left: unknown, right: unknown): boolean {
     && leftKeys.every(key => Object.hasOwn(rightRecord, key) && jsonEqual(leftRecord[key], rightRecord[key]))
 }
 
-function assertMessageShape(event: Record<string, unknown>): void {
+function assertMessageShape(event: Record<string, unknown>, generation = 3): void {
   const type = event.type as CompatibleMessage['type']
   const data = record(event.data, `${type} data`)
   const message = type === 'user/message' ? data : record(data.message, `${type} message`)
   // tool/result is written by dsh-llm `createToolResultMessage()` →
   // `createUserMessage({ source: { kind: 'tool', callId } })`, so its role is
-  // 'user'; 'tool' is kept for the earlier alpha.3 form. Provenance stays in
+  // 'user'; 'tool' is kept for the earlier alpha.3 form.  v4 promotes it to a
+  // real tool role (`liftToolResult`: role 'tool' + message-level toolCallId,
+  // the wrapper's `content` lifted into `message.content`).  Provenance stays in
   // the source check below (`kind === 'tool'` + callId), unchanged.
   const roleOk = type === 'tool/result'
     ? message.role === 'user' || message.role === 'tool'
     : type === 'system/message'
       ? message.role === 'system'
-      : message.role === (type === 'assistant/message' ? 'assistant' : 'user')
+      : type === 'developer/message'
+        ? message.role === 'developer'
+        : message.role === (type === 'assistant/message' ? 'assistant' : 'user')
   // `id` may be absent on plugin-authored user/message notices (real logs);
   // present values must still be non-empty strings.
   const idOk = message.id === undefined || (typeof message.id === 'string' && message.id.length > 0)
@@ -281,11 +294,19 @@ function assertMessageShape(event: Record<string, unknown>): void {
     throw new SessionCompatibilityError('assistant/message must have a model source')
   }
   // The system prompt is written by the owning plugin (`system/message` with a
-  // plugin source in v3); other kinds on this type are not a shape this reader
-  // has any reason to accept.
-  if (type === 'system/message'
-    && (source.kind !== 'plugin' || typeof source.plugin !== 'string' || source.plugin.length === 0)) {
-    throw new SessionCompatibilityError('system/message must have a plugin source')
+  // plugin source in v3).  v4 renames that provenance to a direct kind
+  // (`@deepseek-ai/dsh-system-prompt` in a system-role message →
+  // `system-prompt`; other roles → `runtime-context`), so the plugin-property
+  // requirement only holds up to v3.
+  if (type === 'system/message') {
+    if (generation >= 4) {
+      if (source.kind !== 'system-prompt' && source.kind !== 'runtime-context'
+        && source.kind !== 'plugin') {
+        throw new SessionCompatibilityError('system/message must have a system-prompt source')
+      }
+    } else if (source.kind !== 'plugin' || typeof source.plugin !== 'string' || source.plugin.length === 0) {
+      throw new SessionCompatibilityError('system/message must have a plugin source')
+    }
   }
   // callId may legitimately be empty: when the model emits a tool call with an
   // empty name, DSH persists the ToolNotFoundError tool/result verbatim with
@@ -394,15 +415,17 @@ export class SessionLogCompatibility {
   }
 
   /**
-   * v2/v3: closed header shape.  `isSeeded` and `delegationDepth` are required
-   * (a seeded log carries an inherited prefix up to its `session/end-seed`
-   * marker), and `seedLength` is gone.
+   * v2/v3/v4: closed header shape.  `isSeeded` and `delegationDepth` are
+   * required (a seeded log carries an inherited prefix up to its
+   * `session/end-seed` marker), and `seedLength` is gone.  v4 keeps the same
+   * logical header fields — the released v3→v4 edge only advances `version`
+   * (`sessionFormatV3ToV4.migrateHeader`), so the key set is shared.
    */
   private consumeModernHeader(header: Record<string, unknown>): void {
     const version = header.version as number
     const allowed = new Set(['type', 'version', 'id', 'createdAt', 'isSeeded', 'delegationDepth',
       'cwd', 'parentSession', 'origin', 'agentPreset'])
-    if (version > 3 || header.type !== 'session' || typeof header.id !== 'string' || header.id.length === 0
+    if (version > 4 || header.type !== 'session' || typeof header.id !== 'string' || header.id.length === 0
       || !isSafeEpoch(header.createdAt)
       || typeof header.isSeeded !== 'boolean'
       || !isEventSeq(header.delegationDepth)
@@ -416,7 +439,7 @@ export class SessionLogCompatibility {
     if (Object.hasOwn(header, 'sandboxMode') || Object.hasOwn(header, 'approvalPolicy')) {
       throw new SessionCompatibilityError('session header uses retired policy baseline fields')
     }
-    this._version = version === 2 ? 'v2' : 'v3'
+    this._version = version === 2 ? 'v2' : version === 3 ? 'v3' : 'v4'
     this._generation = version
     this._header = {
       id: header.id,
@@ -476,7 +499,8 @@ export class SessionLogCompatibility {
       throw new SessionCompatibilityError(`malformed v${this._generation} event envelope at seq ${this.expectedSeq}`)
     }
     this.expectedSeq += 1
-    const surfaceTypes = this._generation === 3 ? SURFACE_TYPES_V3 : SURFACE_TYPES
+    const surfaceTypes = this._generation === 4 ? SURFACE_TYPES_V4
+      : this._generation === 3 ? SURFACE_TYPES_V3 : SURFACE_TYPES
     let event = Object.hasOwn(source, 'sourceEventSeqs')
       ? { ...source, sourceEventSeqs: decodeSourceEventSeqRanges(source.sourceEventSeqs, source.seq) }
       : source
@@ -492,7 +516,7 @@ export class SessionLogCompatibility {
       }
       return
     }
-    assertMessageShape(event)
+    assertMessageShape(event, this._generation)
     this.foldSurface(event)
   }
 
@@ -533,15 +557,32 @@ export class SessionLogCompatibility {
       const replacementMessage = record(replacement.message, 'replacement tool/result message')
       const originalContent = originalMessage.content
       const replacementContent = replacementMessage.content
-      if (!Array.isArray(originalContent) || originalContent.length !== 1 || !Array.isArray(replacementContent)
-        || replacementContent.length !== 1 || typeof originalContent[0] !== 'object' || originalContent[0] === null
-        || typeof replacementContent[0] !== 'object' || replacementContent[0] === null) {
+      if (!Array.isArray(originalContent) || !Array.isArray(replacementContent)) {
         throw new SessionCompatibilityError('tool/result surface replacement has invalid result content')
       }
-      const originalRest = { ...original, message: { ...originalMessage, content: [{ ...(originalContent[0] as Record<string, unknown>), content: null }] } }
-      const replacementRest = { ...replacement, message: { ...replacementMessage, content: [{ ...(replacementContent[0] as Record<string, unknown>), content: null }] } }
-      if (!jsonEqual(originalRest, replacementRest)) {
-        throw new SessionCompatibilityError('tool/result surface replacement may change only content')
+      // v2/v3 wrap the result in exactly one `tool-result` block and the replace
+      // op may only swap that block's inner `content`.  v4 lifts the block
+      // (`liftToolResult`): `message.content` IS the payload, so only the whole
+      // array may differ.
+      const wrapped = originalContent.length === 1 && typeof originalContent[0] === 'object'
+        && originalContent[0] !== null && (originalContent[0] as Record<string, unknown>).type === 'tool-result'
+        && replacementContent.length === 1 && typeof replacementContent[0] === 'object'
+        && replacementContent[0] !== null && (replacementContent[0] as Record<string, unknown>).type === 'tool-result'
+      if (!wrapped && (originalContent.length === 0 || replacementContent.length === 0 || this._generation >= 4)) {
+        const originalRest = { ...original, message: { ...originalMessage, content: null } }
+        const replacementRest = { ...replacement, message: { ...replacementMessage, content: null } }
+        if (!jsonEqual(originalRest, replacementRest)) {
+          throw new SessionCompatibilityError('tool/result surface replacement may change only content')
+        }
+      } else {
+        if (!wrapped) {
+          throw new SessionCompatibilityError('tool/result surface replacement has invalid result content')
+        }
+        const originalRest = { ...original, message: { ...originalMessage, content: [{ ...(originalContent[0] as Record<string, unknown>), content: null }] } }
+        const replacementRest = { ...replacement, message: { ...replacementMessage, content: [{ ...(replacementContent[0] as Record<string, unknown>), content: null }] } }
+        if (!jsonEqual(originalRest, replacementRest)) {
+          throw new SessionCompatibilityError('tool/result surface replacement may change only content')
+        }
       }
     }
     this.surface.splice(start, end - start + 1, event)
