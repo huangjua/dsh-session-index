@@ -14,7 +14,7 @@
  * - 取消：orCancel 语义 + worker 逐 chunk cooperative cancel；取消不提交最终快照。
  */
 import { join, dirname, basename } from 'node:path'
-import { statSync } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import { monitorEventLoopDelay } from 'node:perf_hooks'
 import { RunMarker, atomicWriteJson, cleanupStaleTemps } from './atomic-write.js'
 import { WorkerPool } from './worker-pool.js'
@@ -43,6 +43,9 @@ export interface BuildOptions {
   /** P3 保留策略：>0 时 merge 阶段把 max(lastTime, mtimeMs) 超龄的文件仍在磁盘
    * 的条目从索引移除（照 Hermes maybe_auto_prune_and_vacuum；绝不碰会话文件）。 */
   retentionDays?: number
+  /** C9：增量（delta）开关，缺省 true。false → 所有 full 任务一律从 0 全量解析
+   * （故障/回归时的即时退路，无需改代码）。 */
+  deltaEnabled?: boolean
 }
 
 export interface BuildProgress {
@@ -196,12 +199,21 @@ export class SessionIndexBuilder {
         : null
     delay?.enable()
     const emitProgress = (phase: BuildProgress['phase'], processed: number, total: number) => {
+      // C11：delayMs 观测口径修正——旧实现直接读 delay.max（全程累积峰值，
+      // 进度里几乎不动、看不出当前卡顿）。改为每次进度事件取"本窗口峰值"
+      // 并 reset 直方图；全程峰值仍累计进 report.maxEventLoopDelayMs。
+      let windowMax = 0
+      if (delay) {
+        windowMax = Math.round(delay.max / 1e6)
+        if (windowMax > report.maxEventLoopDelayMs) report.maxEventLoopDelayMs = windowMax
+        delay.reset()
+      }
       this.currentProgress = {
         phase,
         processed,
         total,
         scannedBytes: report.scannedBytes,
-        delayMs: delay ? Math.round(delay.max / 1e6) : 0,
+        delayMs: windowMax,
       }
       options.onProgress?.(this.currentProgress)
     }
@@ -299,21 +311,34 @@ export class SessionIndexBuilder {
         await this.runPoolTasks(
           fullFiles,
           (f) => {
-            // A suffix cannot be treated as an independent session: a later
-            // surface replacement may shadow messages in an earlier frame.
-            // Full reparse is the safe compatibility boundary.
-            const delta = false
+            // C9：增量（delta）重启用——活跃会话每 5s 被 watcher 触发重建时，
+            // 只解新增帧而不是整文件（此前 delta 被硬禁用为 false，整条管线
+            // 建成但未启用）。安全边界（保守）：
+            //  - 仅 append-only 追加帧可信；窗口内一旦出现 surface 替换
+            //    （hadSurfaceReplace），它可能遮蔽窗口外的旧帧 → 回退全量；
+            //  - 文件被替换/截断（size < indexedBytes）、force、首次解析、
+            //    detailMissing、unindexable → 一律全量。
+            const deltaEnabled = options.deltaEnabled !== false
+            const prev = byFile.get(f.file)
+            const delta =
+              deltaEnabled &&
+              !force &&
+              !!prev &&
+              !prev.unindexable &&
+              !prev.detailMissing &&
+              (prev.indexedBytes ?? 0) > 0 &&
+              f.size >= (prev.indexedBytes ?? 0)
             return {
               mode: 'full' as const,
               file: f.file,
-              startOffset: 0,
+              startOffset: delta ? (prev?.indexedBytes ?? 0) : 0,
               delta,
               collectMessages: !!options.collectMessages,
             }
           },
           signal,
           (p, t) => emitProgress('full', p, t),
-          (f, r, fpBefore, spec) => {
+          async (f, r, fpBefore, spec) => {
             if (r.aborted) return // 取消：跳过失败记账（failed/errors 不被取消信号污染）
             if (!r.ok) {
               // Retain only a diagnostic marker.  Required unknown events and
@@ -328,8 +353,9 @@ export class SessionIndexBuilder {
               options.onSessionRemoved?.(f.file)
               return
             }
-            // 发布前复检：解析期间指纹又变 → raced，保留旧值
-            const cur = currentFingerprint(f.file)
+            // 发布前复检：解析期间指纹又变 → raced，保留旧值。
+            // C8：改异步 stat（fs.promises），避免主线程同步阻塞
+            const cur = await currentFingerprintAsync(f.file)
             if (
               !cur ||
               !fpBefore ||
@@ -412,7 +438,11 @@ export class SessionIndexBuilder {
     } finally {
       if (marker) await marker.release()
       delay?.disable()
-      report.maxEventLoopDelayMs = delay ? Math.round(delay.max / 1e6) : 0
+      // C11：全程峰值已在 emitProgress 里累计（直方图被周期性 reset，此处不能再覆盖）
+      if (delay) {
+        const tail = Math.round(delay.max / 1e6)
+        if (tail > report.maxEventLoopDelayMs) report.maxEventLoopDelayMs = tail
+      }
       report.durationMs = Date.now() - t0
       report.partialCommitted = quickCommitted && report.status === 'cancelled'
       this.currentProgress = null
@@ -426,23 +456,31 @@ export class SessionIndexBuilder {
     makeSpec: (f: ScanFile) => WorkerTaskSpec,
     signal: AbortSignal | undefined,
     onTick: (processed: number, total: number) => void,
-    onResult: (f: ScanFile, r: PoolResult, fpBefore: ScanFile | null, spec: WorkerTaskSpec) => void,
+    onResult: (f: ScanFile, r: PoolResult, fpBefore: ScanFile | null, spec: WorkerTaskSpec) => void | Promise<void>,
   ): Promise<void> {
     let done = 0
     onTick(0, files.length)
     const tasks = files.map(async (f) => {
-      // 解析前指纹：用于发布前竞态复检（解析期间文件被改写 → raced）
-      const fpBefore = currentFingerprint(f.file)
+      // C8：直接复用 scan 阶段指纹（ScanFile 已含 size/mtimeMs/ctimeMs）——
+      // 旧实现此处对每个文件再 statSync 一次，10000 文件上限下主线程连续阻塞
+      // 数千次同步 stat（Phase A/B 各一轮），与 p95 < 23ms 目标冲突。
+      const fpBefore: ScanFile | null = f
       this.testHooks?.onFileRead?.(f.file)
       let spec = makeSpec(f)
       let r = await this.runWithRetry(spec, signal)
       // P1 delta 回退：delta 解析失败（偏移失效/尾帧截断）→ 全量重解析一次，
       // 保证 indexedBytes 被外部改写/截断后能自愈，而不是永远失败。
-      if (!r.ok && !r.aborted && spec.delta) {
+      // C9 扩展：delta 成功但窗口内出现 surface 替换 → 结果不可信，同样全量重来
+      // （替换可能遮蔽窗口外旧帧，增量视图看不到被遮蔽内容）。
+      const deltaHitReplace =
+        !!spec.delta &&
+        r.ok &&
+        Boolean((r.data as FullSummary | undefined)?.hadSurfaceReplace)
+      if (!r.aborted && spec.delta && (!r.ok || deltaHitReplace)) {
         spec = { ...spec, startOffset: 0, delta: false }
         r = await this.runWithRetry(spec, signal)
       }
-      onResult(f, r, fpBefore, spec)
+      await onResult(f, r, fpBefore, spec)
       done++
       if (done % 20 === 0) {
         onTick(done, files.length)
@@ -606,9 +644,10 @@ function mergeDelta(prev: SessionMeta, d: FullSummary, f: ScanFile): SessionMeta
   }
 }
 
-function currentFingerprint(file: string): ScanFile | null {
+/** 解析后复检指纹（C8：异步 stat，主线程不被同步 stat 阻塞）。 */
+async function currentFingerprintAsync(file: string): Promise<ScanFile | null> {
   try {
-    const st = statSync(file)
+    const st = await stat(file)
     return { file, size: st.size, mtimeMs: st.mtimeMs, ctimeMs: st.ctimeMs }
   } catch {
     return null

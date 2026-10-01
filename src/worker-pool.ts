@@ -363,6 +363,9 @@ export class WorkerPool {
 /**
  * 通用有界并发映射（对应 PORT_TO_TS.md 的 mapLimit）。
  * 取消后不再调度新任务；已启动任务自然跑完。
+ *
+ * @internal C11：生产的构建并发由 SessionIndexBuilder.runPoolTasks 自行调度
+ * （分波派发 + 池上限），本函数仅 worker-pool.test.ts 使用。保留勿删。
  */
 export async function mapLimit<T, R>(
   items: readonly T[],

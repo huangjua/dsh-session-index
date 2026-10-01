@@ -33,9 +33,17 @@
  *   删除重建；绝不写 index.json / fts.db / 官方库 / 会话文件。
  */
 import { createHash } from 'node:crypto'
-import { open, readFile, rename, unlink, stat, mkdir } from 'node:fs/promises'
-import type { FileHandle } from 'node:fs/promises'
-import { join, dirname, basename } from 'node:path'
+import { join } from 'node:path'
+// C10：与 llm-summary.ts 共享的旁车文件公共层（锁 / 追加 / 原子写 / 指纹缓存 / 校验守卫）
+import {
+  withPathLock,
+  appendLine,
+  atomicWriteText,
+  isRecord,
+  str,
+  num,
+  createFingerprintCache,
+} from './sidecar.js'
 
 /** 书签 sidecar 文件名（codex SESSION_INDEX_FILE 惯例；与 fts.db 同级） */
 export const BOOKMARK_FILE_NAME = 'bookmarks.jsonl'
@@ -110,44 +118,16 @@ export function defaultLabel(title: string, firstUserText: string): string {
   return (title || firstUserText || '').slice(0, DEFAULT_LABEL_MAX)
 }
 
-/* ── 进程内 per-path 互斥（对齐 codex SESSION_INDEX_LOCK 的进程内语义）────── */
+/* ── 指纹缓存（C10：改用 sidecar 的通用指纹缓存，解析逻辑注入）───────────── */
 
-const pathLocks = new Map<string, Promise<unknown>>()
-
-function withPathLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
-  const prev = pathLocks.get(path) ?? Promise.resolve()
-  const next = prev.then(fn)
-  // 链上保留（即使本次失败也不阻塞后续）；调用方仍收到本次的 rejection
-  pathLocks.set(path, next.catch(() => undefined))
-  return next
-}
-
-/* ── 指纹缓存（照 core.ts loadIndex 的 mtimeMs+size 缓存模式）─────────────── */
-
-interface BookmarkCacheEntry {
-  mtimeMs: number
-  size: number
-  bookmarks: Bookmark[]
-  skippedBad: number
-}
-const bookmarkCache = new Map<string, BookmarkCacheEntry>()
+const bookmarkCache = createFingerprintCache<{ bookmarks: Bookmark[]; skippedBad: number }>()
 
 /** 显式失效（add/remove 后调用），防同 ms 同 size 撞车。 */
 export function invalidateBookmarkCache(path: string): void {
-  bookmarkCache.delete(path)
+  bookmarkCache.invalidate(path)
 }
 
 /* ── 读取：整读 + 逐行容错 + 同锚点最新行胜出 ─────────────────────────────── */
-
-function isRecord(x: unknown): x is Record<string, unknown> {
-  return !!x && typeof x === 'object'
-}
-function str(v: unknown): string | null {
-  return typeof v === 'string' ? v : null
-}
-function num(v: unknown): number | null {
-  return typeof v === 'number' && Number.isFinite(v) ? v : null
-}
 
 /** 校验并归一化一行书签；形状不符（含 v!==1，未来迁移前奏）→ null（计坏行）。 */
 export function normalizeBookmark(obj: unknown): Bookmark | null {
@@ -212,50 +192,11 @@ export function parseBookmarkLines(text: string): { bookmarks: Bookmark[]; skipp
  * 每次工具调用只读一次。文件缺失/读失败 → 空列表（codex NotFound → 空）。
  */
 export async function readBookmarks(path: string): Promise<{ bookmarks: Bookmark[]; skippedBad: number }> {
-  let st
-  try {
-    st = await stat(path)
-  } catch {
-    invalidateBookmarkCache(path)
-    return { bookmarks: [], skippedBad: 0 }
-  }
-  const cached = bookmarkCache.get(path)
-  if (cached && cached.mtimeMs === st.mtimeMs && cached.size === st.size) {
-    return { bookmarks: cached.bookmarks, skippedBad: cached.skippedBad }
-  }
-  let text: string
-  try {
-    text = await readFile(path, 'utf8')
-  } catch {
-    invalidateBookmarkCache(path)
-    return { bookmarks: [], skippedBad: 0 }
-  }
-  const parsed = parseBookmarkLines(text)
-  bookmarkCache.set(path, { mtimeMs: st.mtimeMs, size: st.size, bookmarks: parsed.bookmarks, skippedBad: parsed.skippedBad })
-  return parsed
+  // C10：指纹缓存 + 整读容错全部下沉到 sidecar（与 llm-summary 同一实现）
+  return bookmarkCache.read(path, parseBookmarkLines, () => ({ bookmarks: [], skippedBad: 0 }))
 }
 
 /* ── 写入：追加 + flush（codex append + flush 语义，per-path 互斥）─────────── */
-
-async function appendLine(path: string, line: string): Promise<void> {
-  await mkdir(dirname(path), { recursive: true })
-  let fh: FileHandle | null = null
-  try {
-    fh = await open(path, 'a')
-    await fh.writeFile(line + '\n', 'utf8')
-    await fh.sync() // flush（对齐 codex file.flush()）
-    await fh.close()
-    fh = null
-  } finally {
-    if (fh) {
-      try {
-        await fh.close()
-      } catch {
-        /* 忽略 */
-      }
-    }
-  }
-}
 
 /**
  * 追加一条书签（幂等 upsert）：
@@ -299,36 +240,6 @@ export interface RemoveBookmarksOptions {
   id?: string
   /** 按 sessionId（精确，大小写不敏感）删除该会话全部书签 */
   sessionId?: string
-}
-
-let tmpSeq = 0
-
-async function atomicWriteText(path: string, text: string): Promise<void> {
-  await mkdir(dirname(path), { recursive: true })
-  const tmp = join(dirname(path), `${basename(path)}.tmp.${process.pid}.${tmpSeq++}`)
-  let fh: FileHandle | null = null
-  try {
-    fh = await open(tmp, 'wx')
-    await fh.writeFile(text, 'utf8')
-    await fh.sync()
-    await fh.close()
-    fh = null
-    await rename(tmp, path) // Windows: MoveFileEx(REPLACE_EXISTING)
-  } catch (e) {
-    if (fh) {
-      try {
-        await fh.close()
-      } catch {
-        /* 忽略 */
-      }
-    }
-    try {
-      await unlink(tmp)
-    } catch {
-      /* 忽略 */
-    }
-    throw e
-  }
 }
 
 /**

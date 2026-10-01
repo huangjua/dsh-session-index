@@ -340,6 +340,8 @@ export class SessionLogCompatibility {
   private _header: SessionHeaderView | undefined
   private _version: SessionCompatibilityVersion = 'alpha3'
   private _generation = 0
+  /** C9：本次解析窗口内发生的 surface 替换次数（delta 安全性判据） */
+  private _replaceOps = 0
   private expectedSeq = 0
   private readonly surface: Record<string, unknown>[] = []
 
@@ -355,6 +357,11 @@ export class SessionLogCompatibility {
   /** Physical format generation read from the header (0/1 legacy, 2/3 modern). */
   get generation(): number {
     return this._generation
+  }
+
+  /** C9：窗口内是否发生过 surface 替换（delta 增量遇到它必须回退全量）。 */
+  get replaceOps(): number {
+    return this._replaceOps
   }
 
   consumeLine(value: unknown): Record<string, unknown>[] {
@@ -535,6 +542,10 @@ export class SessionLogCompatibility {
       return
     }
     const replace = record(op, 'surface replace')
+    // C9 delta 安全点：记录本次解析窗口内是否发生过 surface 替换。delta 增量只
+    // 从 [indexedBytes, EOF) 读新帧，窗口内出现 replace 意味着它可能遮蔽旧帧
+    // 内容（增量视图看不到被遮蔽的原文）→ 调用方据此回退全量重解析。
+    this._replaceOps += 1
     if (!hasExactKeys(replace, ['op', 'start', 'end']) || replace.op !== 'replace'
       || !isEventSeq(replace.start) || !isEventSeq(replace.end)) {
       throw new SessionCompatibilityError(`invalid surfaceOp at seq ${event.seq}`)

@@ -18,6 +18,7 @@ import { throwIfAborted } from './cancel.js'
 import { nativeDecodeZstd, type NativeDecodeStats } from './native-zstd.js'
 import type { FtsMessageRow } from './fts.js'
 import { MATCH_OPEN, MATCH_CLOSE, normalizeReservedMarkers } from './fts.js'
+import { excerptAroundMatch } from './core.js'
 import {
   SessionLogCompatibility,
   textFromCompatibleMessage,
@@ -81,7 +82,14 @@ export async function streamJsonlLines(
       const line = buffer.slice(0, idx)
       buffer = buffer.slice(idx + 1)
       if (line.length === 0) continue
+      // C11：maxLineBytes 是**字节**口径，旧实现比较的是 UTF-16 code unit 数
+      // （CJK 行实际字节可达名义值 3 倍）。两级判定：字符数超限必超字节；
+      // 否则只在"可能超"时用 Buffer.byteLength 精算（避免每行都算字节）。
       if (line.length > maxLineBytes) {
+        stats.oversized++
+        continue
+      }
+      if (line.length * 3 > maxLineBytes && Buffer.byteLength(line) > maxLineBytes) {
         stats.oversized++
         continue
       }
@@ -171,17 +179,8 @@ export async function streamJsonlLines(
   }
 }
 
-function textOf(content: unknown): string {
-  if (!Array.isArray(content)) return ''
-  return content
-    .filter(
-      (c): c is { type: string; text?: unknown } =>
-        !!c && typeof c === 'object' && (c as { type?: unknown }).type === 'text',
-    )
-    .map((c) => (typeof c.text === 'string' ? c.text : ''))
-    .join(' ')
-    .trim()
-}
+// C11：删除无引用的 textOf——消息文本一律走 session-compat 的
+// textFromCompatibleMessage（统一口径，避免两份文本提取规则漂移）。
 
 function eventTime(obj: Record<string, unknown>): number {
   const t = obj.time
@@ -328,6 +327,9 @@ export interface FullSummary {
   /** P2 FTS：collectMessages=true 时收集的消息行（user/assistant 文本 + tool 名） */
   messages?: FtsMessageRow[]
   compatibility: SessionCompatibilityVersion
+  /** C9：本次解析（可能是 delta 窗口）内发生过 surface 替换——delta 结果不可信，
+   * 调用方应回退全量重解析（替换可能遮蔽窗口外的旧帧内容）。 */
+  hadSurfaceReplace?: boolean
 }
 
 export async function parseFull(
@@ -418,6 +420,7 @@ export async function parseFull(
     }
   }
   out.compatibility = compat.version
+  if (compat.replaceOps > 0) out.hadSurfaceReplace = true
   if (messages) out.messages = messages
   return out
 }
@@ -503,35 +506,11 @@ export async function parseSearch(
     const normalized = normalizeReservedMarkers(text.split(/\s+/).filter(Boolean).join(' '))
     const index = normalized.toLowerCase().indexOf(qLower)
     if (index === -1) continue
-    const snippet = excerptAroundMatch(normalized, index, query.length, contextBefore, contextAfter)
-    if (snippet) hits.push({ type: message.type, snippet, role: message.type === 'user/message' ? 'user' : 'assistant' })
+    const snippet = excerptAroundMatch(normalized, query, contextBefore, contextAfter)
+    hits.push({ type: message.type, snippet, role: message.type === 'user/message' ? 'user' : 'assistant' })
   }
   return hits
 }
 
-/** 对应 search.rs::excerpt_around_match（normalize 后取 48/96 字符上下文）。 */
-function excerptAroundMatch(
-  text: string,
-  matchStart: number,
-  matchLength: number,
-  charsBefore: number,
-  charsAfter: number,
-): string | null {
-  const excerptStart = Math.max(0, matchStart - charsBefore)
-  const excerptEnd = Math.min(text.length, matchStart + matchLength + charsAfter)
-  const excerptRaw = text.slice(excerptStart, excerptEnd)
-  const trimShift = excerptRaw.length - excerptRaw.trimStart().length
-  const excerpt = excerptRaw.trim()
-  if (!excerpt) return null
-  // P1.4：命中区间用 >>> <<< 包住（Hermes MATCH_OPEN/CLOSE，与 FTS 路径同款）。
-  // 先去掉 trimStart 造成的偏移，保证标记落在命中原文上
-  const relStart = matchStart - excerptStart - trimShift
-  const relEnd = relStart + matchLength
-  let snippet = ''
-  if (excerptStart > 0) snippet += '... '
-  snippet += excerpt.slice(0, relStart)
-  snippet += MATCH_OPEN + excerpt.slice(relStart, relEnd) + MATCH_CLOSE
-  snippet += excerpt.slice(relEnd)
-  if (excerptEnd < text.length) snippet += ' ...'
-  return snippet
-}
+// C11：snippet 生成统一到 core.ts excerptAroundMatch（与 FTS 路径同款：
+// 空白归一化 + "…" 省略号 + >>> <<< 命中标记），消除两份实现各自漂移。

@@ -7,13 +7,45 @@
  *  - 维护轻量索引（不存正文，只存元数据/摘要字段）
  *  - 提供元数据搜索与按需全文搜索
  */
-import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, readdirSync, statSync, openSync, fsyncSync, closeSync } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { join, basename, dirname, isAbsolute, resolve } from 'node:path'
 import * as fzstd from 'fzstd'
 import { throwIfAborted } from './cancel.js'
 import { SessionLogCompatibility, textFromCompatibleMessage } from './session-compat.js'
 import type { SessionCompatibilityVersion } from './session-compat.js'
+
+/* ── 命中片段标记与生成（C11：fts 与 streaming-parser 两份实现统一到此处）────
+ * 常量与实现下沉到 core，避免 fts ↔ core 的循环依赖（fts 负责 SQLite，
+ * 不负责纯文本片段规则）。fts.ts 仍 re-export，外部引用不变。
+ */
+/** 命中区间标记（Hermes MATCH_OPEN/CLOSE，dsh-local-memory 同款 >>> <<<） */
+export const MATCH_OPEN = '>>>'
+export const MATCH_CLOSE = '<<<'
+
+/**
+ * 对应 search.rs::excerpt_around_match：归一化空白后取 charsBefore/charsAfter
+ * 字符上下文，并用 >>> <<< 包住命中区间（P1.4）。
+ */
+export function excerptAroundMatch(
+  text: string,
+  query: string,
+  charsBefore: number,
+  charsAfter: number,
+): string {
+  const normalized = text.split(/\s+/).filter(Boolean).join(' ')
+  const idx = normalized.toLowerCase().indexOf(query.toLowerCase())
+  if (idx === -1) return normalized.slice(0, charsBefore + charsAfter + 40)
+  const start = Math.max(0, idx - charsBefore)
+  const end = Math.min(normalized.length, idx + query.length + charsAfter)
+  let snippet = ''
+  if (start > 0) snippet += '… '
+  snippet += normalized.slice(start, idx)
+  snippet += MATCH_OPEN + normalized.slice(idx, idx + query.length) + MATCH_CLOSE
+  snippet += normalized.slice(idx + query.length, end)
+  if (end < normalized.length) snippet += ' …'
+  return snippet.slice(0, 400)
+}
 
 export interface SessionMeta {
   id: string
@@ -121,6 +153,15 @@ export interface SessionSummary {
   toolCalls: { name: string; count: number }[]
 }
 
+/* ── 旧同步实现（@legacy：整读整解压，仅测试/等值对比使用）─────────────────
+ * C11：生产路径一律走 streaming-parser（流式）+ SessionIndexBuilder（worker 池）。
+ * 以下 5 个导出（decompressZstd / parseSession / findSessionFiles /
+ * buildIndexSync / searchSessionFile）被 core.test.ts 与 streaming-parser.test.ts
+ * 用作"旧实现等值校验"的参照实现，**生产代码不调用**。保留勿误删；
+ * 后续可整体迁入 test/support/legacy-core.ts（PLAN_v5 记录）。
+ */
+
+/** @legacy 整读整解压（仅测试对比用） */
 export function decompressZstd(file: string): string {
   const compressed = readFileSync(file)
   const buf = fzstd.decompress(new Uint8Array(compressed))
@@ -336,10 +377,20 @@ export function loadIndex(indexFile: string): SessionIndex | null {
   }
 }
 
+/** 同步写索引（legacy 同步路径/测试用；生产路径走 builder 的 atomicWriteJson）。
+ *  C10：补齐 fsync + 唯一 tmp 名——旧实现无 fsync、固定 tmp 名，跨进程并发时
+ *  可能互相踩踏，且崩溃时可能留下未落盘的 tmp。 */
+let saveIndexSeq = 0
 export function saveIndex(indexFile: string, index: SessionIndex): void {
   mkdirSync(dirname(indexFile), { recursive: true })
-  const tmp = indexFile + '.tmp'
-  writeFileSync(tmp, JSON.stringify(index), 'utf8')
+  const tmp = `${indexFile}.tmp.${process.pid}.${saveIndexSeq++}`
+  const fd = openSync(tmp, 'wx')
+  try {
+    writeFileSync(fd, JSON.stringify(index), 'utf8')
+    fsyncSync(fd)
+  } finally {
+    closeSync(fd)
+  }
   renameSync(tmp, indexFile)
   invalidateIndexCache(indexFile)
 }
