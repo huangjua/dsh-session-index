@@ -2,11 +2,16 @@
  * fts.ts — SQLite + FTS5 全文索引（P2，借鉴 NousResearch/hermes-agent hermes_state.py）
  *
  * 设计对照（hermes SessionDB）：
- * - 双 FTS5 表：`unicode61`（拉丁词/工具名）+ `trigram`（CJK ≥3 字子串）。
+ * - 单 FTS5 表：`trigram`（tokenize='trigram'）。
+ *   历史（schema v1→v2）：v1 照抄 hermes 的双表设计（unicode61 拉丁词 + trigram CJK），
  *   实测（node:sqlite + SQLite FTS5）：unicode61 把整个 CJK 连续串当单个 token，
- *   中文子串查询必失配；trigram 对 ≥3 字任意脚本子串命中。因此：
- *   - 全部词 ≥3 字 → trigram（BM25 排序）；
- *   - 含 <3 字词（1-2 字中文等）→ LIKE 兜底（保证子串语义不丢，量级可接受）。
+ *   中文子串查询必失配；trigram 对 ≥3 字任意脚本子串命中。后续 trigram 路径补齐
+ *   「词整体引号化 + AND 零命中自动 OR + 1-2 字 LIKE 兜底」后接管全部查询，
+ *   unicode61 表沦为"只写不读"（写放大 ~2×、库体积 ~2×，全仓无任何 SELECT）。
+ *   v2 迁移：删 unicode61 表与其触发器 + VACUUM（幂等，失败保持 v1 降级可用，
+ *   下次启动重试；会话文件仍是唯一事实源，fts.db 可随时删库重建）。
+ *   查询路由：全部词 ≥3 字 → trigram MATCH（BM25 排序，AND→OR 放宽）；
+ *   含 <3 字词（1-2 字中文等）→ LIKE 兜底（保证子串语义不丢）。
  * - 外部内容表 + 触发器（照 FTS_CJK_TRIGGER_SQL 模式）自动维护 FTS 影子表；
  * - 优雅降级：node:sqlite 缺失 / FTS5 不可用 / 任何初始化失败 → createSessionFts
  *   返回 null，调用方回退现有 worker 池流式搜索；
@@ -162,24 +167,15 @@ CREATE TABLE IF NOT EXISTS messages (
   tool_name TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_file);
-CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
-  text, tool_name,
-  content='messages', content_rowid='id'
-);
 CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts_trigram USING fts5(
   text, tool_name,
   content='messages', content_rowid='id',
   tokenize='trigram'
 );
-CREATE TRIGGER IF NOT EXISTS messages_fts_insert AFTER INSERT ON messages BEGIN
-  INSERT INTO messages_fts(rowid, text, tool_name) VALUES (new.id, new.text, new.tool_name);
-END;
 CREATE TRIGGER IF NOT EXISTS messages_fts_trigram_insert AFTER INSERT ON messages BEGIN
   INSERT INTO messages_fts_trigram(rowid, text, tool_name) VALUES (new.id, new.text, new.tool_name);
 END;
-CREATE TRIGGER IF NOT EXISTS messages_fts_delete AFTER DELETE ON messages BEGIN
-  INSERT INTO messages_fts(messages_fts, rowid, text, tool_name)
-    VALUES ('delete', old.id, old.text, old.tool_name);
+CREATE TRIGGER IF NOT EXISTS messages_fts_trigram_delete AFTER DELETE ON messages BEGIN
   INSERT INTO messages_fts_trigram(messages_fts_trigram, rowid, text, tool_name)
     VALUES ('delete', old.id, old.text, old.tool_name);
 END;
@@ -187,9 +183,40 @@ CREATE TABLE IF NOT EXISTS state_meta (
   key TEXT PRIMARY KEY,
   value TEXT
 );
-INSERT OR IGNORE INTO state_meta(key, value) VALUES ('schema_version', '1');
+INSERT OR IGNORE INTO state_meta(key, value) VALUES ('schema_version', '2');
 `)
     this.migrateSessionsSchema()
+    this.migrateSchemaV2()
+  }
+
+  /**
+   * C2 schema v1→v2 迁移：v1 含 unicode61 死表 messages_fts（只写不读，全仓无
+   * 任何 SELECT；写放大 ~2×、库体积 ~2×）。步骤：DROP 旧触发器/表 → 记 '2' →
+   * VACUUM 回收磁盘。幂等：'2' 直接跳过；表已不存在（迁移中断）只补记 '2'。
+   * 任何失败保持 v1 不动作降级（FTS 照常可用，下次启动重试），绝不抛错。
+   */
+  private migrateSchemaV2(): void {
+    const db = this.db!
+    try {
+      const row = db.prepare("SELECT value FROM state_meta WHERE key = 'schema_version'").get() as
+        | { value: string | null }
+        | undefined
+      if (String(row?.value ?? '1') !== '1') return // v2 及以上：无需迁移
+      const ftsTables = db.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name = 'messages_fts'",
+      ).all() as { name: string }[]
+      if (ftsTables.length > 0) {
+        // 逐条 DROP：旧库上 DELETE 触发器是双表合并型，先删触发器再删表
+        db.exec('DROP TRIGGER IF EXISTS messages_fts_insert')
+        db.exec('DROP TRIGGER IF EXISTS messages_fts_delete')
+        db.exec('DROP TABLE IF EXISTS messages_fts')
+      }
+      // 表已删才记 v2：中断在 DROP 中途 → 版本仍 '1'，下次启动重试（幂等）
+      db.prepare("INSERT OR REPLACE INTO state_meta(key, value) VALUES ('schema_version', '2')").run()
+      db.exec('VACUUM') // 回收 unicode61 影子表占用的磁盘（一次性，数秒级）
+    } catch (e) {
+      console.warn(`[session-index] FTS schema v1→v2 migration failed (kept v1, will retry): ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   /** 派生库轻量迁移：旧库缺 parent_session 列 → ALTER ADD（不丢数据）。 */
@@ -603,7 +630,7 @@ INSERT OR IGNORE INTO state_meta(key, value) VALUES ('schema_version', '1');
   optimize(): void {
     if (!this.ok || !this.db) return
     try {
-      this.db!.exec(`INSERT INTO messages_fts(messages_fts) VALUES('optimize')`)
+      // C2：仅 trigram 表（v1 的 unicode61 表由 migrateSchemaV2 移除）
       this.db!.exec(`INSERT INTO messages_fts_trigram(messages_fts_trigram) VALUES('optimize')`)
     } catch { /* ignore */ }
   }

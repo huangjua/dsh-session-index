@@ -239,7 +239,8 @@ describe('ftsEnabled（P2.1/2.2）', () => {
     assert.equal(typeof h.sessions, 'number')
     assert.equal(typeof h.messages, 'number')
     assert.ok(h.dbSizeBytes > 0, `dbSizeBytes=${h.dbSizeBytes}`)
-    assert.equal(h.schemaVersion, '1')
+    // C2：新库直接按 schema v2 建表（无 unicode61 表）；旧库启动时自动迁移 v1→v2
+    assert.equal(h.schemaVersion, '2')
     assert.equal(typeof h.lastOptimizeAt, 'number')
     assert.ok(h.lastOptimizeAt >= 0)
     // P3 可观测字段也在快照里
