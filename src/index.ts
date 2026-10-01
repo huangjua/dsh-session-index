@@ -64,7 +64,7 @@ export interface Config {
   /** 派生数据的落盘目录（index.json / fts.db / bookmarks.jsonl / llm-summary.jsonl）。
    * 缺省空 → `$DSH_HOME/session-index`；设为绝对路径可把整份索引搬到别的盘
    * （例如 C 盘吃紧时指向大容量盘），目录不存在会自动创建。 */
-  dataDir: string
+  dataDir?: string
   maxHits: number
   maxSnippetsPerSession: number
   /** P2.1：FTS 总开关（默认开）。false 时完全跳过 createSessionFts（不 import
@@ -79,6 +79,10 @@ export interface Config {
    * 成本护栏（maxTokens=64/10s 超时/失败不重试/只在 session_summary 路径）。
    * false → 完全零执行（不读/写缓存、不触碰 ctx.llm）。 */
   llmSummaryEnabled: boolean
+  /** C9：增量（delta）索引开关（默认开）。活跃会话每 5s 被 watcher 重建时只解
+   * 新增帧；窗口内出现 surface 替换会自动回退全量（正确性优先）。
+   * false → 一律全量重解析（回归排查/故障时的即时退路）。 */
+  deltaEnabled?: boolean
 }
 
 export const Config: Schemastery<any, any> = z.object({
@@ -90,6 +94,7 @@ export const Config: Schemastery<any, any> = z.object({
   ftsEnabled: z.boolean().default(true),
   retentionDays: z.number().min(0).default(90),
   llmSummaryEnabled: z.boolean().default(true),
+  deltaEnabled: z.boolean().default(true),
 })
 
 const text = (s: string): ContentBlock[] => [{ type: 'text', text: s }]
@@ -259,6 +264,7 @@ export function apply(ctx: Context, config: Config): void {
     ...extra,
     onProgress,
     retentionDays: extra.retentionDays ?? config.retentionDays ?? 90,
+    deltaEnabled: config.deltaEnabled !== false,
     collectMessages: fts?.ok ?? false,
     onSessionParsed: (file, meta, messages, append) => {
       if (!fts?.ok) return

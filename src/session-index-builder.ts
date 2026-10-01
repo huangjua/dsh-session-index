@@ -43,6 +43,9 @@ export interface BuildOptions {
   /** P3 保留策略：>0 时 merge 阶段把 max(lastTime, mtimeMs) 超龄的文件仍在磁盘
    * 的条目从索引移除（照 Hermes maybe_auto_prune_and_vacuum；绝不碰会话文件）。 */
   retentionDays?: number
+  /** C9：增量（delta）开关，缺省 true。false → 所有 full 任务一律从 0 全量解析
+   * （故障/回归时的即时退路，无需改代码）。 */
+  deltaEnabled?: boolean
 }
 
 export interface BuildProgress {
@@ -299,14 +302,27 @@ export class SessionIndexBuilder {
         await this.runPoolTasks(
           fullFiles,
           (f) => {
-            // A suffix cannot be treated as an independent session: a later
-            // surface replacement may shadow messages in an earlier frame.
-            // Full reparse is the safe compatibility boundary.
-            const delta = false
+            // C9：增量（delta）重启用——活跃会话每 5s 被 watcher 触发重建时，
+            // 只解新增帧而不是整文件（此前 delta 被硬禁用为 false，整条管线
+            // 建成但未启用）。安全边界（保守）：
+            //  - 仅 append-only 追加帧可信；窗口内一旦出现 surface 替换
+            //    （hadSurfaceReplace），它可能遮蔽窗口外的旧帧 → 回退全量；
+            //  - 文件被替换/截断（size < indexedBytes）、force、首次解析、
+            //    detailMissing、unindexable → 一律全量。
+            const deltaEnabled = options.deltaEnabled !== false
+            const prev = byFile.get(f.file)
+            const delta =
+              deltaEnabled &&
+              !force &&
+              !!prev &&
+              !prev.unindexable &&
+              !prev.detailMissing &&
+              (prev.indexedBytes ?? 0) > 0 &&
+              f.size >= (prev.indexedBytes ?? 0)
             return {
               mode: 'full' as const,
               file: f.file,
-              startOffset: 0,
+              startOffset: delta ? (prev?.indexedBytes ?? 0) : 0,
               delta,
               collectMessages: !!options.collectMessages,
             }
@@ -441,7 +457,13 @@ export class SessionIndexBuilder {
       let r = await this.runWithRetry(spec, signal)
       // P1 delta 回退：delta 解析失败（偏移失效/尾帧截断）→ 全量重解析一次，
       // 保证 indexedBytes 被外部改写/截断后能自愈，而不是永远失败。
-      if (!r.ok && !r.aborted && spec.delta) {
+      // C9 扩展：delta 成功但窗口内出现 surface 替换 → 结果不可信，同样全量重来
+      // （替换可能遮蔽窗口外旧帧，增量视图看不到被遮蔽内容）。
+      const deltaHitReplace =
+        !!spec.delta &&
+        r.ok &&
+        Boolean((r.data as FullSummary | undefined)?.hadSurfaceReplace)
+      if (!r.aborted && spec.delta && (!r.ok || deltaHitReplace)) {
         spec = { ...spec, startOffset: 0, delta: false }
         r = await this.runWithRetry(spec, signal)
       }

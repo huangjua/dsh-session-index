@@ -328,6 +328,9 @@ export interface FullSummary {
   /** P2 FTS：collectMessages=true 时收集的消息行（user/assistant 文本 + tool 名） */
   messages?: FtsMessageRow[]
   compatibility: SessionCompatibilityVersion
+  /** C9：本次解析（可能是 delta 窗口）内发生过 surface 替换——delta 结果不可信，
+   * 调用方应回退全量重解析（替换可能遮蔽窗口外的旧帧内容）。 */
+  hadSurfaceReplace?: boolean
 }
 
 export async function parseFull(
@@ -418,6 +421,7 @@ export async function parseFull(
     }
   }
   out.compatibility = compat.version
+  if (compat.replaceOps > 0) out.hadSurfaceReplace = true
   if (messages) out.messages = messages
   return out
 }
