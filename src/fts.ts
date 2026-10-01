@@ -429,14 +429,15 @@ INSERT OR IGNORE INTO state_meta(key, value) VALUES ('schema_version', '2');
     // 故把净化结果里词级的首尾引号剥掉（恢复"引号是无意义包裹"的直觉），
     // 只保留净化后的词本身；禁改净化语义本身。词派生为单一事实源
     // （deriveSearchTerms：与 queryUsesLikePath 共用同一净化/分词）。
-    const { terms, termSource } = deriveSearchTerms(query)
+    const { terms } = deriveSearchTerms(query)
     if (terms.length === 0) return []
     // 全部词 ≥3 字 → trigram（BM25）；否则 LIKE 兜底（1-2 字中文等）
     if (terms.every((t) => t.length >= 3)) {
       const ftsHits = this.searchFts(terms, workspace, limit, filter)
       if (ftsHits.length > 0) return ftsHits
     }
-    return this.searchLike(termSource, workspace, limit, filter)
+    // C7：LIKE 兜底改逐词（旧实现传整串 termSource，多词必空）
+    return this.searchLike(terms, workspace, limit, filter)
   }
 
   /** trigram FTS5：词间 AND + BM25 排序；AND 零命中自动 OR（各词并列）放宽重试一次。 */
@@ -514,15 +515,27 @@ INSERT OR IGNORE INTO state_meta(key, value) VALUES ('schema_version', '2');
     })
   }
 
-  /** LIKE 兜底：原始查询子串匹配（大小写不敏感），保证 1-2 字查询不丢语义。 */
-  private searchLike(query: string, workspace: string, limit: number, filter?: SearchFilter): FtsHit[] {
-    const pattern = '%' + escapeLike(query) + '%'
-    let sql = `
+  /**
+   * LIKE 兜底：逐词子串匹配（大小写不敏感），保证含 1-2 字词的查询不丢语义。
+   * C7：旧实现把整条查询（含空格）当单一子串，多词查询几乎必空——例如
+   * "FTS 索引" 找不到任何含两词的消息。改为逐词 AND→OR（与 trigram 路径同款
+   * 放宽策略：AND 保证精度，零命中再 OR 放宽），语义包含原整串匹配的子集。
+   */
+  private searchLike(terms: string[], workspace: string, limit: number, filter?: SearchFilter): FtsHit[] {
+    const run = (joiner: 'AND' | 'OR'): FtsHit[] => {
+      if (terms.length === 0) return []
+      const clause = terms
+        .map(() => `(m.text LIKE ? ESCAPE '\\' OR m.tool_name LIKE ? ESCAPE '\\')`)
+        .join(` ${joiner} `)
+      let sql = `
       SELECT m.id, m.session_file, m.role, m.text, m.tool_name,
              s.id AS session_id, s.workspace, s.title, s.last_time, s.parent_session
       FROM messages m JOIN sessions s ON s.file = m.session_file
-      WHERE (m.text LIKE ? ESCAPE '\\' OR m.tool_name LIKE ? ESCAPE '\\')`
-    const params: unknown[] = [pattern, pattern]
+      WHERE ${clause}`
+      const params: unknown[] = terms.flatMap((t) => {
+        const p = '%' + escapeLike(t) + '%'
+        return [p, p]
+      })
     if (workspace) {
       sql += ` AND s.workspace LIKE ? ESCAPE '\\'`
       params.push('%' + escapeLike(workspace) + '%')
@@ -557,6 +570,8 @@ INSERT OR IGNORE INTO state_meta(key, value) VALUES ('schema_version', '2');
       const text = String(row.text ?? '')
       const sessionId = String(row.session_id ?? '')
       const parent = String(row.parent_session ?? '')
+      // 与 trigram 路径同款：逐行挑第一个真正出现在文本里的词做 snippet 定位
+      const term = terms.find((t) => text.toLowerCase().includes(t.toLowerCase())) ?? terms[0] ?? ''
       return {
         sessionId,
         sessionFile: String(row.session_file),
@@ -565,11 +580,15 @@ INSERT OR IGNORE INTO state_meta(key, value) VALUES ('schema_version', '2');
         role: String(row.role ?? ''),
         text,
         toolName: String(row.tool_name ?? ''),
-        snippet: excerptAroundMatch(text, query, 48, 96),
+        snippet: excerptAroundMatch(text, term, 48, 96),
         messageId: Number(row.id ?? 0),
         lineageRoot: parent || sessionId,
       }
     })
+    }
+    // AND 保精度；零命中再 OR 放宽（与 searchFts 的 AND→OR 策略一致）
+    const andHits = run('AND')
+    return andHits.length > 0 ? andHits : run('OR')
   }
 
   /**

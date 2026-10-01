@@ -80,6 +80,23 @@ describe('SessionFts（P2 SQLite + FTS5）', () => {
     assert.equal(h2.length, 0)
   })
 
+  it('C7 LIKE 多词：逐词 AND 命中（旧实现整串匹配必空）+ 零命中 OR 放宽', async () => {
+    const f = await makeFts()
+    const file = '/s/a/session.jsonl.zstd'
+    f.upsertSession(meta(file, 'session-a', 'W'))
+    f.syncMessages(file, rows(file), false)
+    await f.flush()
+    // "nginx 代理"：两词（nginx ≥3 / 代理 2 字）→ LIKE 路径。
+    // 旧实现把整串 "nginx 代理" 当单一子串 → 消息里两词不相邻 → 必空；
+    // 新实现逐词 AND → "nginx 反向代理服务器配置详解" 同时含两词 → 1 命中。
+    const h = await f.search('nginx 代理', '', 10)
+    assert.equal(h.length, 1, JSON.stringify(h))
+    assert.ok(h[0].text.includes('nginx') && h[0].text.includes('代理'))
+    // AND 无交集时（两词分属不同消息）→ 自动 OR 放宽：两条消息各命中一词
+    const h2 = await f.search('跨域 配置', '', 10)
+    assert.equal(h2.length, 2, JSON.stringify(h2))
+  })
+
   it('delta 追加：旧消息保留 + 新帧追加', async () => {
     const f = await makeFts()
     const file = '/s/a/session.jsonl.zstd'
@@ -246,8 +263,10 @@ describe('SessionFts（P2 SQLite + FTS5）', () => {
     await f.flush()
     const h1 = await f.search('nginx:', '', 10) // : 被清 → nginx
     assert.equal(h1.length, 1, JSON.stringify(h1))
-    const h2 = await f.search('部署(1)', '', 10) // () 被清 → "部署 1"：正文无该子串 → 0 但不报错
-    assert.equal(h2.length, 0)
+    // () 被清 → 词 [部署, 1]。旧实现按整串 "部署 1" 匹配 → 0（漏召）；
+    // C7 起 LIKE 逐词 AND → 正文 "nginx: 部署(1) 完成" 同时含两词 → 1 命中（更贴合意图）。
+    const h2 = await f.search('部署(1)', '', 10)
+    assert.equal(h2.length, 1, JSON.stringify(h2))
     const h3 = await f.search('AND OR NOT', '', 10) // 全悬空布尔 → 空查询 → 0
     assert.equal(h3.length, 0)
   })
