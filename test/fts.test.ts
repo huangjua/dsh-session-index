@@ -32,7 +32,7 @@ describe('SessionFts（P2 SQLite + FTS5）', () => {
   const ftses: Awaited<ReturnType<typeof createSessionFts>>[] = []
 
   after(async () => {
-    for (const f of ftses) f?.close()
+    for (const f of ftses) await f?.close()
     if (dir) await rm(dir, { recursive: true, force: true })
   })
 
@@ -136,9 +136,9 @@ describe('SessionFts（P2 SQLite + FTS5）', () => {
     const f = await makeFts()
     const file = '/s/a/session.jsonl.zstd'
     f.upsertSession(meta(file, 'session-a', 'W'))
-    f.upsertSession(meta(file, 'session-a', 'W2')) // 覆盖
+    await f.upsertSession(meta(file, 'session-a', 'W2')) // 覆盖
     assert.equal(f.sessionCount(), 1)
-    f.upsertSession(meta('/s/b/session.jsonl.zstd', 'session-b', 'W'))
+    await f.upsertSession(meta('/s/b/session.jsonl.zstd', 'session-b', 'W'))
     assert.equal(f.sessionCount(), 2)
   })
 
@@ -306,14 +306,14 @@ describe('SessionFts（P2 SQLite + FTS5）', () => {
     const f = await makeFts()
     assert.equal(f.lastPruneAt(), 0) // 未执行过 → 0
     assert.equal(f.lastPruneCount(), 0)
-    f.markPruned(7) // 同步记账，无需 flush
+    await f.markPruned(7) // 串行写入口提交后可见
     assert.ok(Math.abs(f.lastPruneAt() - Date.now()) < 5000, String(f.lastPruneAt()))
     assert.equal(f.lastPruneCount(), 7)
     const h = f.health()
     assert.equal(h.lastPruneCount, 7)
     assert.ok(h.lastPruneAt > 0)
     // 覆盖写：再次 markPruned 更新计数
-    f.markPruned(0)
+    await f.markPruned(0)
     assert.equal(f.lastPruneCount(), 0)
     assert.ok(f.lastPruneAt() > 0)
   })

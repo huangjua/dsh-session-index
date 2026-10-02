@@ -1,6 +1,6 @@
 {
   "name": "@dsh-external/dsh-session-index",
-  "version": "0.0.2",
+  "version": "0.0.3-rc.2",
   "description": "CJK-capable full-text session search, non-blocking indexing, and bookmarking for DSH session histories",
   "private": true,
   "type": "module",

@@ -1,0 +1,322 @@
+{
+  "createdAt": "2026-10-02T13:56:53.846Z",
+  "dataset": "schema5-snapshot.db",
+  "search": {
+    "before": {
+      "sql": "WITH chunk_scores AS MATERIALIZED (\n        SELECT c.message_id,bm25(chunks_fts) AS score FROM chunks_fts\n        JOIN message_chunks c ON c.id=chunks_fts.rowid WHERE chunks_fts MATCH ?\n      ), message_scores AS (SELECT message_id,MIN(score) AS rank FROM chunk_scores GROUP BY message_id), matched AS (\n      SELECT m.*,s.id AS session_id,s.workspace,s.title,s.parent_session,ms.rank AS rank\n      FROM messages m JOIN message_scores ms ON ms.message_id=m.id JOIN sessions s ON s.file=m.session_file WHERE ((m.search_text LIKE ? ESCAPE '\\' OR m.search_tool LIKE ? ESCAPE '\\')) AND m.role = ?\n    ), representatives AS (\n      SELECT *,COUNT(*) OVER(PARTITION BY session_file) AS match_count,ROW_NUMBER() OVER(PARTITION BY session_file ORDER BY rank,event_seq,id) AS choice FROM matched\n    ) SELECT *,COUNT(*) OVER() AS total FROM representatives WHERE choice=1 ORDER BY rank,session_id,session_file,event_seq,id LIMIT ?",
+      "params": [
+        "\"session\"",
+        "%session%",
+        "%session%",
+        "assistant",
+        6
+      ],
+      "plan": [
+        {
+          "id": 3,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE (subquery-6)"
+        },
+        {
+          "id": 5,
+          "parent": 3,
+          "notused": 0,
+          "detail": "CO-ROUTINE representatives"
+        },
+        {
+          "id": 8,
+          "parent": 5,
+          "notused": 0,
+          "detail": "CO-ROUTINE (subquery-7)"
+        },
+        {
+          "id": 11,
+          "parent": 8,
+          "notused": 0,
+          "detail": "CO-ROUTINE (subquery-8)"
+        },
+        {
+          "id": 13,
+          "parent": 11,
+          "notused": 0,
+          "detail": "CO-ROUTINE message_scores"
+        },
+        {
+          "id": 16,
+          "parent": 13,
+          "notused": 0,
+          "detail": "MATERIALIZE chunk_scores"
+        },
+        {
+          "id": 20,
+          "parent": 16,
+          "notused": 156,
+          "detail": "SCAN chunks_fts VIRTUAL TABLE INDEX 0:M2"
+        },
+        {
+          "id": 25,
+          "parent": 16,
+          "notused": 45,
+          "detail": "SEARCH c USING INTEGER PRIMARY KEY (rowid=?)"
+        },
+        {
+          "id": 42,
+          "parent": 13,
+          "notused": 118,
+          "detail": "SCAN chunk_scores"
+        },
+        {
+          "id": 44,
+          "parent": 13,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR GROUP BY"
+        },
+        {
+          "id": 87,
+          "parent": 11,
+          "notused": 82,
+          "detail": "SCAN ms"
+        },
+        {
+          "id": 90,
+          "parent": 11,
+          "notused": 45,
+          "detail": "SEARCH m USING INTEGER PRIMARY KEY (rowid=?)"
+        },
+        {
+          "id": 101,
+          "parent": 11,
+          "notused": 46,
+          "detail": "SEARCH s USING INDEX sqlite_autoindex_sessions_1 (file=?)"
+        },
+        {
+          "id": 132,
+          "parent": 11,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 168,
+          "parent": 8,
+          "notused": 80,
+          "detail": "SCAN (subquery-8)"
+        },
+        {
+          "id": 256,
+          "parent": 5,
+          "notused": 80,
+          "detail": "SCAN (subquery-7)"
+        },
+        {
+          "id": 344,
+          "parent": 3,
+          "notused": 80,
+          "detail": "SCAN representatives"
+        },
+        {
+          "id": 382,
+          "parent": 0,
+          "notused": 70,
+          "detail": "SCAN (subquery-6)"
+        },
+        {
+          "id": 470,
+          "parent": 0,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        }
+      ],
+      "carriesFullBodiesThroughWindow": true
+    },
+    "after": {
+      "sql": "WITH chunk_scores AS MATERIALIZED (\n        SELECT c.message_id,bm25(chunks_fts) AS score FROM chunks_fts\n        JOIN message_chunks c ON c.id=chunks_fts.rowid WHERE chunks_fts MATCH ?\n      ), message_scores AS (SELECT message_id,MIN(score) AS rank FROM chunk_scores GROUP BY message_id), matched AS (\n      SELECT m.id,m.session_file,m.event_seq,s.id AS session_id,ms.rank AS rank\n      FROM messages m JOIN message_scores ms ON ms.message_id=m.id JOIN sessions s ON s.file=m.session_file WHERE ((m.search_text LIKE ? ESCAPE '\\' OR m.search_tool LIKE ? ESCAPE '\\')) AND m.role = ?\n    ), representatives AS (\n      SELECT *,COUNT(*) OVER(PARTITION BY session_file) AS match_count,ROW_NUMBER() OVER(PARTITION BY session_file ORDER BY rank,event_seq,id) AS choice FROM matched\n    ), page AS (\n      SELECT *,COUNT(*) OVER() AS total FROM representatives WHERE choice=1 ORDER BY rank,session_id,session_file,event_seq,id LIMIT ?\n    ) SELECT m.*,s.id AS session_id,s.workspace,s.title,s.parent_session,p.rank,p.match_count,p.total\n      FROM page p JOIN messages m ON m.id=p.id JOIN sessions s ON s.file=m.session_file\n      ORDER BY p.rank,p.session_id,p.session_file,p.event_seq,p.id",
+      "params": [
+        "\"session\"",
+        "%session%",
+        "%session%",
+        "assistant",
+        6
+      ],
+      "plan": [
+        {
+          "id": 2,
+          "parent": 0,
+          "notused": 0,
+          "detail": "CO-ROUTINE page"
+        },
+        {
+          "id": 5,
+          "parent": 2,
+          "notused": 0,
+          "detail": "CO-ROUTINE (subquery-7)"
+        },
+        {
+          "id": 7,
+          "parent": 5,
+          "notused": 0,
+          "detail": "CO-ROUTINE representatives"
+        },
+        {
+          "id": 10,
+          "parent": 7,
+          "notused": 0,
+          "detail": "CO-ROUTINE (subquery-8)"
+        },
+        {
+          "id": 13,
+          "parent": 10,
+          "notused": 0,
+          "detail": "CO-ROUTINE (subquery-9)"
+        },
+        {
+          "id": 15,
+          "parent": 13,
+          "notused": 0,
+          "detail": "CO-ROUTINE message_scores"
+        },
+        {
+          "id": 18,
+          "parent": 15,
+          "notused": 0,
+          "detail": "MATERIALIZE chunk_scores"
+        },
+        {
+          "id": 22,
+          "parent": 18,
+          "notused": 156,
+          "detail": "SCAN chunks_fts VIRTUAL TABLE INDEX 0:M2"
+        },
+        {
+          "id": 27,
+          "parent": 18,
+          "notused": 45,
+          "detail": "SEARCH c USING INTEGER PRIMARY KEY (rowid=?)"
+        },
+        {
+          "id": 44,
+          "parent": 15,
+          "notused": 118,
+          "detail": "SCAN chunk_scores"
+        },
+        {
+          "id": 46,
+          "parent": 15,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR GROUP BY"
+        },
+        {
+          "id": 89,
+          "parent": 13,
+          "notused": 82,
+          "detail": "SCAN ms"
+        },
+        {
+          "id": 92,
+          "parent": 13,
+          "notused": 45,
+          "detail": "SEARCH m USING INTEGER PRIMARY KEY (rowid=?)"
+        },
+        {
+          "id": 103,
+          "parent": 13,
+          "notused": 46,
+          "detail": "SEARCH s USING INDEX sqlite_autoindex_sessions_1 (file=?)"
+        },
+        {
+          "id": 120,
+          "parent": 13,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 142,
+          "parent": 10,
+          "notused": 80,
+          "detail": "SCAN (subquery-9)"
+        },
+        {
+          "id": 202,
+          "parent": 7,
+          "notused": 80,
+          "detail": "SCAN (subquery-8)"
+        },
+        {
+          "id": 262,
+          "parent": 5,
+          "notused": 80,
+          "detail": "SCAN representatives"
+        },
+        {
+          "id": 286,
+          "parent": 2,
+          "notused": 70,
+          "detail": "SCAN (subquery-7)"
+        },
+        {
+          "id": 346,
+          "parent": 2,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        },
+        {
+          "id": 364,
+          "parent": 0,
+          "notused": 70,
+          "detail": "SCAN p"
+        },
+        {
+          "id": 367,
+          "parent": 0,
+          "notused": 45,
+          "detail": "SEARCH m USING INTEGER PRIMARY KEY (rowid=?)"
+        },
+        {
+          "id": 370,
+          "parent": 0,
+          "notused": 46,
+          "detail": "SEARCH s USING INDEX sqlite_autoindex_sessions_1 (file=?)"
+        }
+      ],
+      "carriesFullBodiesThroughWindow": false
+    }
+  },
+  "scroll": {
+    "before": {
+      "sql": "SELECT id,anchor_id,event_seq,role,text,tool_name FROM messages WHERE session_file=? AND (COALESCE(event_seq,id)<? OR (COALESCE(event_seq,id)=? AND id<?)) ORDER BY COALESCE(event_seq,id) DESC,id DESC LIMIT ?",
+      "plan": [
+        {
+          "id": 7,
+          "parent": 0,
+          "notused": 61,
+          "detail": "SEARCH messages USING INDEX idx_messages_session (session_file=?)"
+        },
+        {
+          "id": 41,
+          "parent": 0,
+          "notused": 0,
+          "detail": "USE TEMP B-TREE FOR ORDER BY"
+        }
+      ],
+      "dataset": "schema5-snapshot.db",
+      "fileFingerprint": "16cc0c9343c0e8218ef8312ac2314cb5531586c93bbdbc7b0b471e229d9506f2"
+    },
+    "after": {
+      "sql": "SELECT id,anchor_id,event_seq,role,text,tool_name FROM messages WHERE session_file=? AND COALESCE(event_seq,id)<=? AND (COALESCE(event_seq,id)<? OR id<?) ORDER BY COALESCE(event_seq,id) DESC,id DESC LIMIT ?",
+      "plan": [
+        {
+          "id": 7,
+          "parent": 0,
+          "notused": 50,
+          "detail": "SEARCH messages USING INDEX idx_messages_source_order (session_file=? AND <expr><?)"
+        }
+      ],
+      "dataset": "synthetic schema5 with new expression index"
+    }
+  },
+  "notes": [
+    "EXPLAIN only on the consistent read-only same-scale snapshot; no search bodies were executed or retained.",
+    "Candidate SCROLL index plan is initially from an isolated synthetic schema; refresh against the indexed performance copy after candidate setup.",
+    "Both search variants retain original LIKE verification and exact independent-session totals; candidate windows carry only identity/score fields before fetching final message bodies."
+  ]
+}

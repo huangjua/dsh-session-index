@@ -8,11 +8,12 @@ import { fileURLToPath } from 'node:url'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { zstdCompressSync } from 'node:zlib'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { WorkerPool, mapLimit } from '../src/worker-pool.js'
 import { isCancelError } from '../src/cancel.js'
 import type { HeadSummary, FullSummary, SearchHit } from '../src/streaming-parser.js'
 import { getEventListeners } from 'node:events'
+import { alpha3Assistant, alpha3Jsonl, alpha3ToolCall, alpha3User } from './support/alpha3-log.js'
 
 const SAMPLE = fileURLToPath(new URL('../../test/fixtures/sample-session.jsonl.zstd', import.meta.url))
 const SAMPLE_JSONL = fileURLToPath(new URL('../../test/fixtures/sample-session.jsonl', import.meta.url))
@@ -20,6 +21,50 @@ const CORRUPT = fileURLToPath(new URL('../../test/fixtures/corrupt-session.jsonl
 const WORKER_URL = new URL('../src/session-worker.js', import.meta.url)
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+describe('S1.2 WorkerPool role 透传', () => {
+  for (const [mode, workerUrl] of [['worker', WORKER_URL], ['inline', null]] as const) {
+    it(`${mode}: assistant/user/tool/any 在 maxSnippets 截断前过滤`, async () => {
+      const pool = new WorkerPool({ workerUrl, size: 1 })
+      const dir = await mkdtemp(join(tmpdir(), 'dsh-worker-role-'))
+      const file = join(dir, 'role.jsonl.zstd')
+      const lines = alpha3Jsonl({
+        id: 'worker-role', createdAt: 1, events: [
+          alpha3User('needle user one', 'u1'),
+          alpha3User('needle user two', 'u2'),
+          alpha3User('needle user three', 'u3'),
+          alpha3Assistant('needle\n assistant four', 'a4'),
+          alpha3ToolCall('needle_tool', 't5'),
+        ],
+      })
+      try {
+        await writeFile(file, zstdCompressSync(Buffer.from(lines.join('\n') + '\n')))
+        for (const [role, maxSnippets, expectedRoles] of [
+          ['assistant', 3, ['assistant']],
+          ['user', 3, ['user', 'user', 'user']],
+          ['tool', 1, ['tool']],
+          ['any', 9, ['user', 'user', 'user', 'assistant', 'tool']],
+        ] as const) {
+          const result = await pool.run<SearchHit[]>({ mode: 'search', file, query: 'needle', role, maxSnippets })
+          assert.ok(result.ok)
+          assert.deepEqual(result.data.map((hit) => hit.role), expectedRoles, `${mode}/${role}`)
+          assert.ok(result.data.every(hit => /^a1:/.test(hit.anchorId!)))
+          if (role === 'any') assert.deepEqual(result.data.map(hit => hit.eventSeq), [0, 1, 2, 3, 4])
+          if (role === 'assistant') assert.equal(result.data[0].snippet, '>>>needle<<< assistant four')
+          if (role === 'tool') assert.equal(result.data[0].snippet, '')
+        }
+        const bad = await pool.run({ mode: 'search', file: CORRUPT, query: 'needle', role: 'assistant' })
+        assert.equal(bad.ok, false, '角色过滤不能掩盖单文件损坏')
+        const ac = new AbortController()
+        ac.abort()
+        await assert.rejects(pool.run({ mode: 'search', file, query: 'needle', role: 'assistant' }, ac.signal), isCancelError)
+      } finally {
+        pool.terminate()
+        await rm(dir, { recursive: true, force: true })
+      }
+    })
+  }
+})
 
 /** 临时生成合法 alpha.3 多帧日志；旧 big 夹具会在每帧重置 seq，不能用于兼容测试。 */
 async function createLargeAlpha3Log(frameCount = 100): Promise<{ dir: string; file: string }> {
@@ -128,16 +173,35 @@ describe('WorkerPool（worker_threads 路径）', () => {
   })
 
   it('terminate 时在飞任务被 reject（P1-4：不留永久 pending）', async () => {
-    const pool = new WorkerPool({ workerUrl: WORKER_URL, size: 1 })
-    const large = await createLargeAlpha3Log()
+    const pool = new WorkerPool({ workerUrl: new URL('./support/pending-task-worker.js', import.meta.url), size: 1 })
+    const parent = resolve(tmpdir())
+    const dir = await mkdtemp(join(parent, 'dsh-worker-terminate-'))
+    const marker = join(dir, 'task-received.json')
     try {
-      const running = pool.run({ mode: 'full', file: large.file })
-      await sleep(120) // 等任务派发到 worker（big 解析 ~秒级，肯定在飞）
+      const running = pool.run({ mode: 'full', file: marker })
+      let settled = false
+      void running.then(() => { settled = true }, () => { settled = true })
+      const started = Date.now()
+      while (true) {
+        try {
+          const receipt = JSON.parse(await readFile(marker, 'utf8')) as { received: boolean }
+          assert.equal(receipt.received, true)
+          break
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+          assert.ok(Date.now() - started < 5000, 'worker must confirm receipt before termination')
+          await sleep(5)
+        }
+      }
+      assert.equal(settled, false, 'barrier worker must keep its received task pending')
+      const rejected = assert.rejects(running, (e) => isCancelError(e))
       pool.terminate()
-      await assert.rejects(running, (e) => isCancelError(e))
+      await rejected
     } finally {
       pool.terminate()
-      await rm(large.dir, { recursive: true, force: true })
+      assert.equal(dirname(resolve(dir)), parent)
+      assert.ok(basename(dir).startsWith('dsh-worker-terminate-'))
+      await rm(dir, { recursive: true, force: true })
     }
   })
 

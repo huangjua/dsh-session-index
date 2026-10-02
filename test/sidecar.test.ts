@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readFile, rm, writeFile, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { withPathLock, appendLine, atomicWriteText, createFingerprintCache, isRecord, str, num } from '../src/sidecar.js'
+import { withPathLock, withFileLock, appendLine, atomicWriteText, createFingerprintCache, isRecord, str, num } from '../src/sidecar.js'
 
 describe('sidecar', () => {
   let dir = ''
@@ -97,5 +97,45 @@ describe('sidecar', () => {
     assert.equal(num(1.5), 1.5)
     assert.equal(num(Number.NaN), null)
     assert.equal(num('1'), null)
+  })
+
+  it('withFileLock：同进程等待也有界；失败回调释放 owner', async () => {
+    const p = await mk('file-lock.jsonl')
+    let release!: () => void
+    let entered!: () => void
+    const held = new Promise<void>((done) => { entered = done })
+    const owner = withFileLock(p, async () => {
+      entered()
+      await new Promise<void>((done) => { release = done })
+    })
+    await held
+    await assert.rejects(withFileLock(p, async () => assert.fail('must wait'), { timeoutMs: 40, retryMs: 5 }),
+      (error: any) => error.code === 'ELOCKTIMEOUT')
+    release()
+    await owner
+    await assert.rejects(withFileLock(p, async () => { throw new Error('callback-failed') }), /callback-failed/)
+    assert.equal(await withFileLock(p, async () => 'next'), 'next')
+  })
+
+  it('strict 指纹缓存仅 ENOENT fallback，读取错误向上传播', async () => {
+    const p = await mk('strict-cache-dir')
+    const { mkdir } = await import('node:fs/promises')
+    await mkdir(p)
+    const cache = createFingerprintCache<string>({ strictErrors: true })
+    await assert.rejects(cache.read(p, (text) => text, () => 'empty'), (error: any) => error.code === 'EISDIR')
+    assert.equal(await cache.read(join(p, 'missing'), (text) => text, () => 'missing'), 'missing')
+  })
+
+  it('空锁目录可恢复；不可识别的 owner 保留且给出明确诊断', async () => {
+    const p = await mk('recover-lock.jsonl')
+    const { mkdir, readdir } = await import('node:fs/promises')
+    const lock = `${process.platform === 'win32' ? p.toLowerCase() : p}.lock`
+    await mkdir(lock)
+    assert.equal(await withFileLock(p, async () => 'recovered'), 'recovered')
+    await mkdir(lock)
+    await writeFile(join(lock, 'broken-owner'), 'bad')
+    await assert.rejects(withFileLock(p, async () => assert.fail('invalid owner'), { timeoutMs: 100 }),
+      (error: any) => error.code === 'ELOCKCORRUPT')
+    assert.deepEqual(await readdir(lock), ['broken-owner'])
   })
 })

@@ -1,0 +1,2 @@
+../release/REPRODUCE-RUNTIME-20261002/src/fts-client.ts(272,70): error TS1470: The 'import.meta' meta-property is not allowed in files which will build into CommonJS output.
+../release/REPRODUCE-RUNTIME-20261002/src/session-index-builder.ts(181,70): error TS1470: The 'import.meta' meta-property is not allowed in files which will build into CommonJS output.

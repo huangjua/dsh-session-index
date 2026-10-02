@@ -47,7 +47,18 @@ export function excerptAroundMatch(
   return snippet.slice(0, 400)
 }
 
+export interface TextCoverage {
+  complete: boolean
+  reasons: string[]
+  indexedMessages: number
+  indexedTextBytes: number
+  maxMessages: number
+  maxTextBytes: number
+}
+
 export interface SessionMeta {
+  generation?: number
+  coverage?: TextCoverage
   id: string
   file: string
   workspace: string
@@ -92,6 +103,8 @@ export interface SessionMeta {
    * unsafe.  Kept in index.json solely as a diagnostic marker.
    */
   unindexable?: true
+  /** Parsed JSON metadata may lead FTS; retry until its independent commit catches up. */
+  ftsDirty?: boolean
 }
 
 export interface SessionIndex {
@@ -102,7 +115,12 @@ export interface SessionIndex {
 }
 
 export interface BuildReport {
-  status: 'completed' | 'cancelled' | 'failed' | 'skipped'
+  status: 'completed' | 'degraded' | 'cancelled' | 'failed' | 'skipped'
+  scanComplete?: boolean
+  scanTruncated?: boolean
+  failedSubtrees?: string[]
+  ftsSynced?: number
+  ftsFailed?: number
   totalFiles: number
   processed: number
   headParsed: number
@@ -117,6 +135,11 @@ export interface BuildReport {
    * 从索引/派生层移除的条目数。可选字段，既有断言不受影响。 */
   pruned: number
   errors: string[]
+  discoveredBytes?: number
+  readBytes?: number
+  decodedBytes?: number
+  deltaBytes?: number
+  incompleteSessions?: number
   scannedBytes: number
   /**
    * C9b：本次构建**成功走完增量窗口**的文件数（真正只解了新增帧）。
@@ -141,6 +164,26 @@ export interface ScanFile {
   ctimeMs: number
 }
 
+export interface ScanSessionFilesResult {
+  files: ScanFile[]
+  complete: boolean
+  truncated: boolean
+  errors: string[]
+  failedSubtrees: string[]
+}
+
+export interface ScanSessionFilesOptions {
+  signal?: AbortSignal
+  cap?: number
+  /** Fault injection uses the same I/O contract without changing real permissions. */
+  io?: { readdir: typeof readdir; stat: typeof stat }
+}
+
+export function isRetainedSession(file: ScanFile, previous: SessionMeta | undefined, cutoff: number): boolean {
+  const activity = Math.max(previous?.lastTime ?? 0, file.mtimeMs)
+  return !(cutoff > 0 && activity > 0 && activity < cutoff)
+}
+
 export interface SearchHit {
   sessionId: string
   workspace: string
@@ -150,6 +193,8 @@ export interface SearchHit {
   snippet: string
   /** P3 SCROLL 锚点：FTS messages 行 id（meta/worker 路径为 0） */
   messageId?: number
+  anchorId?: string
+  lineageRoot?: string
 }
 
 export interface SessionSummary {
@@ -285,22 +330,42 @@ function generationOf(name: string): number | undefined {
  */
 export async function scanSessionFiles(
   root: string,
-  options: { signal?: AbortSignal; cap?: number } = {},
-): Promise<{ files: ScanFile[]; truncated: boolean }> {
-  const cap = options.cap ?? 10000
+  options: ScanSessionFilesOptions = {},
+): Promise<ScanSessionFilesResult> {
+  const cap = Math.max(0, options.cap ?? 10000)
   const signal = options.signal
+  const io = options.io ?? { readdir, stat }
   const files: ScanFile[] = []
+  const errors: string[] = []
+  const failedSubtrees: string[] = []
   let truncated = false
   let visited = 0
+  const failed = (path: string, error: unknown) => {
+    errors.push(`${path}: ${String(error).slice(0, 200)}`)
+    failedSubtrees.push(path)
+  }
   const walk = async (dir: string): Promise<void> => {
     if (truncated) return
+    throwIfAborted(signal)
     let entries
     try {
-      entries = await readdir(dir, { withFileTypes: true })
-    } catch {
+      entries = await io.readdir(dir, { withFileTypes: true })
+    } catch (error) {
+      failed(dir, error)
       return
     }
+    // Resolve generations before applying the budget or stat: an unavailable
+    // highest generation must never silently turn into its older sibling.
+    let highest: string | undefined
+    let highestVersion = -1
     for (const entry of entries) {
+      const version = entry.isFile() ? generationOf(entry.name) : undefined
+      if (version !== undefined && version > highestVersion) {
+        highest = entry.name
+        highestVersion = version
+      }
+    }
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
       if (truncated) return
       visited++
       if (visited % 20 === 0) {
@@ -313,38 +378,28 @@ export async function scanSessionFiles(
         continue
       }
       if (!entry.isFile() || !entry.name.endsWith('.jsonl.zstd')) continue
-      let st
-      try {
-        st = await stat(full)
-      } catch {
-        continue
-      }
-      if (!st.isFile()) continue
+      if (generationOf(entry.name) !== undefined && entry.name !== highest) continue
       if (files.length >= cap) {
         truncated = true
         return
+      }
+      let st
+      try {
+        st = await io.stat(full)
+      } catch (error) {
+        failed(full, error)
+        continue
+      }
+      if (!st.isFile()) {
+        failed(full, new Error('session file changed type during scan'))
+        continue
       }
       files.push({ file: full, size: st.size, mtimeMs: st.mtimeMs, ctimeMs: st.ctimeMs })
     }
   }
   await walk(root)
-  // 每个会话目录只保留最高代际的规范日志；非规范名的 .jsonl.zstd 一律保留。
-  const bestByDir = new Map<string, { file: string; version: number }>()
-  for (const f of files) {
-    const version = generationOf(basename(f.file))
-    if (version === undefined) continue
-    const dir = dirname(f.file)
-    const best = bestByDir.get(dir)
-    if (!best || version > best.version) bestByDir.set(dir, { file: f.file, version })
-  }
-  const kept = files.filter((f) => {
-    const version = generationOf(basename(f.file))
-    return version === undefined || bestByDir.get(dirname(f.file))?.file === f.file
-  })
-  files.length = 0
-  files.push(...kept)
   files.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0))
-  return { files, truncated }
+  return { files, complete: !truncated && errors.length === 0, truncated, errors, failedSubtrees }
 }
 
 /* ── P0-1：loadIndex 内存缓存（882KB index.json 每次调用解析 → 按指纹缓存） ────

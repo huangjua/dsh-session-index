@@ -92,7 +92,7 @@ describe('v3 真实迁移夹具（写入端产物）', () => {
   it('surface 折叠跟随 system/message 替换（startSeq/endSeq），消息流不含 system', async () => {
     const full = await parseFull(V3_SESSION, { collectMessages: true })
     const roles = (full.messages ?? []).map(message => message.role)
-    assert.deepEqual(roles, ['tool', 'user', 'assistant'])
+    assert.deepEqual(roles, ['user', 'assistant', 'tool'])
     const user = (full.messages ?? []).find(message => message.role === 'user')
     assert.match(String(user?.text), /anchored-ok/)
   })

@@ -1,0 +1,54 @@
+✖ public apply retries a stable partial frame and catches up without a second watcher event (1594.326ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2208.7532
+
+✖ failing tests:
+
+test at .test-build\test\runtime-lagging-retry.test.js:159:1
+✖ public apply retries a stable partial frame and catches up without a second watcher event (1594.326ms)
+  AssertionError [ERR_ASSERTION]: a verified partial append must retain the previous complete rows and checkpoint
+  + actual - expected
+  
+    {
+  +   checkpoint: null,
+  +   rows: []
+  -   checkpoint: {
+  -     complete: true,
+  -     ctimeMs: 1790953478238.9585,
+  -     file: 'E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\evidence\\lagging-retry-samples\\one-event-completion-5CtBB8\\sessions\\controlled\\session.jsonl.zstd',
+  -     indexedBytes: 236,
+  -     indexedSeq: 0,
+  -     messageCount: 1,
+  -     mtimeMs: 1790953478238.9585,
+  -     parserVersion: 'session-index/3-chunks',
+  -     sessionId: 'controlled',
+  -     size: 236
+  -   },
+  -   rows: [
+  -     {
+  -       anchorId: 'a1:333d512391a18f0fedf01e1f661b78b7751b1364fe9ed10eadcd98f455bbfad8',
+  -       eventSeq: 0,
+  -       role: 'user',
+  -       text: 'lagretryoriginal complete prior message',
+  -       toolName: ''
+  -     }
+  -   ]
+    }
+  
+      at TestContext.<anonymous> (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/runtime-lagging-retry.test.js:167:16)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: { checkpoint: null, rows: [] },
+    expected: { checkpoint: { file: 'E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\evidence\\lagging-retry-samples\\one-event-completion-5CtBB8\\sessions\\controlled\\session.jsonl.zstd', sessionId: 'controlled', size: 236, mtimeMs: 1790953478238.9585, ctimeMs: 1790953478238.9585, indexedBytes: 236, indexedSeq: 0, complete: true, parserVersion: 'session-index/3-chunks', messageCount: 1 }, rows: [ [Object] ] },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+{"exitCode":1,"signal":null}

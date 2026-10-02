@@ -1,0 +1,99 @@
+▶ runtime reader isolation and request deadline
+  ✖ terminates real synchronous SQLite read only; concurrent writer receipt and checkpoint survive (176.5391ms)
+  ✖ queued request expiry does not replace the running healthy reader; health uses writer (160.6134ms)
+  ✖ recovery wait spends the same query deadline and retains historical failures (170.8685ms)
+  ✖ active read abort replaces only reader and leaves no pending cancellation (191.2705ms)
+✖ runtime reader isolation and request deadline (701.893ms)
+▶ runtime migration state and bounded initialization
+  ✔ ready deadline does not kill progressing migration; status returns parent progress (885.7569ms)
+  ✔ migration-stall fails within its own bound and factory preserves error/progress (316.7187ms)
+  ✔ migration-total fails within its own bound and factory preserves error/progress (410.6641ms)
+  ✔ opening-stall fails within its own bound and factory preserves error/progress (694.6643ms)
+  ✔ public factory allows actual SQLite batches beyond original 15 seconds (17529.7708ms)
+  ✔ native SQLite migration stall exits its process, rolls back, and releases the writer lock before factory returns (369.6517ms)
+✔ runtime migration state and bounded initialization (20208.4585ms)
+ℹ tests 10
+ℹ suites 2
+ℹ pass 6
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21105.7121
+
+✖ failing tests:
+
+test at .test-build\test\runtime-transport.test.js:39:5
+✖ terminates real synchronous SQLite read only; concurrent writer receipt and checkpoint survive (176.5391ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(client)
+  
+      at file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/runtime-transport.test.js:42:16
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/runtime-transport.test.js:14:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1794:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\runtime-transport.test.js:65:5
+✖ queued request expiry does not replace the running healthy reader; health uses writer (160.6134ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(client)
+  
+      at file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/runtime-transport.test.js:68:16
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/runtime-transport.test.js:14:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\runtime-transport.test.js:89:5
+✖ recovery wait spends the same query deadline and retains historical failures (170.8685ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(client)
+  
+      at file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/runtime-transport.test.js:92:16
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/runtime-transport.test.js:14:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\runtime-transport.test.js:109:5
+✖ active read abort replaces only reader and leaves no pending cancellation (191.2705ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(client)
+  
+      at file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/runtime-transport.test.js:111:16
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/runtime-transport.test.js:14:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+{"exitCode":1,"signal":null}

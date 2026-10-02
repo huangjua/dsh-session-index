@@ -1,0 +1,2409 @@
+{
+  "generatedAtUtc": "2026-10-02T15:54:57.8165744Z",
+  "purpose": "final manifest evidence allowlist; extension of verified packaging closure",
+  "baseList": {
+    "path": "evidence/PACKAGING_EVIDENCE_LIST_20261002.json",
+    "sha256": "a38f2bb443ab8c4973434e3d8c7f76de1344ae59cb8af3c87540499789cfff6f",
+    "entries": 53
+  },
+  "addedEvidenceCount": 78,
+  "evidenceAllowlist": [
+    {
+      "path": "evidence/baseline-queries-final/RESULTS.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 238346,
+      "sha256": "19579d8ed7a29731a166acce8561ba5c588803a1f07d415d3168a55f44ce6a00",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-final/round-1.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 42081,
+      "sha256": "e1a4a7bb4e84b9cb3a048d2b8aed76e15fde591760767f2b02217e2e8c1ebb53",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-final/round-1.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 109,
+      "sha256": "df8995d9d991480c9038a9f817e9620adda6b9fdd3cdbce822096a767669a1c8",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-final/round-2.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 42031,
+      "sha256": "3fb38390891dc417d41c511aecd765d54c75cee24ba6045494bb10d82d17f6a2",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-final/round-2.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 108,
+      "sha256": "0dfa710cf8b7082018b01248b71215ed2853daadec8a0919f94d631930ca5e53",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-final/round-3.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 42082,
+      "sha256": "ee3cd5a0c5eeb52e2ce01674daa39722b82d8ec174b040ab606f4d27d7a8e07b",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-final/round-3.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 109,
+      "sha256": "3e86f42f52b12598a5d61f83d23b5956ab19a3fa756993082a376e40e0febc3e",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-final/round-4.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 42083,
+      "sha256": "b5ee59602a067f1fc4dfa0738039d3662da1b3ffdf60b62679d3fd1cef861fbb",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-final/round-4.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 119,
+      "sha256": "64fb6f4dd917833df081d35de24bda11addddf9fe11dcfdfb9a1daa7e32f6223",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-final/round-5.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 42069,
+      "sha256": "592a095ff8253bf2756158ce55e2795e15f623d58f3125dca3062c4f88d0884a",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-final/round-5.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 108,
+      "sha256": "446a071d515a1d4088ce27bca114ac242f054b682985074295a5f198253c71eb",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-final/WINDOWS_LOAD.stop",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 5,
+      "sha256": "d117fa006ba9208500b2930ce69cbde436c647afa917cb7396a9bc9111a46dd2",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-deps/RESULTS.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 50368,
+      "sha256": "74b18c4fe76ed7d8b4b50847b1560989a7a06a6a89954c221ca34a7950a2fc76",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-deps/round-1.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 8764,
+      "sha256": "db205389a4b64416208ee5625b0f006b78174f4741a38a35f9e15979864868ee",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-deps/round-1.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 109,
+      "sha256": "d1ccff024b8aa7530ae3baf920f44c233d6c7dc4fa355944d6c6d3730425e93d",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-deps/round-2.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 8900,
+      "sha256": "6a0bf78139999e0903fb58a10d3de2a4d0a91cc9935f196bd9314f0af8648e0d",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-deps/round-2.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 109,
+      "sha256": "64f2c0c4468cc46428b21a23d7ed47256488efacfa17b741034f25ade20acc01",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-deps/round-3.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 8917,
+      "sha256": "f8d4e259382071270b783c3c175d1f2f65384b267a4297defc0bd5d4cb3439cf",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-deps/round-3.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 108,
+      "sha256": "7f430fb77e9555d07992f8f56dad54a7519fb252ec399db292fd6f5ec1249e06",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-deps/round-4.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 8915,
+      "sha256": "200926e0c815fa95d4b7b45e0293d5723b68126be923a772b568552a49b46757",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-deps/round-4.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 106,
+      "sha256": "416a590791a87f63e183270930cf7bbfac050410d2154d536af62229721c91a4",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-deps/round-5.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 8928,
+      "sha256": "3b10dfd7adca921e5dec88273482d7901b6c965e3cac799f3cc1353cfd4ae314",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-deps/round-5.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 108,
+      "sha256": "793f0291756a1758ff55138fab366788c648e226a8a6787a9e7fac802379fa09",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-load/RESULTS.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 238510,
+      "sha256": "b54aa8a7c8f2d1ef854e2aa15522411e034aa168644d83bed397000b17430bce",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-load/round-1.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 42103,
+      "sha256": "77591cc4212113f2f87c24bceb0fb87c852d3c92f7407a5aa86d53fe8ee07207",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-load/round-1.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 108,
+      "sha256": "dc5dd7d3d4e497317397c2a7f9a72051b9a824c83a4defe680102bcb29d8301a",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-load/round-2.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 42053,
+      "sha256": "5be69f759b2ce3ce110cbfd01c44d820b6dd8cc8d37df8603409636af85bf4a7",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-load/round-2.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 99,
+      "sha256": "ed2218b868660d86ef7d40704745ff8297a95b348808382eae0221008f84a325",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-load/round-3.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 42126,
+      "sha256": "8d53be2505932768545d8a8d41e67d7cf6c6a6fc6d91109248dc1e36afd9f293",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-load/round-3.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 108,
+      "sha256": "e75f5f8229f46d01cb228b8d38f25ee63aef31b7dc9ee157e1b3d531ac9aab71",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-load/round-4.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 42106,
+      "sha256": "6237f98949ff34795e0e5153144b658e94f15bca3e6bbd7bdd1a1ad9bb732190",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-load/round-4.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 109,
+      "sha256": "f0c048987cf9f31a572dc0f6f366e1aa817f678d2f6294f49d3a8706a490a555",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-load/round-5.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 42122,
+      "sha256": "4b9dcfe407e3b7de265d3f278936299358841bd2868d85ffd9483d7d92def2f3",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-load/round-5.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 109,
+      "sha256": "2d3f25d91906419ea4aebdc3a174278ff24d764b1587c4e4b6949e4041983dfa",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-load/WINDOWS_LOAD_SAMPLER.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 185,
+      "sha256": "562df3104e570a9ec702d55f33e72c96f36299d147dcc2b66ccc2e0f73eed0b2",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-load/WINDOWS_LOAD.jsonl",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 6426,
+      "sha256": "a94f7966b50a85a81a7fd2ab77673a1fbeee78dd9a20da0066d2c68aa411a992",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries-with-load/WINDOWS_LOAD.stop",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 5,
+      "sha256": "d117fa006ba9208500b2930ce69cbde436c647afa917cb7396a9bc9111a46dd2",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries/RESULTS.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 2653,
+      "sha256": "c9e232fd98b14470d41184c7614ac2fb9980228d3df4a6e268203c7ea6a90e84",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries/round-1.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 422,
+      "sha256": "6b4bed8f0cc5e5d9a6e8939c7b20b2ac5e836f414ba984e13825ec12e1c298d4",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries/round-1.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries/round-2.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 432,
+      "sha256": "4a71df191a7dc2af3346f5ef4470ed04e7372bb6b40c426b48c358a51baa4bab",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries/round-2.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries/round-3.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 421,
+      "sha256": "e2bd4473c9eb985aa3c3cdd7f7c1687b856a7de4c028cb7f7547b65018838b67",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries/round-3.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries/round-4.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 421,
+      "sha256": "8996fb862dd079800d8a0d7d671ba52eb8ff708a5aeaeb35fda92a94ba3746de",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries/round-4.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries/round-5.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 432,
+      "sha256": "3530cb963dd7f1aa9a11bf80cc69a00adc92999613ed22ea0285f1fefa43d9b7",
+      "exists": true
+    },
+    {
+      "path": "evidence/baseline-queries/round-5.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exists": true
+    },
+    {
+      "path": "evidence/CANDIDATE_QUERY_SNAPSHOT.json",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 651,
+      "sha256": "2f2e790c3681d828bdf945b6f765fda202f6bfd5cf189f2f67dc2f7906111f2d",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-final/RESULTS.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 711948,
+      "sha256": "ee2175d85976cc7e336c12d2484f7abbd4ab2f364867173cd717b12ba2ac9ce9",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-final/round-1.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 126462,
+      "sha256": "536f951a767972c4981d9919bb79d0db2b29b4b316e509dbdc8ec6422b2742b5",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-final/round-1.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 118,
+      "sha256": "779b68685129915d7bd1f9f7cbd6219a205c8a5fa067541e3316b9ad6251acbc",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-final/round-2.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 124385,
+      "sha256": "b7b76cd4da9ec7254a1ddaaf1528f18eed1065db502012ad9fbf338a158d07d4",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-final/round-2.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 119,
+      "sha256": "3cdd81212bce3a3a5a9a49891d957381430b556a9ca210de45fea34cc9062f86",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-final/round-3.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 124638,
+      "sha256": "273b80437df83846bbc5bfd188f3683de8aaa3cf4aaa61521d4ac2d402788b29",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-final/round-3.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 108,
+      "sha256": "b589c8dc6eb5c9391524448b8f8e5883602c7e68cb51ab82c199156fc5df0f00",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-final/round-4.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 124336,
+      "sha256": "5a0107c0800f99301ce6e224559ac1f876b58282925d1566a6045403815c07c3",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-final/round-4.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 109,
+      "sha256": "4770df0650857c97ca0a9faf2a4703f2a090c88f208cb288ef73554686833d30",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-final/round-5.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 124726,
+      "sha256": "712e245333ce2ab332e3717f6acf941359cf81f392aa636fc4ac189ba6ac6c4b",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-final/round-5.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 108,
+      "sha256": "001e313f50c6d9be37589e85530a49565d32a174b0a67c3338b52aa528f0997a",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-final/WINDOWS_LOAD.stop",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 5,
+      "sha256": "d117fa006ba9208500b2930ce69cbde436c647afa917cb7396a9bc9111a46dd2",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-with-load/RESULTS.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 713321,
+      "sha256": "38eade160f9ffad8b2ac2db4a67a3f7bf5510c7d9f8365d0817465de584ad737",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-with-load/round-1.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 126302,
+      "sha256": "9a2ca70ddd4dcb81cd978857d5d3153ff463dffb4bc4b8c77bebb538a97e0dfa",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-with-load/round-1.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 109,
+      "sha256": "4232b1209ab41e45b8789ea95961912446c4ab7793114c3bee44402cae3a1bcf",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-with-load/round-2.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 124959,
+      "sha256": "d639769fce6de5f70ac0079c4cc96ff729d906fbbba8b9d6d7bc5935ac74b380",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-with-load/round-2.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 108,
+      "sha256": "b6c691fd3642602bfc72f5d2fcc50125567e5576a233eec6219dc9c2558471aa",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-with-load/round-3.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 124818,
+      "sha256": "a2e607450c4329b87c3c82be4fb0a8a93beca3e28ed2e10dcc35401111ce0e3d",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-with-load/round-3.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 109,
+      "sha256": "f132aa6931bd7892cb57a38ed6c04c0eb8fad554adee2fc9895282bf6e58b09a",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-with-load/round-4.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 124949,
+      "sha256": "bc887e0e63e00ce6a714ef757120fda134d63d88531479b34c2bf2f5ece5dd01",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-with-load/round-4.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 99,
+      "sha256": "93416edd15fa249d95a76e1accc88f52214c452a10b4b13afc18fac0ef24f377",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-with-load/round-5.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 124852,
+      "sha256": "c5744e0eb80cf955b28f4515789c205729364f3431c93a22d9cfbe8074a65893",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-with-load/round-5.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 118,
+      "sha256": "5d80181dfaed0f3f788c4495cb8001930a7af14a8c091dd13f9b9c83d088dff3",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-with-load/WINDOWS_LOAD_SAMPLER.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 185,
+      "sha256": "562df3104e570a9ec702d55f33e72c96f36299d147dcc2b66ccc2e0f73eed0b2",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-with-load/WINDOWS_LOAD.jsonl",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 3215,
+      "sha256": "84e424f3d9403e0530841ba70ce0640dbc80625e5033c8c742ef0878a5054d25",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-queries-with-load/WINDOWS_LOAD.stop",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 5,
+      "sha256": "d117fa006ba9208500b2930ce69cbde436c647afa917cb7396a9bc9111a46dd2",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-final-ae61e469/RESULTS.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 6339561,
+      "sha256": "490816ce8132c139b22189b843afd86f8f07222c58a2240fe58246081d102191",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-final-ae61e469/round-1.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 1110539,
+      "sha256": "866e7dd8d1a6ebd0fb0be9da9caca3e5f73d10c59593d9bf20938586eebece36",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-final-ae61e469/round-1.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 154,
+      "sha256": "9ce5af61b8458c6629d35651b73e8ed41a34a6b0ba3c1484b251c62e85190fc1",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-final-ae61e469/round-2.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 1112458,
+      "sha256": "1e7afac045536a597394a41367b07ac272f536b2255080867495e6687a53e590",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-final-ae61e469/round-2.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 145,
+      "sha256": "f5afcb158dfc02741f2554febdd359bc45dc8fe82ccfa97b9dfec2b6c4880564",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-final-ae61e469/round-3.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 1117992,
+      "sha256": "3b391e7cf1be5d2cff1a0361b0963b5a4d222b2d52a0266335056e344e582995",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-final-ae61e469/round-3.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 145,
+      "sha256": "f1ea3164e7011d896b9ad03a734312b5388650a3d084e26c5f3c4ca733970265",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-final-ae61e469/round-4.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 1112290,
+      "sha256": "74dcc666dc26ce050e8606811067662fab5c61e82c7ecb6e31f6b3920dbaec51",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-final-ae61e469/round-4.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 145,
+      "sha256": "a45c2a821c2ba50a0385cf1f0f6a71a7fa46a5b1967be83e7b28820bd73f3cb8",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-final-ae61e469/round-5.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 1107139,
+      "sha256": "e9455510fd18a60f6cec97dca18c6d35b25580da88eaa54a20e964349bafdaea",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-final-ae61e469/round-5.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 145,
+      "sha256": "f5205e1f1dca355f2f312c2e33ef3d631e2b4ca0132f44902744d257760f401c",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-final-ae61e469/RUN_BOUNDARY.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 1286,
+      "sha256": "fb02361a9a9dd7dd6922f1787c131cda88d0dbf3fbe65dd5e2790398a79c83fc",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-final-ae61e469/WINDOWS_LOAD.stop",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 5,
+      "sha256": "d117fa006ba9208500b2930ce69cbde436c647afa917cb7396a9bc9111a46dd2",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/RESULTS.json",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 6025991,
+      "sha256": "b6cd09a56d5d33fbb02ee65e71ae018d162e766f2c3b7b66f0f029250974dffc",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/round-1.json",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 1110891,
+      "sha256": "e4d59c111be3e8d1aa5a101892e6bcd3a57df8719513f80e41c909faf9977902",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/round-1.txt",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 154,
+      "sha256": "6c947f8df0f5d11d6e6a3bccda826831487a281e71aacd362fd74e6ace583f02",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/round-2.json",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 1068602,
+      "sha256": "dcf63c9361dc63225bfcd094f65ecfaf06f347aeb6a2f5259333efb8a018c5da",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/round-2.txt",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 145,
+      "sha256": "f23d35bf1c02899ec2ff40f4233189b572bca9ab27764b773980bf5ff22d2922",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/round-3.json",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 997306,
+      "sha256": "2dcd870d9341e1f111f40bc4f3d16a0e50dc6c7d81a632d2777ad004087138bb",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/round-3.txt",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 153,
+      "sha256": "cb4e4fb74d24df481b000a08c8025c3f7dfd91cff92ab68edc9a7a141c007249",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/round-4.json",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 999857,
+      "sha256": "595d740241095e45483c70b86855a83c6833e1916060d1ac8deffdb57e97d115",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/round-4.txt",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 154,
+      "sha256": "26c86c0de940ff3c73bcde5fbc9a361b2405d88f8d566e6235c7774260fb0934",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/round-5.json",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 1106054,
+      "sha256": "36b9440b50ed7d795caf38a410b9e22587450fd694d8fb0a2a15092ae7681c90",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/round-5.txt",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 145,
+      "sha256": "1bb0e11ccca73bd0d43930104073ef511e07844b350d03485004f8f1fa3d0908",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/RUN_BOUNDARY.json",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 1423,
+      "sha256": "42d9dc4b862b14db05e6d0e36ccd3867ffce54f1a6b340f17a8f0d947a00efff",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/WINDOWS_LOAD_SAMPLER.json",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 185,
+      "sha256": "562df3104e570a9ec702d55f33e72c96f36299d147dcc2b66ccc2e0f73eed0b2",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/WINDOWS_LOAD.jsonl",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 4902,
+      "sha256": "11bfd2caa231f60baae207b3f12afb1b73ad3f77e98e2f269d4ed84eae968f7f",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/WINDOWS_LOAD.stop",
+      "kind": "run-artifact:candidate-tool-queries-normal-upgraded-final-c0ae6e50",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-normal-upgraded-final-c0ae6e50"
+      ],
+      "bytes": 5,
+      "sha256": "d117fa006ba9208500b2930ce69cbde436c647afa917cb7396a9bc9111a46dd2",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/RESULTS.json",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 6591945,
+      "sha256": "b67f6b3f50f9665ef04c2cdfb5935884147d0fc80c9e283d0af96a973e448ca6",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/round-1.json",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 1116545,
+      "sha256": "334bdc1fa480df0ffb9db59117e35eea8c078aa76e0ef54086fb446198026409",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/round-1.txt",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 154,
+      "sha256": "01dd98b9132a090840f7cde5caabb85696e299a3e805a62db32e0bbd05ee5b6c",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/round-2.json",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 1321966,
+      "sha256": "6f645cbd2bda5917dcd5f951191b6bc4423721aa83c7e558f8a42457d0ef229d",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/round-2.txt",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 144,
+      "sha256": "aae62007531dec22d743512261262c69a4b9abe5978832adc678e5937b007399",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/round-3.json",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 1117734,
+      "sha256": "a4d300eda4b7b538caf2c0f7c62a1dcb59cc8a2c22598b061bb6ad0b4ad88876",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/round-3.txt",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 155,
+      "sha256": "c577919c1394f8636040501a6482b4e27d9405b8a933e83549bf633f62ad3608",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/round-4.json",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 1107553,
+      "sha256": "68f81167e291a88ba3a5d36a85763d21b5c9c6242f13618efaa4948343f1b944",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/round-4.txt",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 154,
+      "sha256": "5f0a0cf829ecff635265c16ccbbe1da177b38e800ceb801f71a0bcae00449a34",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/round-5.json",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 1116772,
+      "sha256": "6c54361c2429e1a608bc1920fe5ceb74eb82a88e78e42363c09375beb2a2a0fb",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/round-5.txt",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 143,
+      "sha256": "4319f370a32f01ad62386c808675f5d3346d963d160a83d9056edc4a7c470b10",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/RUN_BOUNDARY.json",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 1286,
+      "sha256": "d35117a0d1d47171d8727ab530a299e00a6b3a0de9e4fe1b35c902fe2e91b7b0",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/WINDOWS_LOAD_SAMPLER.json",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 185,
+      "sha256": "562df3104e570a9ec702d55f33e72c96f36299d147dcc2b66ccc2e0f73eed0b2",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/WINDOWS_LOAD.jsonl",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 4835,
+      "sha256": "2fd3ea68b1c61f6d4cbb7708d98badad58ff1b9bc9036cebaf6742c90ff672b1",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/WINDOWS_LOAD.stop",
+      "kind": "run-artifact:candidate-tool-queries-verified-continuation-cd94f5fd",
+      "referencedBy": [
+        "directory snapshot candidate-tool-queries-verified-continuation-cd94f5fd"
+      ],
+      "bytes": 5,
+      "sha256": "d117fa006ba9208500b2930ce69cbde436c647afa917cb7396a9bc9111a46dd2",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/RESULTS.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 7099287,
+      "sha256": "26414af6ec9573ec06146dde954eb04dcfc9b64b5898493e8a1c3b484d83ab35",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/round-1.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 1284130,
+      "sha256": "5c6b0b204ec037bd9659b5d5ceb1e55ab1b54aaf5403bb919e344d07fa58537f",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/round-1.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 147,
+      "sha256": "caab1717d88da60091416d3d384e5e4832f45e5764f6c2c0bc643a8387c3141c",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/round-2.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 1120538,
+      "sha256": "ded1070f77db4075185f8438954e8dacffaa1676172ea600bedf227c45a28586",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/round-2.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 146,
+      "sha256": "f3461fd874908f86fc166224e84f20138930181d96da499aa34a415cb19e440b",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/round-3.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 1354592,
+      "sha256": "bf07205f5a375c5ef8766dd19b672913e08556f13edfbd6e7e140e52e54e466c",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/round-3.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 145,
+      "sha256": "b252d27936a8aaa2cd2d6c6a1fe95fe8734c576794b454e345d6324c721054da",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/round-4.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 1115672,
+      "sha256": "0227c3a9c0c67a61661d553cdd0228892c8598014f456d82661b4d04de6754c8",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/round-4.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 154,
+      "sha256": "6731c138c7b4cd53751f51cf7e0567bf12dc15c50d7004a823a9230a1e808e7d",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/round-5.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 1351974,
+      "sha256": "5c4e1bd974f1ecca8f28abe06cef4dcc49280f474dbc2e55f4175f061b03ac2c",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/round-5.txt",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 155,
+      "sha256": "0ec6a4d83db6bcf4523089871d90f9bfeffb6cda2208c59d854b9d65bb0bd484",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/RUN_BOUNDARY.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 1286,
+      "sha256": "de1d2d567c066b0eeb33438a0ccf662eaeb16b2b0ed4ea989477384757bb851d",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/WINDOWS_LOAD_SAMPLER.json",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 185,
+      "sha256": "562df3104e570a9ec702d55f33e72c96f36299d147dcc2b66ccc2e0f73eed0b2",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/WINDOWS_LOAD.jsonl",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 8067,
+      "sha256": "0f340c13b1c5133b7df9563da12e9606e2d9fa1d9ac302d58685079acc99dfc3",
+      "exists": true
+    },
+    {
+      "path": "evidence/candidate-tool-queries-with-load-f7d5648f/WINDOWS_LOAD.stop",
+      "kind": "historical-query-run-evidence",
+      "referencedBy": [
+        "runtime-finalize.mjs historicalSets scan; query run directory top-level evidence"
+      ],
+      "bytes": 5,
+      "sha256": "d117fa006ba9208500b2930ce69cbde436c647afa917cb7396a9bc9111a46dd2",
+      "exists": true
+    },
+    {
+      "path": "evidence/DATASET_SNAPSHOT.json",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 4589,
+      "sha256": "3c514ed904b9cd8b2f41cf61c8ab5c492cf35fe6c238d3c1190e37d7fbfa7773",
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_CONTINUATION_COMPILE_2026-10-02T15-15-51-762Z.txt",
+      "kind": "red-or-fix-log",
+      "referencedBy": [
+        "red/fix history log set"
+      ],
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_FALLBACK_CONTINUATION_2026-10-02T15-34-10-572Z.json",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.controlledReplay"
+      ],
+      "sha256": "2969c16adbc585ade4fe442431cf16b3718c6d03a22d9bbbb75e3e2d78721c28",
+      "bytes": 58785,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_FALLBACK_VERIFIED_CONTINUATION_2026-10-02T15-35-52-113Z.json",
+      "kind": "primary-json",
+      "referencedBy": [
+        "primary acceptance JSON"
+      ],
+      "sha256": "88b7b22b8244c4d8c36f8e205fefd257cd3d68faeea3aeae763015a3a33c6864",
+      "bytes": 71308,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_FALLBACK.json",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.originalHistoricalEvidence",
+        "explicit historical/targeted evidence"
+      ],
+      "sha256": "cf295667dbd6da597bf0143a424839d3078249583321f729d935e6354fd75bab",
+      "bytes": 51475,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_FINAL_TEST_OUTPUT.txt",
+      "kind": "red-or-fix-log",
+      "referencedBy": [
+        "red/fix history log set"
+      ],
+      "sha256": "27f95927e7e69d17333c0090e42e974cdbefff9951020b90bcbfecb6a35f080a",
+      "bytes": 3564,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_NEW_TEST_OUTPUT.txt",
+      "kind": "red-or-fix-log",
+      "referencedBy": [
+        "red/fix history log set"
+      ],
+      "sha256": "9819aa72114fbbae40033211db122de9f0a1b04d97048013c5db1c77a61a439a",
+      "bytes": 1143,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_NOTES.txt",
+      "kind": "red-or-fix-log",
+      "referencedBy": [
+        "red/fix history log set"
+      ],
+      "sha256": "d999da27b6dbbaf548ce9f6f2d0d9c0fa65c366fdbe0e7c98b8a93e46bfe5c14",
+      "bytes": 4414,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_SHARED_CONTINUATION_2026-10-02T15-32-03-953Z.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.initialSharedFailures",
+        "red/fix history log set"
+      ],
+      "sha256": "c4d57f41301fd0a7e35f43904371b93729c477a45886e290c629d2de2061e266",
+      "bytes": 11826,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_SHARED_VERIFIED_CONTINUATION_2026-10-02T15-33-47-652Z.json",
+      "kind": "primary-json",
+      "referencedBy": [
+        "primary acceptance JSON",
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.sharedRegression"
+      ],
+      "sha256": "aca6b63501bb554915653a9bc4167014d87026ea7d1da5c9749181ededce2beb",
+      "bytes": 557,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_SHARED_VERIFIED_CONTINUATION_2026-10-02T15-33-47-652Z.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.sharedRegressionLog",
+        "DELTA_SHARED_VERIFIED_CONTINUATION.json:log",
+        "red/fix history log set"
+      ],
+      "sha256": "6713f807eef2a7b307a29bd0314878be102adff1a2b8c22381e6d84400b05052",
+      "bytes": 9357,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_TEST_OUTPUT.txt",
+      "kind": "red-or-fix-log",
+      "referencedBy": [
+        "red/fix history log set"
+      ],
+      "sha256": "aa029655efd79122445c5da908873b883388a5484ab0acd31f010a2e3f281853",
+      "bytes": 7548,
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/append-9G4Y2z/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 399,
+      "sha256": "051d92b2f43e7a5f0aa79b27f12cf0af2e399000fbfe3d138799f3bb6c58f90f",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/append-9G4Y2z/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/cancel-unobserved-0bugPj/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 406,
+      "sha256": "d7b75ba5a644797efbd5202455f8892d2143acdb7cd8683b6d43be8522161d03",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/cancel-unobserved-0bugPj/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/compatibility-reject-SiSmgC/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 296,
+      "sha256": "843693c213305f6deb516babe0936a1e97569fa340905168eb82c233f03a9876",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/compatibility-reject-SiSmgC/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/coverage-incomplete-zmVEog/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 437,
+      "sha256": "4f23ec3bd57e38fed85c3cffe6b467004e99e981b6df46708afb1044a249989e",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/coverage-incomplete-zmVEog/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/cross-window-7kg3sG/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 393,
+      "sha256": "0cb46aeee28201468f10c136cc514906c8e04472a0212a7a59f8de4e3db93cc9",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/cross-window-7kg3sG/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/invalid-offset-VLdd37/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 364,
+      "sha256": "eb5873969b4f55529b1d3402390dbbb55074dd592616791655a001fbdb5360ba",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/invalid-offset-VLdd37/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/partial-frame-L5XWKN/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 408,
+      "sha256": "3db8ce6b2f26188520c2c37c8cefe95888a3902632a86206e74be8188197cc25",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/partial-frame-L5XWKN/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/sequence-mismatch-uYuEz7/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 405,
+      "sha256": "0bbea7e908ba40089a5422f59ade8ac4e387f439c3f897ce211af6af662d8e64",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/sequence-mismatch-uYuEz7/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/surface-replace-yRll77/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 427,
+      "sha256": "2a2f8d158108df9087a83d4eb03e720295f1ca1846638e15e6d4a0a1ac0064a5",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/surface-replace-yRll77/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/unknown-rTv8e5/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 409,
+      "sha256": "bd86ed10aca14c5aeed3c543c1fefaea2503d14796322b9bdfc765930a8e0933",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/unknown-rTv8e5/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/worker-exit-dilkyn/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 408,
+      "sha256": "7ece7f0258aace9167a4a762be2bccc90558aebb02a0e27ece35c58bf8ad70d9",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/worker-exit-dilkyn/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/FINAL_contract_VERIFIED.txt",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 271,
+      "sha256": "d47580affbcc32e4922dac3d3d6a23044f6dde2a06c750ade4997750686b2d75",
+      "exists": true
+    },
+    {
+      "path": "evidence/FINAL_contract.txt",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 823,
+      "sha256": "f50d948e34403a23aa3741cf4fd1bc19a7bea33a764c0f821c2293f5b38fee25",
+      "exists": true
+    },
+    {
+      "path": "evidence/FINAL_QUERY_INTEGRITY.json",
+      "kind": "final-query-integrity",
+      "referencedBy": [
+        "runtime-finalize FINAL_QUERY_INTEGRITY dependency"
+      ],
+      "bytes": 268,
+      "sha256": "a1d1f23ff8615e768c9ae7925e617ca9e63cfec7c84e0cf7c3d2cecbd1b5699c",
+      "exists": true
+    },
+    {
+      "path": "evidence/FINAL_SOURCE_CHECKS_VERIFIED.json",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 984,
+      "sha256": "4b8d5ebfe390af9a7261ba31402742fa612c810bdc0ba286b03edebea7046037",
+      "exists": true
+    },
+    {
+      "path": "evidence/FINAL_SOURCE_CHECKS.json",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 761,
+      "sha256": "6c3cdcfbb5317ae373a26f6ccac5a0571ef40760a95a63250cc7a843830b4378",
+      "exists": true
+    },
+    {
+      "path": "evidence/FINAL_source-typecheck_VERIFIED.txt",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exists": true
+    },
+    {
+      "path": "evidence/FINAL_source-typecheck.txt",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exists": true
+    },
+    {
+      "path": "evidence/FINAL_test-typecheck_VERIFIED.txt",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exists": true
+    },
+    {
+      "path": "evidence/FINAL_test-typecheck.txt",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exists": true
+    },
+    {
+      "path": "evidence/FINAL_work-runtime-build_VERIFIED.txt",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exists": true
+    },
+    {
+      "path": "evidence/FTS_CONTINUATION_4f2e52be-fff1-4e65-a642-6d765d7a00d0.json",
+      "kind": "fts-run-output",
+      "referencedBy": [
+        "FTS_CONTINUATION_FINAL_20261002.json:originalRun/correctedRun report and output"
+      ],
+      "sha256": "368c28198b2291d2e8f8375ab19dcaa56095c5aa3572143a43f23c93a7276278",
+      "bytes": 3049,
+      "exists": true
+    },
+    {
+      "path": "evidence/FTS_CONTINUATION_4f2e52be-fff1-4e65-a642-6d765d7a00d0.txt",
+      "kind": "fts-run-output",
+      "referencedBy": [
+        "FTS_CONTINUATION_FINAL_20261002.json:originalRun/correctedRun report and output"
+      ],
+      "sha256": "ff4dc6dcf717455a47c6e009580a444824416de22d393025ef6226eed15e420a",
+      "bytes": 19200,
+      "exists": true
+    },
+    {
+      "path": "evidence/FTS_CONTINUATION_7b887725-a046-4dc6-af55-1fb5aea112cd.json",
+      "kind": "fts-run-output",
+      "referencedBy": [
+        "FTS_CONTINUATION_FINAL_20261002.json:originalRun/correctedRun report and output"
+      ],
+      "sha256": "e541aded42c930e7ccc8fc5167f1163cb86ca5eb93e65a60d5d58e7387c02439",
+      "bytes": 2112,
+      "exists": true
+    },
+    {
+      "path": "evidence/FTS_CONTINUATION_7b887725-a046-4dc6-af55-1fb5aea112cd.txt",
+      "kind": "fts-run-output",
+      "referencedBy": [
+        "FTS_CONTINUATION_FINAL_20261002.json:originalRun/correctedRun report and output"
+      ],
+      "sha256": "54f2aab7249d2d0d992369b3d9c843f3a189102017b004971f6eb6216b8457b9",
+      "bytes": 560,
+      "exists": true
+    },
+    {
+      "path": "evidence/FTS_CONTINUATION_FINAL_20261002.json",
+      "kind": "primary-json",
+      "referencedBy": [
+        "primary acceptance JSON"
+      ],
+      "sha256": "7e23c62faec85aa6b72d0d7cab0a3aa85bd20debf5ca048dd89b3bffd53b596b",
+      "bytes": 2458,
+      "exists": true
+    },
+    {
+      "path": "evidence/FTS_PROGRESS_GAP_e53f902b-f6f8-4358-91cd-ceff080ebb36.json",
+      "kind": "fts-fixture-gap",
+      "referencedBy": [
+        "FTS_CONTINUATION_FINAL_20261002.json:fixtureCorrection.observedGapEvidence"
+      ],
+      "sha256": "e348284c8ac3811b9391dc8cc6b930b7204ae98696871806646a631f9098d982",
+      "bytes": 3370,
+      "exists": true
+    },
+    {
+      "path": "evidence/FTS_PROGRESS_GAP_edf78875-ede3-47cf-9c8f-31ae6f1fa55c.json",
+      "kind": "fts-fixture-gap",
+      "referencedBy": [
+        "FTS_CONTINUATION_FINAL_20261002.json:fixtureCorrection.observedGapEvidence"
+      ],
+      "sha256": "d96b0816c2e73f9d0b24d1eb3e0d210e49dd616af74fbb05edb1a72f97eb0c66",
+      "bytes": 3616,
+      "exists": true
+    },
+    {
+      "path": "evidence/MIGRATION_DUAL.json",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 343355,
+      "sha256": "b60c12a1f6bf443dc16e905cb4945cf6670bb8c22800e4430764c622218f0be1",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-interrupt-final/INTERRUPTED.json.progress.jsonl",
+      "kind": "run-artifact:migration-interrupt-final",
+      "referencedBy": [
+        "directory snapshot migration-interrupt-final"
+      ],
+      "bytes": 4324,
+      "sha256": "006ddbc97fb44c903ddad1fa71820223bb75dedd2c02be61eb7853e5ea9f1cc9",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-interrupt-final/INTERRUPTED.json.txt",
+      "kind": "run-artifact:migration-interrupt-final",
+      "referencedBy": [
+        "directory snapshot migration-interrupt-final"
+      ],
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-interrupt-final/RESULTS.json",
+      "kind": "run-artifact:migration-interrupt-final",
+      "referencedBy": [
+        "directory snapshot migration-interrupt-final"
+      ],
+      "bytes": 248648,
+      "sha256": "0c0fcefa316fbc7265c3753c9fb76d8983751cbfb859082a64ca26a4948e8caf",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-interrupt-final/SECOND_START.json",
+      "kind": "run-artifact:migration-interrupt-final",
+      "referencedBy": [
+        "directory snapshot migration-interrupt-final"
+      ],
+      "bytes": 12799,
+      "sha256": "0aba053f47f75466edcacbd8dbf88638b57dda08dd395441b8f5ffb168a128fb",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-interrupt-final/SECOND_START.json.progress.jsonl",
+      "kind": "run-artifact:migration-interrupt-final",
+      "referencedBy": [
+        "directory snapshot migration-interrupt-final"
+      ],
+      "bytes": 708,
+      "sha256": "9d7ec0b10766068febbfa75712b34e450bee5a2e526ec4fe805c393cd0fadd28",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-interrupt-final/SECOND_START.json.txt",
+      "kind": "run-artifact:migration-interrupt-final",
+      "referencedBy": [
+        "directory snapshot migration-interrupt-final"
+      ],
+      "bytes": 207,
+      "sha256": "be2075818304f64c916c5b29789648c7da61218da618c51588c3d61f3456974a",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-interrupt-final/UPGRADE.json",
+      "kind": "run-artifact:migration-interrupt-final",
+      "referencedBy": [
+        "directory snapshot migration-interrupt-final"
+      ],
+      "bytes": 178778,
+      "sha256": "6209d286f65f261a752c872fe133b12f565f7764ef87f9932bea4a72fe6f9ebe",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-interrupt-final/UPGRADE.json.progress.jsonl",
+      "kind": "run-artifact:migration-interrupt-final",
+      "referencedBy": [
+        "directory snapshot migration-interrupt-final"
+      ],
+      "bytes": 106998,
+      "sha256": "987de3d3de01e659a0650f2e3286a52c6a25fb493cdd21b59bb51e445cb88714",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-interrupt-final/UPGRADE.json.txt",
+      "kind": "run-artifact:migration-interrupt-final",
+      "referencedBy": [
+        "directory snapshot migration-interrupt-final"
+      ],
+      "bytes": 211,
+      "sha256": "8ef20f74c41c34cded902d1d6c1f2d34c7d4ea2e0cf0b64cda96b41209132d9c",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-interrupt-final/WINDOWS_LOAD_SAMPLER.json",
+      "kind": "run-artifact:migration-interrupt-final",
+      "referencedBy": [
+        "directory snapshot migration-interrupt-final"
+      ],
+      "bytes": 185,
+      "sha256": "562df3104e570a9ec702d55f33e72c96f36299d147dcc2b66ccc2e0f73eed0b2",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-interrupt-final/WINDOWS_LOAD.jsonl",
+      "kind": "run-artifact:migration-interrupt-final",
+      "referencedBy": [
+        "directory snapshot migration-interrupt-final"
+      ],
+      "bytes": 6508,
+      "sha256": "3da0f5b065db86067055ae8531ccbd5e0724ee229ee3032973ec68dfd9df5612",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-interrupt-final/WINDOWS_LOAD.stop",
+      "kind": "run-artifact:migration-interrupt-final",
+      "referencedBy": [
+        "directory snapshot migration-interrupt-final"
+      ],
+      "bytes": 5,
+      "sha256": "d117fa006ba9208500b2930ce69cbde436c647afa917cb7396a9bc9111a46dd2",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-normal-final/RESULTS.json",
+      "kind": "run-artifact:migration-normal-final",
+      "referencedBy": [
+        "directory snapshot migration-normal-final"
+      ],
+      "bytes": 237052,
+      "sha256": "3d6cb8dd96db2f8c0d24a05a458b05d0768c0bccb74e0601bb026ea02cc82630",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-normal-final/SECOND_START.json",
+      "kind": "run-artifact:migration-normal-final",
+      "referencedBy": [
+        "directory snapshot migration-normal-final"
+      ],
+      "bytes": 11275,
+      "sha256": "a8be409735718dda5a2b4ebd255204d84d3e2695b9185e5f7c3ca0e6d2bc460d",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-normal-final/SECOND_START.json.progress.jsonl",
+      "kind": "run-artifact:migration-normal-final",
+      "referencedBy": [
+        "directory snapshot migration-normal-final"
+      ],
+      "bytes": 708,
+      "sha256": "40bb1267129219f537f89e5591497fe742d1913fe2ba6cf00f8f1633060ef9f9",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-normal-final/SECOND_START.json.txt",
+      "kind": "run-artifact:migration-normal-final",
+      "referencedBy": [
+        "directory snapshot migration-normal-final"
+      ],
+      "bytes": 207,
+      "sha256": "c999908da3193b2b5cc2ce34582dc02ba547c405aaba8949665b8d147d804a1e",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-normal-final/UPGRADE.json",
+      "kind": "run-artifact:migration-normal-final",
+      "referencedBy": [
+        "directory snapshot migration-normal-final"
+      ],
+      "bytes": 177268,
+      "sha256": "d80b39efa37ec6fb40eb872fbf521d56d579e31767eece7dfd1c401dbf37eda4",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-normal-final/UPGRADE.json.progress.jsonl",
+      "kind": "run-artifact:migration-normal-final",
+      "referencedBy": [
+        "directory snapshot migration-normal-final"
+      ],
+      "bytes": 106990,
+      "sha256": "e6b27c629c3b330d6131a46e701fa0a4539daa56adf52b12c72853eb5c245e97",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-normal-final/UPGRADE.json.txt",
+      "kind": "run-artifact:migration-normal-final",
+      "referencedBy": [
+        "directory snapshot migration-normal-final"
+      ],
+      "bytes": 219,
+      "sha256": "3b1d5235c10fff8bf46efcaccaa1249517e33252cbcefba8302f6d648c65cf50",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-normal-final/WINDOWS_LOAD_SAMPLER.json",
+      "kind": "run-artifact:migration-normal-final",
+      "referencedBy": [
+        "directory snapshot migration-normal-final"
+      ],
+      "bytes": 185,
+      "sha256": "562df3104e570a9ec702d55f33e72c96f36299d147dcc2b66ccc2e0f73eed0b2",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-normal-final/WINDOWS_LOAD.jsonl",
+      "kind": "run-artifact:migration-normal-final",
+      "referencedBy": [
+        "directory snapshot migration-normal-final"
+      ],
+      "bytes": 6483,
+      "sha256": "51e64d344991837b61483785943e13bbc85339d8506418d37d0cfde24c0da9f4",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-normal-final/WINDOWS_LOAD.stop",
+      "kind": "run-artifact:migration-normal-final",
+      "referencedBy": [
+        "directory snapshot migration-normal-final"
+      ],
+      "bytes": 5,
+      "sha256": "d117fa006ba9208500b2930ce69cbde436c647afa917cb7396a9bc9111a46dd2",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f/BOUNDARY.json",
+      "kind": "run-artifact:migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f",
+      "referencedBy": [
+        "directory snapshot migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f"
+      ],
+      "bytes": 575,
+      "sha256": "9babcf1644bf6c750684e2ce52a42aceb9e4d93404a4d6eb6507ac026b48d7a8",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f/INTEGRITY_PROCESS_VERIFIED.json",
+      "kind": "run-artifact:migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f",
+      "referencedBy": [
+        "directory snapshot migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f"
+      ],
+      "bytes": 275,
+      "sha256": "8f19213a46268e97bc9d4fc311bfa4e029e73bd7ff0e7fb27b616665a644d107",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f/INTEGRITY_PROCESS.json",
+      "kind": "run-artifact:migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f",
+      "referencedBy": [
+        "directory snapshot migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f"
+      ],
+      "bytes": 332,
+      "sha256": "40bdc25ad05abded70c5d98e9816061090799f1d81c2f75f1c9e33e7b82955e5",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f/INTEGRITY.json",
+      "kind": "run-artifact:migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f",
+      "referencedBy": [
+        "directory snapshot migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f"
+      ],
+      "bytes": 265,
+      "sha256": "d4e994d81cc0962e3a23953a68f0f24b03891a521e9d4c03c77830da9cd72e47",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f/PROCESS.json",
+      "kind": "run-artifact:migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f",
+      "referencedBy": [
+        "directory snapshot migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f"
+      ],
+      "bytes": 82,
+      "sha256": "a5171fc492c71c9a32722288ecd4ea2722e300e4d50856b68106a79b585564c7",
+      "exists": true
+    },
+    {
+      "path": "evidence/migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f/RESULTS.json",
+      "kind": "run-artifact:migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f",
+      "referencedBy": [
+        "directory snapshot migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f"
+      ],
+      "bytes": 374411,
+      "sha256": "e8bffa8061185a9c442124d022ff003785339db4ae589ba2e0ecc05b7a0895a3",
+      "exists": true
+    },
+    {
+      "path": "evidence/PERFORMANCE_HISTORY_SUMMARY_20261002.json",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 29236,
+      "sha256": "1b01cf1eee9e9bc7094d1e92886229e11569661302f54265cb0bcb4c01ad695e",
+      "exists": true
+    },
+    {
+      "path": "evidence/RELEASE_BUILD_BOUNDARY.json",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 641,
+      "sha256": "f4ef6d4e2e45cdddf8ed936c46af948d63719e0ca78396a978d425d3b18da5b0",
+      "exists": true
+    },
+    {
+      "path": "evidence/RELEASE_REPRODUCIBLE.json",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 135,
+      "sha256": "e6f12cf293cec69a4b14c0cbd741887930fa2b4b4c548cc518de6e6b852c5561",
+      "exists": true
+    },
+    {
+      "path": "evidence/rollback-compat-2cd89e47-fd94-4150-8c5f-1740021a7df0/BOUNDARY.json",
+      "kind": "run-artifact:rollback-compat-2cd89e47-fd94-4150-8c5f-1740021a7df0",
+      "referencedBy": [
+        "directory snapshot rollback-compat-2cd89e47-fd94-4150-8c5f-1740021a7df0"
+      ],
+      "bytes": 616,
+      "sha256": "1e719a6bd0d5fbbb31e9cc46b33f35f1069ee4d9e8683e59fb355887cd9ec06d",
+      "exists": true
+    },
+    {
+      "path": "evidence/rollback-compat-2cd89e47-fd94-4150-8c5f-1740021a7df0/RESULTS.json",
+      "kind": "run-artifact:rollback-compat-2cd89e47-fd94-4150-8c5f-1740021a7df0",
+      "referencedBy": [
+        "directory snapshot rollback-compat-2cd89e47-fd94-4150-8c5f-1740021a7df0"
+      ],
+      "bytes": 56840,
+      "sha256": "87f245569f373b02c50b6ef77298be360d966c0db8117f45474b7ec90cc45c4d",
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_FTS_RECOVERY_BEHAVIOR_RED_2026-10-02T15-27-10-087Z.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.sameSourceWriterRecoveryRed",
+        "red/fix history log set"
+      ],
+      "sha256": "3711b9db6808394538bc7a81ee80f41d77914ba74a1dab34ca22ece285041b2d",
+      "bytes": 20099,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_FTS_RECOVERY_RED_2026-10-02T15-26-22-946Z.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.recoveryTestCompileFailure",
+        "red/fix history log set"
+      ],
+      "sha256": "1df6140d8561646f9eceabe459784b41f8e36e4aa62cce525ece000a8915eeba",
+      "bytes": 368,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_PUBLICATION_RACE_RED_2026-10-02T15-19-18-009Z.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.thirdRejectedPublicationRed",
+        "red/fix history log set"
+      ],
+      "sha256": "b67c2115af953b3348d7b31517146b971c2dd77906c97efa930de2912f5214ec",
+      "bytes": 23613,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_RETRY_CONTINUATION_2026-10-02T15-16-25-857Z.txt",
+      "kind": "red-or-fix-log",
+      "referencedBy": [
+        "red/fix history log set"
+      ],
+      "sha256": "c39d088ee50ad285e3c3d83e0e61b46516f7024f9697d87598b18470f8e21691",
+      "bytes": 364,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_RETRY_CONTINUATION_2026-10-02T15-30-10-990Z.json",
+      "kind": "primary-json",
+      "referencedBy": [
+        "primary acceptance JSON",
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.laggingRetry"
+      ],
+      "sha256": "19fdf6238d250d2e0fe67fff2976a234407810b6c91d5587fafd314286a66529",
+      "bytes": 77382,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_RETRY_FINAL_2026-10-02T15-30-02-276Z.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.laggingRetryLog",
+        "red/fix history log set"
+      ],
+      "sha256": "0270e5f76fe2b436c591848673aad925c4e6015332ae8b9cf519c8390e00ba28",
+      "bytes": 571,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_RETRY_FINAL_GREEN_2026-10-02T15-29-38-524Z.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.statusRenderCompileFailure",
+        "red/fix history log set"
+      ],
+      "sha256": "572fd51b8f5c46cfbd9d36075ea64712bfa0e5963b42d5f201b88c32efa0a53a",
+      "bytes": 181,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_RETRY_GREEN_2026-10-02T15-20-58-597Z.txt",
+      "kind": "red-or-fix-log",
+      "referencedBy": [
+        "red/fix history log set"
+      ],
+      "sha256": "d5db94b5cbe43114a163be71d364075b34bb1fde0b042f7a863c6e8210b4ffaf",
+      "bytes": 469,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_RETRY_RED.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.originalHalfFrameFailure",
+        "red/fix history log set"
+      ],
+      "sha256": "7a5ac026289868616232d440fb73597231bcc267642293f93fe19fc6ab43ab30",
+      "bytes": 2328,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_RETRY.json",
+      "kind": "supplemental",
+      "referencedBy": [
+        "explicit historical/targeted evidence"
+      ],
+      "sha256": "ac20228153be49d5dcba8a58f533b85577425a4bc6078d7ae72bf27040fc3d31",
+      "bytes": 8887,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_READY_RECOVERY_TEST.txt",
+      "kind": "supplemental",
+      "referencedBy": [
+        "explicit historical/targeted evidence"
+      ],
+      "sha256": "7e43ba0729e81c4f06811efe16161a000cf550d76f20f5f9b3778077292b9c4c",
+      "bytes": 367,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_SQLITE_ERROR_CLASSIFICATION.txt",
+      "kind": "supplemental",
+      "referencedBy": [
+        "explicit historical/targeted evidence"
+      ],
+      "sha256": "b58ff8d0c2ba8b0b0f3aa2107e6334f56d82fa3c6cf3c9c9312063b55fe2557c",
+      "bytes": 786,
+      "exists": true
+    },
+    {
+      "path": "evidence/SOURCE_RESUME_CHECK_20261002.json",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 17434,
+      "sha256": "074fae008efff4fcc99e4e75765cdce4f4a4b6a37df7835a21526da815c3eace",
+      "exists": true
+    },
+    {
+      "path": "evidence/SQL_TARGETED_TEST_RESULTS.txt",
+      "kind": "supplemental",
+      "referencedBy": [
+        "explicit historical/targeted evidence"
+      ],
+      "sha256": "050cff716af5020746efc252c3564876865af20e2a1068b7b877f5c46986b37d",
+      "bytes": 2567,
+      "exists": true
+    },
+    {
+      "path": "evidence/WINDOWS_LOAD_BASELINE.json",
+      "kind": "finalization-dependency",
+      "referencedBy": [
+        "runtime-finalize acceptance/report dependency"
+      ],
+      "bytes": 864,
+      "sha256": "2b2a94fc793d4ad1bb51c7fdb144489ee76b24b66ce305e28be41e22886ab905",
+      "exists": true
+    },
+    {
+      "path": "evidence/STARTUP_FIRST_INDEX_ANALYSIS_20261002.json",
+      "kind": "first-index-analysis",
+      "referencedBy": [
+        "root delta_verify final analysis"
+      ],
+      "bytes": 19786,
+      "sha256": "a62ca72daa04e2c57fa4c88a65f445c3dad8f2e718b5da1f919fb0c5a2f3b491",
+      "exists": true
+    }
+  ],
+  "pendingEvidence": [],
+  "missingrefs": [],
+  "verification": {
+    "baseDeltaSampleCount": 22,
+    "baseDeltaSampleVerifiedCount": 22,
+    "allBaseDeltaSamplesMatch": true,
+    "mustStayExcluded": [
+      "all database files (*.db, -wal, -shm)",
+      "all lagging-retry-samples/** data directories",
+      "all source session/log bodies except exactly the 22 listed synthetic delta before/after zstd samples"
+    ],
+    "hasPendingFinalQueryIntegrity": false,
+    "nonEvidenceFilesExcluded": [
+      "DEPLOYMENT_DIFF.json is a root artifact and must be copied separately into candidate as planned.",
+      "FINAL_PACKAGING_EVIDENCE_LIST.json is not in its own allowlist to avoid self-hash recursion."
+    ],
+    "hashMismatches": 0,
+    "hashCheckedCount": 234,
+    "missingAllowlistFiles": 0,
+    "forbiddenPathsFound": 0
+  },
+  "notes": [
+    "Includes both five-round query runs: the initial verified continuation and the latest normal-upgraded final query, with per-round JSON/text plus load/boundary files.",
+    "Includes normal/interrupted schema2 migration, public default status/integrity, dual migration, and rollback compatibility artifacts.",
+    "Includes candidate query snapshot metadata and dataset snapshot; does not include snapshot database.",
+    "The list itself is deliberately not part of its own evidenceAllowlist; package it as a root packaging manifest only if avoiding self-reference, or hash it from CANDIDATE metadata after finalization."
+  ],
+  "candidateRootArtifacts": [
+    {
+      "path": "DEPLOYMENT_DIFF.json",
+      "exists": true,
+      "bytes": 28109,
+      "sha256": "14dae4a45024eaca9888ebef58431f76c33dfb787e9c01a26eb5a5da4f3cff1a",
+      "candidateCopy": "separate root artifact; not passed as an evidence/ allowlist argument",
+      "summary": {
+        "recordCount": 69,
+        "changedFiles": 45,
+        "sourceFiles": 22,
+        "sourceChangedFiles": 11
+      }
+    }
+  ],
+  "queryHistoryDirectoryCount": 10,
+  "queryHistoryFilesAdded": 102,
+  "queryIntegrityStatus": "present; included; root read ok=true quick_checkMs=49652.9424"
+}

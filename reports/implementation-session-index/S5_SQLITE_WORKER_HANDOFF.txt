@@ -1,0 +1,77 @@
+S5.2 SQLite worker 子任务暂停交接（2026-10-02）
+
+用户要求手头最小任务完成后暂停；已完成正在运行的21例targeted测试和diff check，现停止后续执行。
+整体S5.2不能标记全部完成：最终双worker架构尚未执行5轮冷/稳态性能验收。
+
+所有者工作树：
+E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index\validation\stage-agents\sqlite
+
+只交付以下7个新文件，复制到root对应路径；绝不能反向覆盖本工作树的fts.ts/core.ts/query-plan.ts（它们是root的验证副本）：
+src/fts-client.ts
+src/fts-worker.ts
+test/fts-client.test.ts
+test/fts-client-stress.test.ts
+test/fts-transport-fixture.ts
+scripts/benchmark-fts-worker.mjs
+scripts/benchmark-fts-scenarios.mjs
+
+最终协议与行为：
+- createFtsClient(path,options):Promise<FtsClient|null>，正常SQLite初始化/schema/迁移/所有SQL只在worker。
+- 同一fts-worker.js分别运行writer与readOnly reader；writer ready/schema完成后启动reader。
+  所有search/searchPage/around/checkpoint/list/count/health/watermark读取走WAL reader，避免长事务饿死查询。
+  root engine须有createSessionFts(path,{readOnly:true})，且multi-SQL查询在只读BEGIN/COMMIT snapshot内。
+- syncSession/syncMessages逐字段小字符串JSON转义，包<=512KiB，整个client在飞包<=2。
+  active producer<=2；正文总UTF8(text+toolName)每session<=64MiB（过限EFTSSOURCE）。
+  active数组另有activeSourceBytes（UTF16/object保守估算）与activeBodyBytes（UTF8准确）峰值；不声称它们受8MiB限制。
+  IPC+第三方待传source队列预算<=8MiB，pending request/write<=128。超预算明确EFTSQUEUE。
+- Worker将JSONL packet写入专属临时磁盘；每stage磁盘上限1GiB（最多2个stage）；reader不可写stage。
+  最终engine.syncSessionIterable(header,()=>Iterable<Row>)/syncMessagesIterable(file,()=>Iterable<Row>,append)
+  在同一事务内同步逐行迭代，至多持有一条JSONL记录+64KiB读取buffer；不会拼装完整会话数组。
+  多轮busy重试由factory从磁盘重新迭代。失败/取消清理已知client UUID token，不暴露半个会话。
+- public search/searchPage limit必须整数1..500；legacy与page text<=4096字符且明确textTruncated，snippet来自完整正文。
+  完整response DTO限8MiB（预留4096字节envelope/telemetry），超限EFTSRESPONSE，无静默删结果。
+- query默认10s；writer默认120s；startup每worker15s；close drain15s。超时/退出拒绝所有pending并重建两worker。
+  自动重启最多30s内3次，超频restartSuspended；显式restart仍可恢复。没有同步主线程SQL逃生路径。
+- onRecovered只在成功restart ready后queueMicrotask调用一次；closing时抑制；异常仅lastRecoveryCallbackError。
+  root应通过该回调触发checkpoint/dirty自动回补。
+- health使用reader统计+client本地write receipt失败/failedSessions/pendingWrites；不阻塞等待writer长事务。
+  响应telemetry保存writer/reader线程heap/external以及磁盘stage峰值；RSS是整个Node进程共享，不能当独立线程RSS。
+- flush按调用边界排空并传播失败；并发flush都取得失败快照。close停止接单、排空或明确超时、terminate两worker并清理各自目录。
+
+最终验证：
+- TypeScript test编译通过；git diff --check通过。
+- TEST_RESULTS/sqlite-final-telemetry.txt + .json：21/21，最后一次最终source/协议验证。
+  覆盖SQL RPC/short LIKE/filter/maintenance/checkpoint、2500条失败替换回滚、双producer和Unicode切片、
+  有界待传source、staging ack前取消、query取消、hang timeout/restart、exit/queue admission、
+  回调与close抑制、restart风暴界限、query limit/4096 textTruncated/64MiB body/8MiB response、
+  writer hang close timeout、排空卸载/reopen、FTS null与反复apply/dispose、并发flush失败边界。
+- TEST_RESULTS/sqlite-stress-50k.txt + .json 与 BENCHMARK_RESULTS/fts-worker/dual-reader/stress-50k.json：1/1通过。
+  50,000×1000字符ASCII（正文50MiB）失败replace回滚14.36s，380次reader search+health，max14.02ms，只见旧count=1。
+  成功replace32.92s，771次reader search+health，max112.35ms，只见count=1或50000；checkpoint最终50000。
+  query timeout仍为2000ms、restarts=0，明确证明长writer不能因query排队被terminate。
+  maxQueueBytes=1,048,601，maxBatchBytes=524,288，maxInFlightBatches=2，maxActiveBodyBytes=50,001,000，
+  maxActiveSourceBytes=118,980,496；结束process RSS=164,921,344。原始每次query latency已保存JSON。
+  此压力测试在最后一次telemetry-only协议统计补丁之前运行；其SQL/reader架构与正文/队列路径未改变。
+- 初始单writer两组5轮冷/稳态均独立通过，但只能作为该架构历史证据，不能替代最终双worker性能：
+  第一组原文件在BENCHMARK_RESULTS/fts-worker根（steady max24.01..31.31ms），相关scenarios在first-run/。
+  schema5单writer第二组在BENCHMARK_RESULTS/fts-worker/schema5-final/：steady max22.08..30.47ms；
+  cold max22.97..30.24ms，2500×1000、Node v24.16.0，完整raw heartbeat gaps与RSS/queue。
+  schema5 scenarios完整回填24.63ms gap，10条increment18.00ms，12并发LIKE/trigram23.98ms，maintenance31.42ms，
+  cancel13.87ms，restart19.62ms。对1199ms历史主线程baseline改善>=97.45%，所有单writer5轮<=100ms。
+  baseline约5–7个heartbeat样本，分位数仅描述，不宣称稳定p99。
+- 失败与中间证据均保留：初始execArgv不兼容（已改execArgv=[]）；旧engine page缺textTruncated；
+  单writer→reader拆分后旧close测试错误要求reader hang必使close失败（改为专门挂起writer真验drain）。
+
+恢复后最小后续：
+1. 核对root已复制上述最终7文件，fts.ts支持只读工厂和Iterable入口；index/builder已有async reads、2条完整parse→FTS pipeline lane、onRecovered回补。
+2. root实际index/builder集成测试与类型检查。
+3. 避免同时大量测试，单独运行最终双worker5轮与scenarios（保留旧两组）：
+   node node_modules/typescript/bin/tsc -p tsconfig.test.json
+   $env:FTS_BENCHMARK_LABEL = 'dual-reader-final'
+   node scripts/benchmark-fts-worker.mjs
+   node scripts/benchmark-fts-scenarios.mjs
+   launcher每个baseline/candidate cold/steady/round是独立子进程，严格5轮，<=100ms且相对1199ms>=80%改善断言未放宽。
+   scratch每次独立；各run保存raw timer gaps/p50/p95/p99/max/样本数/Node/CPU忙碌比例/RSS/queue/worker telemetry。
+4. 若最终双worker5轮达标并root集成通过，才能将#14/S5.2关闭。
+
+本子任务没有build.sh、安装、部署、生产读取/迁移、push、重启宿主或修改G运行区。没有创建提交。

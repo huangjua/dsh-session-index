@@ -1,0 +1,161 @@
+✔ S2 builder awaits async FTS receipt before releasing the run marker or reporting completion (901.1994ms)
+✔ S2 JSON can lead failed FTS; unchanged-file retry performs a full parse from the committed base (2835.0448ms)
+✔ S2 FTS COMMIT followed by JSON failure recovers without duplicate append or checkpoint regression (797.6792ms)
+✔ S2 builder dispose drains the dispatched callback and refuses later builds (469.5529ms)
+✔ two deterministic compressed-read races retain committed metadata and searchable FTS, counting both attempts (911.2983ms)
+▶ S2 apply 启动 FTS 恢复
+  ✔ 启动不执行重型维护，仍恢复 JSON 领先的正文与 checkpoint (3278.2891ms)
+  ✔ JSON 指纹/游标领先 FTS 而会话数相等，启动自动补齐当前完整正文 (3817.7753ms)
+  ✔ 会话数相等但 FTS 无正文/无 checkpoint，启动仍自动回填 (1321.8059ms)
+  ✔ INSERT 失败标记 dirty/降级与健康错误，恢复写入后后台重试成功 (3427.0711ms)
+  ✔ JSON 删除已提交但 FTS 删除失败，重启识别孤儿并继续清理 (794.3448ms)
+  ✔ 已提交空会话与已有 unindexable 坏条目不会触发回填循环 (2181.6862ms)
+✔ S2 apply 启动 FTS 恢复 (14826.2809ms)
+▶ S2 apply 卸载生命周期
+  ✔ dispose 期间已接受的 FTS 队列排空，停止新写入且无后台再建库 (801.4093ms)
+  ✔ dispose 后延迟 FTS 工厂返回的连接立即关闭，启动写入不会复活 (509.7188ms)
+✔ S2 apply 卸载生命周期 (1311.7275ms)
+▶ native tail range reads
+  ✔ reads only the requested frame and applies the cap to actual input/allocation (17.4689ms)
+  ✔ handles partial FileHandle reads without rereading a prefix (8.6166ms)
+  ✔ rejects an oversized tail before reading or allocating it (5.6074ms)
+  ✔ rejects invalid offsets before opening/reading (1.234ms)
+  ✔ rejects a source already shorter than the delta offset with an observable race (6.25ms)
+  ✔ rejects an offset inside a frame, empty range and malformed tail (9.8574ms)
+  ✔ detects shrink during reading and closes its handle (8.6214ms)
+  ✔ detects append during reading before emitting any decoded output (8.0893ms)
+  ✔ detects source changes during sink processing (6.954ms)
+  ✔ checks abort before reading, between reads and after sink, always closing an opened handle (7.6205ms)
+  ✔ closes on decode and sink errors (12.2522ms)
+  ✔ retains multi-frame decode, early stop and full-read counter semantics (7.7657ms)
+  ✔ retains tail-frame integrity and total decompression limits (11.247ms)
+  ✔ validates skippable lengths and skips embedded frame magic in their payload (0.8976ms)
+✔ native tail range reads (126.671ms)
+✔ pure append reads only the compressed tail and equals full including anchors (594.2489ms)
+✔ within-window replacement keeps full fallback with one delta attempt (600.533ms)
+✔ cross-window replacement keeps full fallback with one delta attempt (654.583ms)
+✔ invalid persisted frame offset is classified without repeating deterministic delta (1192.006ms)
+✔ sequence mismatch is explicit and one full pass restores the correct checkpoint (1390.6ms)
+✔ an explicit compatibility rejection runs one necessary full pass and deindexes the incompatible surface (988.6451ms)
+✔ insufficient delta coverage budget retains the necessary full rebuild (1684.6912ms)
+✔ unclassified failures retain unknown and the existing bounded retry even when text resembles a known cause (918.2154ms)
+✔ a temporarily incomplete frame is retried once; changed source is retained until stable follow-up (693.5198ms)
+✔ parser worker exit is explicit and safely falls back without claiming unobserved read metrics (558.4918ms)
+✔ cancel after a real delta read without returned stats marks the reported zero as a lower bound (612.3843ms)
+✖ E:\Do Something\DSH备份\dsh-session-index work\runtime-fix-20261002\work\.delta-continuation-build\test\runtime-delta-fallback.test.js (36.9013ms)
+✔ public full/SCROLL expose actual FTS backend and bounded diagnostics without source/query/body text (932.7384ms)
+✔ source backend is explicit when FTS is disabled and results retain full coverage (305.7945ms)
+✔ ordinary status rendering shows actual migration progress and a safe failure code (328.3586ms)
+▶ SessionLogCompatibility alpha.3
+  ✔ accepts a header without optional delegationDepth (2.5849ms)
+  ✔ expands official packed chunk rows and decodes source sequence ranges (0.5632ms)
+  ✔ folds a surface replacement only when it cites every shadowed node (0.846ms)
+  ✔ keeps known log-only events opaque and accepts only explicitly ignorable unknown events (0.4194ms)
+  ✔ requires alpha.3 surface message roles and rejects retired header baselines (0.3029ms)
+✔ SessionLogCompatibility alpha.3 (6.1956ms)
+▶ SessionIndexBuilder 集成
+  ✔ 空目录首建 → 空索引（version 1 合法） (101.2476ms)
+  ✔ 首建：新增文件 full 字段齐全（无 detailMissing） (194.9698ms)
+  ✔ 增量：未变更文件全部 skipped (35.8064ms)
+  ✔ force 重建：全部重扫，updated=2 skipped=0 (214.2413ms)
+  ✔ 新增文件 → added=1，既有 skipped=2 (172.7208ms)
+  ✔ 删除文件 → prune（removed=1，索引减少） (46.2422ms)
+  ✔ P3 保留策略：超龄条目 prune（pruned 计数、index 移除、onSessionRemoved 触发、会话文件未动） (224.005ms)
+  ✔ P3 保留边界：retentionDays=90 时 89 天保留、91 天 prune (406.0363ms)
+  ✔ P3 retentionDays=0：保留策略关闭（pruned=0，超龄条目保留） (187.2849ms)
+  ✔ P3 修复：prune 后超龄文件不再被重扫重滤（后续构建 fullParsed=0） (274.5502ms)
+  ✔ 损坏文件：failed≥1 + error 记录，其余条目不受影响 (477.0585ms)
+  ✔ 多帧大文件（100 个事件帧）：计数成倍正确（自包含） (261.8184ms)
+  ✔ raced：解析期间文件被改写 → raced≥1，条目保留旧值并带 raced 标记（自包含） (669.471ms)
+  ✔ 单飞：并发两次 build 返回同一 Promise (653.4042ms)
+  ✔ 取消：head 阶段中止 → cancelled，旧索引字节不变 (12.4004ms)
+  ✔ 取消：full 阶段中止 → partialCommitted=true，quick index 带 detailMissing（自包含） (207.0798ms)
+  ✔ run-marker 冲突：他人持有新鲜 marker → skipped；释放后可构建 (480.1077ms)
+  ✔ 构建期间 maxEventLoopDelayMs/durationMs 已上报 (562.0321ms)
+  ✔ 取消后立即再构建 → 新构建正常完成 (524.7122ms)
+✔ SessionIndexBuilder 集成 (5746.5649ms)
+▶ SessionIndexBuilder alpha.3 变更文件安全重解析
+  ✔ 追加帧 → 全量重解析（counts/lastTime/lastText/indexedBytes/workspace 保留） (304.5771ms)
+  ✔ C9 delta：纯 append 帧走增量（startOffset=indexedBytes），结果与全量一致 (252.9095ms)
+  ✔ C9b delta：跨窗口 replace（引用窗口外旧 seq）→ 结构性失败 → 全量回退，结果正确 (283.9684ms)
+  ✔ C9b delta：多轮增量累加后与"强制全量重解析"逐字段一致 (738.7785ms)
+  ✔ C9 delta：窗口内出现 surface 替换 → 保守回退全量，结果仍正确 (266.6226ms)
+  ✔ C9b delta：旧索引缺 indexedSeq → 不启用增量（先全量补齐，再增量） (364.4604ms)
+  ✔ 追加 compaction 事件帧 → 全量重解析后收录（compaction/* 计入 counts，历史保留） (273.7398ms)
+  ✔ 过期 indexedBytes 不会开启后缀解析，仍全量重解析 (310.3791ms)
+  ✔ size < indexedBytes（文件被替换/回退）→ 全量重解析 (255.5579ms)
+  ✖ 尾帧截断（mid-write）→ 全量解析失败，旧条目保留 + error 记录 (772.5564ms)
+  ✔ P2 FTS 钩子：变更后全量消息替换既有文档 (400.2297ms)
+  ✔ 追加帧中的新 title 事件生效（last-wins，不残留旧标题） (340.8301ms)
+  ✔ force 请求不被在飞非 force 构建吸收（排队补跑真全量） (419.85ms)
+✖ SessionIndexBuilder alpha.3 变更文件安全重解析 (4986.6222ms)
+▶ S1.2 WorkerPool role 透传
+  ✔ worker: assistant/user/tool/any 在 maxSnippets 截断前过滤 (125.6927ms)
+  ✔ inline: assistant/user/tool/any 在 maxSnippets 截断前过滤 (38.4237ms)
+✔ S1.2 WorkerPool role 透传 (165.9817ms)
+▶ WorkerPool（worker_threads 路径）
+  ✔ head 任务：worker 解析返回元数据 (121.6229ms)
+  ✔ 错误隔离：损坏文件 → ok:false，池继续可用 (78.9503ms)
+  ✔ 并发上限：size=2，6 个任务全部完成 (90.8831ms)
+  ✔ C5：共享 signal 连跑多任务，settle 后 abort 监听器不累积 (143.6344ms)
+  ✔ search 任务返回命中 (68.4373ms)
+  ✔ 已中止的 signal → 立即 CancelError (0.4411ms)
+  ✔ terminate 后 run 被拒绝 (0.2613ms)
+  ✔ terminate 时在飞任务被 reject（P1-4：不留永久 pending） (53.0203ms)
+  ✔ inline 回退有界并发 ≤2（P1-3：不得全量同时派发卡死主线程） (258.3751ms)
+✔ WorkerPool（worker_threads 路径） (817.7067ms)
+▶ WorkerPool（inline 回退路径）
+  ✔ workerUrl=null → 纯 inline，结果一致 (5.1959ms)
+  ✔ inline 错误隔离 + 取消 (3.5194ms)
+✔ WorkerPool（inline 回退路径） (8.9926ms)
+▶ mapLimit
+  ✔ 并发上限正确且结果保序 (45.5598ms)
+  ✔ 取消后不再调度新任务 (20.9848ms)
+✔ mapLimit (66.7774ms)
+ℹ tests 94
+ℹ suites 10
+ℹ pass 92
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 48393.7452
+
+✖ failing tests:
+
+test at .delta-continuation-build\test\runtime-delta-fallback.test.js:295:1
+✖ E:\Do Something\DSH备份\dsh-session-index work\runtime-fix-20261002\work\.delta-continuation-build\test\runtime-delta-fallback.test.js (36.9013ms)
+  Error: ENOENT: no such file or directory, open 'E:\Do Something\DSH备份\dsh-session-index work\runtime-fix-20261002\evidence\delta-samples\compatibility-reject-ElRW9c\after.zstd'
+      at async open (node:internal/fs/promises:640:25)
+      at async readFile (node:internal/fs/promises:1287:14)
+      at async file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.delta-continuation-build/test/runtime-delta-fallback.test.js:302:26
+      at async Promise.all (index 1)
+      at async TestContext.<anonymous> (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.delta-continuation-build/test/runtime-delta-fallback.test.js:301:49)
+      at async TestHook.run (node:internal/test_runner/test:1313:7)
+      at async Test.runHook (node:internal/test_runner/test:1198:9)
+      at async after (node:internal/test_runner/test:1251:9)
+      at async Test.run (node:internal/test_runner/test:1332:7) {
+    errno: -4058,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: 'E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\evidence\\delta-samples\\compatibility-reject-ElRW9c\\after.zstd'
+  }
+
+test at .delta-continuation-build\test\session-index-builder.test.js:824:5
+✖ 尾帧截断（mid-write）→ 全量解析失败，旧条目保留 + error 记录 (772.5564ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'degraded'
+  - 'completed'
+  
+      at TestContext.<anonymous> (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.delta-continuation-build/test/session-index-builder.test.js:839:20)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'degraded',
+    expected: 'completed',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -1,0 +1,25 @@
+{
+  "label": "MINIMAL_ATTEMPT3",
+  "args": [
+    "--no-warnings",
+    "--test",
+    "--test-concurrency=1",
+    "--test-timeout=60000",
+    ".test-build/test/fts-client.test.js",
+    ".test-build/test/fts-recovery.test.js",
+    ".test-build/test/fts-message-contract.test.js",
+    ".test-build/test/index-fts-recovery.test.js",
+    ".test-build/test/builder-fts-sync.test.js",
+    ".test-build/test/native-zstd.test.js",
+    ".test-build/test/fts-spool.test.js",
+    ".test-build/test/runtime-index.test.js"
+  ],
+  "exitCode": 1,
+  "scope": "explicit minimal tests selected from runtime diff",
+  "runtime": "installed Electron Node24.18.1/SQLite3.53.1",
+  "environment": {
+    "temp": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\validation\\temp",
+    "isolatedData": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\validation\\data",
+    "isolatedSources": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\validation\\sessions"
+  }
+}

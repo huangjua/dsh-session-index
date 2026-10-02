@@ -1,0 +1,98 @@
+DSH session-index S3–S5 完成交接（2026-10-02）
+
+范围与状态
+本轮仅完成用户指定的 S3、S4、S5；沿用 S0–S2，未实施 S6/S7。
+完成定义：本轮问题行为/边界回归通过，合成迁移演练通过，S5可复跑性能目标达标，交付增量审查补丁。
+工作树 E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index
+分支 review/session-index-hardening；HEAD 70800ed7be77b31527a955ea2f6cc6a750dafef8。
+代码以未提交 diff 保留；未push、部署、改宿主链接/运行产物或迁移生产数据。
+HANDOFF_S3_S5_PAUSED.txt 是历史暂停记录；本文件与当前 IMPLEMENTATION_STATUS.txt 为接续入口。
+
+S3：#03/#06/#11/#12
+- message-anchor保留sessionId/type/sourceMessageId或callId/eventSeq/generation/完整正文证据。
+  有原始ID时，0..4代际夹具验证同源身份；无ID时fallback绑定generation+seq+完整证据，跨格式不保证不变。
+- 新公开正文命中和书签使用anchorId；旧数字只读legacy rowid，不解释成seq，不接受新行的数字别名。
+  metadata-only没有消息锚点。SCROLL精确验证会话与锚点、分别取会话内前后N条，chunk不是消息单位。
+- surface按兼容规则折叠后与tool消息按来源seq排序；full/delta保留同一身份/次序。
+- 多层lineage只用于分组；代表命中的sessionId/file/workspace/anchor/snippet/rank整体同源更新，环/缺父有界处理。
+- 书签v2兼读v1。migrateBookmarks默认dryRun；普通search/list不触发迁移。
+  可迁移必须同时匹配已持久化的稳定anchor及identityEvidence，旧rowid本身不构成证明。
+  每条物理记录、id、旧numeric、notes/tags/time/custom字段与顺序保留；备份wx/fsync后原子替换，可精确重试。
+
+S4：#05/#09/#10（多词语义）
+- 原消息保存完整正文；FTS按4096 UTF-16单位、128重叠、代理对边界安全分块。
+  chunk候选OR聚合回消息后用原文验证AND；超过overlap的长词有原文路径，Unicode大小写共用JS折叠。
+- searchPage在LIMIT前选每会话最佳原消息、统计会话总数；40/500重复消息不挤掉其它会话。
+  full的FTS/原文路径共同执行全局消息AND，只有全部正文AND零命中才OR；role在计数/截断前生效。
+- totalExact/hasMore/coverage显式区分采样、来源失败与完整结果。元数据不能伪装为角色限定消息。
+- 索引收集上限50000原消息/64MiB UTF-8正文；默认单行4MiB、总解压256MiB。
+  maxLineBytes工具参数允许4..32MiB整数原文补查，总解压仍限256MiB。
+  首次建索引因中部大行失败而缺metadata的来源也会经有界扫描/兼容解析临时补查；不写索引或绕过未知required event门禁。
+  coverage.sourceLimits/diagnostics回显预算、略过原因；诊断最多20条并声明截断。
+
+S5：#13/#14
+- native FileHandle.read真正读取offset至初始EOF，压缩尾段预算作用于实际read/allocation；句柄finally关闭。
+  越界、帧边界、半写、取消及source race保留校验；read/decoded/delta/discovered分开，失败重试和fallback累计。
+  deltaBytes两解码器均为实际压缩尾段读量。race不把已有可用JSON/FTS删掉或标unindexable。
+- 正常应用全部SQL由writer和readOnly WAL reader worker持有。主线程无同步SQL逃生路径。
+  reader不会因长writer回填而排队超时/杀死writer；读取多语句在同一快照内。
+- parser字段分片ACK、FTS单包<=512KiB/在飞<=2/transport与排队producer预算<=8MiB，最多2个active source。
+  active正文另有64MiB/来源预算；8MiB不是全部进程内存上限。builder最多2条解析→等待提交流水线。
+  UUID磁盘spool迭代保持单条记录+64KiB读缓冲，所有正文、metadata、checkpoint同一事务，失败仍保留旧完整快照。
+- 默认query10s/write120s/startup每worker15s/close drain15s；128请求/写入限额，DTO<=8MiB，search limit1..500。
+  错误/挂起拒绝所属请求并重建两worker；自动重启最多30秒3次，之后显式restart；onRecovered触发checkpoint对账。
+- 清理失败单独可观察，不遮蔽成功COMMIT回执或主SQL错误；自身stage在rm成功后才忘记。
+  历史spool只读诊断alive/dead/unknown，不自动删除。扫描有4096目录项/128spool/4KiB owner/500ms返回上限。
+  PID不是进程启动身份保证；任何清理决策都不依据历史owner诊断。
+- 应用卸载同步停止接单/构建/监听，然后等待已有关闭链和初始化链（含迟到工厂连接），避免卸载完成后再开连接。
+
+最终验证（五组不重叠文件共151测试，全部通过；没有skip）
+TEST_RESULTS/s3-s5-final-app-closed.txt：52（五工具、FTS开关、lineage、真实delta/force/restart书签、大行补查、卸载）。
+TEST_RESULTS/s5-final-worker-contract.txt：30（RPC/背压/故障/重启/DTO/关闭/spool/真实硬父进程崩溃）。
+TEST_RESULTS/s5-delta-metrics-and-large-line.txt：42（流式解析/原文/50k边界/full-delta/两decoder指标/两次race）。
+TEST_RESULTS/s3-s5-final-anchor-store.txt：26（书签字段/迁移、会话内SCROLL、重建、全文/Unicode/候选/schema2）。
+TEST_RESULTS/s5-final-50k-stress.txt：1（50k×1000失败回滚与成功提交，875次并发读/health）。
+另已执行受影响core集合252项及扩展98项；其中旧契约断言/异步就绪/卸载错误的原始失败日志保留，后续精准修复通过。
+最初失败不当成通过计数；没有通过删测试、放宽正确性或增加超时掩盖。
+最终类型检查、test编译、DSH契约、git diff --check通过；仅直接调用本地锁定tsc，不运行build.sh。
+总验证/最终源SHA：TEST_RESULTS/S3-S5_VALIDATION.json、s3-s5-final-source-sha256.json。
+
+迁移演练
+MIGRATION_DRY_RUN.json：13项检查通过；合成schema2→5，全新库、chunk插入中断rollback、retry，书签rename中断后精确备份重试。
+10条合成物理书签：resolved2/unresolved3/ambiguous1/session-missing1/anchor-replaced1/session1/alreadyMigrated1。
+这些不是生产条目统计；原版本无持久身份证据的书签无法保证恢复，保留明确状态。未执行生产迁移。
+
+性能验收
+BENCHMARK_RESULTS/fts-worker/S5-final-20261002/：20个独立进程（baseline/candidate × cold/steady ×5），原始样本/分位数/RSS/CPU/队列/源hash齐全。
+5轮candidate steady max gap：28.1688/19.9693/27.3221/27.8080/31.9490ms；全部<=100ms。
+最差31.949ms相对审查1199ms降低97.335%。本轮baseline steady max范围418.5905..1529.0722ms，仅5–6样本/轮，p99仅描述，不作稳定推断。
+新完整正文/chunk schema本轮写入总耗时更长（candidate steady1.366..2.773s，baseline0.669..1.524s）；改善的是宿主响应。
+scenarios首次回填/10条增量/并发trigram与LIKE/维护/取消/restart/close：最大gap25.8595ms。
+50k压力：失败15.347s/322读，成功25.677s/553读；最大查询133.7911ms<原2s deadline，restart0；读者只看见1或50000行。
+实测max包524288B/queue524313B/在飞1；active正文50001000B，保守source118980496B；结束RSS257458176B（不是峰值）。
+RSS由所有线程共享，worker heap/external独立记录；不能把queue预算说成RSS上限。
+BENCHMARK_RESULTS/delta-io/final.json：1/16/64MiB历史前缀各5轮，同32B尾帧；15次实际读取/压缩输入分配均32B。
+所有基准独立运行，未与tests并行；Node v24.16.0。汇总 BENCHMARK_RESULTS/S3-S5_PERFORMANCE.json。
+
+审查补丁与保护
+保留原PATCHES/FULL-S0-S2.patch和manifest.json原文。PATCHES/S3-S5/按S0–S2交接快照生成增量四组。
+应用顺序：基线70800ed→原S0–S2补丁→S3/S4/S5/shared四组全部；单组是文件审查单位，跨阶段接线需全部应用。
+scripts/export-s3-s5-patches.mjs在全新隔离clone replay+逐文件核对，不改当前git index或原S0–S2补丁。
+完整性清单 PATCHES/S3-S5/manifest.json；重放记录 TEST_RESULTS/s3-s5-patch-verification.json。
+G运行区68个既有src/lib SHA核对一致：TEST_RESULTS/runtime-s3-s5-hash-verification.json。
+没有读取/写入生产session-index-data；没有修改G src/lib、desktop插件链接，未重启宿主。
+
+复跑（cwd必须为本E工作树；无需网络/生产目录）
+  node node_modules/typescript/bin/tsc -p tsconfig.test.json
+  node scripts/run-s3-s5-evidence.mjs migration
+  node scripts/run-s3-s5-evidence.mjs delta
+  node scripts/run-isolated-tests.mjs <新label> <所需test文件basename...>
+  $env:FTS_BENCHMARK_LABEL='新的结果目录名'
+  node scripts/benchmark-fts-worker.mjs
+  node scripts/benchmark-fts-scenarios.mjs
+  node scripts/run-isolated-tests.mjs <新label> fts-client-stress
+上述性能三步串行，避免同机tests并行；旧日志保留，不覆盖历史label。
+
+后续边界
+S6整体发布准备/README/release清单/runbook仍未分配；本轮结果不是“已部署”。
+生产切换/迁移/删除历史资源/改宿主/推送需按用户授权边界另行执行；不得自动推进S7。

@@ -1,0 +1,18 @@
+{
+  "scope": "isolated minimum delta and apply shared regression",
+  "exitCode": 1,
+  "valid": false,
+  "log": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\evidence\\DELTA_SHARED_CONTINUATION_2026-10-02T15-32-03-953Z.txt",
+  "files": [
+    "runtime-delta-fallback",
+    "session-index-builder",
+    "builder-race",
+    "builder-fts-sync",
+    "native-zstd",
+    "worker-pool",
+    "session-compat",
+    "index-fts-recovery",
+    "runtime-index"
+  ],
+  "compiledOutput": ".delta-continuation-build"
+}

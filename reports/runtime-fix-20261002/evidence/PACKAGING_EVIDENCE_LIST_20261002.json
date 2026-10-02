@@ -1,0 +1,812 @@
+{
+  "generatedAtUtc": "2026-10-02T15:46:58.1663939Z",
+  "purpose": "candidate packaging allowlist closure from named acceptance JSON and controlled delta sample hashes",
+  "sourceReports": [
+    {
+      "sha256": "7e23c62faec85aa6b72d0d7cab0a3aa85bd20debf5ca048dd89b3bffd53b596b",
+      "path": "evidence/FTS_CONTINUATION_FINAL_20261002.json"
+    },
+    {
+      "sha256": "88b7b22b8244c4d8c36f8e205fefd257cd3d68faeea3aeae763015a3a33c6864",
+      "path": "evidence/DELTA_FALLBACK_VERIFIED_CONTINUATION_2026-10-02T15-35-52-113Z.json"
+    },
+    {
+      "sha256": "aca6b63501bb554915653a9bc4167014d87026ea7d1da5c9749181ededce2beb",
+      "path": "evidence/DELTA_SHARED_VERIFIED_CONTINUATION_2026-10-02T15-33-47-652Z.json"
+    },
+    {
+      "sha256": "19fdf6238d250d2e0fe67fff2976a234407810b6c91d5587fafd314286a66529",
+      "path": "evidence/RUNTIME_LAGGING_RETRY_CONTINUATION_2026-10-02T15-30-10-990Z.json"
+    }
+  ],
+  "evidenceAllowlist": [
+    {
+      "path": "evidence/DELTA_CONTINUATION_COMPILE_2026-10-02T15-15-51-762Z.txt",
+      "kind": "red-or-fix-log",
+      "referencedBy": [
+        "red/fix history log set"
+      ],
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_FALLBACK_CONTINUATION_2026-10-02T15-34-10-572Z.json",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.controlledReplay"
+      ],
+      "sha256": "2969c16adbc585ade4fe442431cf16b3718c6d03a22d9bbbb75e3e2d78721c28",
+      "bytes": 58785,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_FALLBACK_VERIFIED_CONTINUATION_2026-10-02T15-35-52-113Z.json",
+      "kind": "primary-json",
+      "referencedBy": [
+        "primary acceptance JSON"
+      ],
+      "sha256": "88b7b22b8244c4d8c36f8e205fefd257cd3d68faeea3aeae763015a3a33c6864",
+      "bytes": 71308,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_FALLBACK.json",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.originalHistoricalEvidence",
+        "explicit historical/targeted evidence"
+      ],
+      "sha256": "cf295667dbd6da597bf0143a424839d3078249583321f729d935e6354fd75bab",
+      "bytes": 51475,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_FINAL_TEST_OUTPUT.txt",
+      "kind": "red-or-fix-log",
+      "referencedBy": [
+        "red/fix history log set"
+      ],
+      "sha256": "27f95927e7e69d17333c0090e42e974cdbefff9951020b90bcbfecb6a35f080a",
+      "bytes": 3564,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_NEW_TEST_OUTPUT.txt",
+      "kind": "red-or-fix-log",
+      "referencedBy": [
+        "red/fix history log set"
+      ],
+      "sha256": "9819aa72114fbbae40033211db122de9f0a1b04d97048013c5db1c77a61a439a",
+      "bytes": 1143,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_NOTES.txt",
+      "kind": "red-or-fix-log",
+      "referencedBy": [
+        "red/fix history log set"
+      ],
+      "sha256": "d999da27b6dbbaf548ce9f6f2d0d9c0fa65c366fdbe0e7c98b8a93e46bfe5c14",
+      "bytes": 4414,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_SHARED_CONTINUATION_2026-10-02T15-32-03-953Z.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.initialSharedFailures",
+        "red/fix history log set"
+      ],
+      "sha256": "c4d57f41301fd0a7e35f43904371b93729c477a45886e290c629d2de2061e266",
+      "bytes": 11826,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_SHARED_VERIFIED_CONTINUATION_2026-10-02T15-33-47-652Z.json",
+      "kind": "primary-json",
+      "referencedBy": [
+        "primary acceptance JSON",
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.sharedRegression"
+      ],
+      "sha256": "aca6b63501bb554915653a9bc4167014d87026ea7d1da5c9749181ededce2beb",
+      "bytes": 557,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_SHARED_VERIFIED_CONTINUATION_2026-10-02T15-33-47-652Z.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.sharedRegressionLog",
+        "DELTA_SHARED_VERIFIED_CONTINUATION.json:log",
+        "red/fix history log set"
+      ],
+      "sha256": "6713f807eef2a7b307a29bd0314878be102adff1a2b8c22381e6d84400b05052",
+      "bytes": 9357,
+      "exists": true
+    },
+    {
+      "path": "evidence/DELTA_TEST_OUTPUT.txt",
+      "kind": "red-or-fix-log",
+      "referencedBy": [
+        "red/fix history log set"
+      ],
+      "sha256": "aa029655efd79122445c5da908873b883388a5484ab0acd31f010a2e3f281853",
+      "bytes": 7548,
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/append-9G4Y2z/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 399,
+      "sha256": "051d92b2f43e7a5f0aa79b27f12cf0af2e399000fbfe3d138799f3bb6c58f90f",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/append-9G4Y2z/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/cancel-unobserved-0bugPj/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 406,
+      "sha256": "d7b75ba5a644797efbd5202455f8892d2143acdb7cd8683b6d43be8522161d03",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/cancel-unobserved-0bugPj/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/compatibility-reject-SiSmgC/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 296,
+      "sha256": "843693c213305f6deb516babe0936a1e97569fa340905168eb82c233f03a9876",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/compatibility-reject-SiSmgC/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/coverage-incomplete-zmVEog/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 437,
+      "sha256": "4f23ec3bd57e38fed85c3cffe6b467004e99e981b6df46708afb1044a249989e",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/coverage-incomplete-zmVEog/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/cross-window-7kg3sG/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 393,
+      "sha256": "0cb46aeee28201468f10c136cc514906c8e04472a0212a7a59f8de4e3db93cc9",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/cross-window-7kg3sG/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/invalid-offset-VLdd37/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 364,
+      "sha256": "eb5873969b4f55529b1d3402390dbbb55074dd592616791655a001fbdb5360ba",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/invalid-offset-VLdd37/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/partial-frame-L5XWKN/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 408,
+      "sha256": "3db8ce6b2f26188520c2c37c8cefe95888a3902632a86206e74be8188197cc25",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/partial-frame-L5XWKN/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/sequence-mismatch-uYuEz7/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 405,
+      "sha256": "0bbea7e908ba40089a5422f59ade8ac4e387f439c3f897ce211af6af662d8e64",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/sequence-mismatch-uYuEz7/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/surface-replace-yRll77/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 427,
+      "sha256": "2a2f8d158108df9087a83d4eb03e720295f1ca1846638e15e6d4a0a1ac0064a5",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/surface-replace-yRll77/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/unknown-rTv8e5/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 409,
+      "sha256": "bd86ed10aca14c5aeed3c543c1fefaea2503d14796322b9bdfc765930a8e0933",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/unknown-rTv8e5/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/worker-exit-dilkyn/after.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 408,
+      "sha256": "7ece7f0258aace9167a4a762be2bccc90558aebb02a0e27ece35c58bf8ad70d9",
+      "exists": true
+    },
+    {
+      "path": "evidence/delta-samples/worker-exit-dilkyn/before.zstd",
+      "kind": "delta-synthetic-sample",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:cases"
+      ],
+      "bytes": 221,
+      "sha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+      "exists": true
+    },
+    {
+      "path": "evidence/FTS_CONTINUATION_4f2e52be-fff1-4e65-a642-6d765d7a00d0.json",
+      "kind": "fts-run-output",
+      "referencedBy": [
+        "FTS_CONTINUATION_FINAL_20261002.json:originalRun/correctedRun report and output"
+      ],
+      "sha256": "368c28198b2291d2e8f8375ab19dcaa56095c5aa3572143a43f23c93a7276278",
+      "bytes": 3049,
+      "exists": true
+    },
+    {
+      "path": "evidence/FTS_CONTINUATION_4f2e52be-fff1-4e65-a642-6d765d7a00d0.txt",
+      "kind": "fts-run-output",
+      "referencedBy": [
+        "FTS_CONTINUATION_FINAL_20261002.json:originalRun/correctedRun report and output"
+      ],
+      "sha256": "ff4dc6dcf717455a47c6e009580a444824416de22d393025ef6226eed15e420a",
+      "bytes": 19200,
+      "exists": true
+    },
+    {
+      "path": "evidence/FTS_CONTINUATION_7b887725-a046-4dc6-af55-1fb5aea112cd.json",
+      "kind": "fts-run-output",
+      "referencedBy": [
+        "FTS_CONTINUATION_FINAL_20261002.json:originalRun/correctedRun report and output"
+      ],
+      "sha256": "e541aded42c930e7ccc8fc5167f1163cb86ca5eb93e65a60d5d58e7387c02439",
+      "bytes": 2112,
+      "exists": true
+    },
+    {
+      "path": "evidence/FTS_CONTINUATION_7b887725-a046-4dc6-af55-1fb5aea112cd.txt",
+      "kind": "fts-run-output",
+      "referencedBy": [
+        "FTS_CONTINUATION_FINAL_20261002.json:originalRun/correctedRun report and output"
+      ],
+      "sha256": "54f2aab7249d2d0d992369b3d9c843f3a189102017b004971f6eb6216b8457b9",
+      "bytes": 560,
+      "exists": true
+    },
+    {
+      "path": "evidence/FTS_CONTINUATION_FINAL_20261002.json",
+      "kind": "primary-json",
+      "referencedBy": [
+        "primary acceptance JSON"
+      ],
+      "sha256": "7e23c62faec85aa6b72d0d7cab0a3aa85bd20debf5ca048dd89b3bffd53b596b",
+      "bytes": 2458,
+      "exists": true
+    },
+    {
+      "path": "evidence/FTS_PROGRESS_GAP_e53f902b-f6f8-4358-91cd-ceff080ebb36.json",
+      "kind": "fts-fixture-gap",
+      "referencedBy": [
+        "FTS_CONTINUATION_FINAL_20261002.json:fixtureCorrection.observedGapEvidence"
+      ],
+      "sha256": "e348284c8ac3811b9391dc8cc6b930b7204ae98696871806646a631f9098d982",
+      "bytes": 3370,
+      "exists": true
+    },
+    {
+      "path": "evidence/FTS_PROGRESS_GAP_edf78875-ede3-47cf-9c8f-31ae6f1fa55c.json",
+      "kind": "fts-fixture-gap",
+      "referencedBy": [
+        "FTS_CONTINUATION_FINAL_20261002.json:fixtureCorrection.observedGapEvidence"
+      ],
+      "sha256": "d96b0816c2e73f9d0b24d1eb3e0d210e49dd616af74fbb05edb1a72f97eb0c66",
+      "bytes": 3616,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_FTS_RECOVERY_BEHAVIOR_RED_2026-10-02T15-27-10-087Z.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.sameSourceWriterRecoveryRed",
+        "red/fix history log set"
+      ],
+      "sha256": "3711b9db6808394538bc7a81ee80f41d77914ba74a1dab34ca22ece285041b2d",
+      "bytes": 20099,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_FTS_RECOVERY_RED_2026-10-02T15-26-22-946Z.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.recoveryTestCompileFailure",
+        "red/fix history log set"
+      ],
+      "sha256": "1df6140d8561646f9eceabe459784b41f8e36e4aa62cce525ece000a8915eeba",
+      "bytes": 368,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_PUBLICATION_RACE_RED_2026-10-02T15-19-18-009Z.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.thirdRejectedPublicationRed",
+        "red/fix history log set"
+      ],
+      "sha256": "b67c2115af953b3348d7b31517146b971c2dd77906c97efa930de2912f5214ec",
+      "bytes": 23613,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_RETRY_CONTINUATION_2026-10-02T15-16-25-857Z.txt",
+      "kind": "red-or-fix-log",
+      "referencedBy": [
+        "red/fix history log set"
+      ],
+      "sha256": "c39d088ee50ad285e3c3d83e0e61b46516f7024f9697d87598b18470f8e21691",
+      "bytes": 364,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_RETRY_CONTINUATION_2026-10-02T15-30-10-990Z.json",
+      "kind": "primary-json",
+      "referencedBy": [
+        "primary acceptance JSON",
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.laggingRetry"
+      ],
+      "sha256": "19fdf6238d250d2e0fe67fff2976a234407810b6c91d5587fafd314286a66529",
+      "bytes": 77382,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_RETRY_FINAL_2026-10-02T15-30-02-276Z.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.laggingRetryLog",
+        "red/fix history log set"
+      ],
+      "sha256": "0270e5f76fe2b436c591848673aad925c4e6015332ae8b9cf519c8390e00ba28",
+      "bytes": 571,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_RETRY_FINAL_GREEN_2026-10-02T15-29-38-524Z.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.statusRenderCompileFailure",
+        "red/fix history log set"
+      ],
+      "sha256": "572fd51b8f5c46cfbd9d36075ea64712bfa0e5963b42d5f201b88c32efa0a53a",
+      "bytes": 181,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_RETRY_GREEN_2026-10-02T15-20-58-597Z.txt",
+      "kind": "red-or-fix-log",
+      "referencedBy": [
+        "red/fix history log set"
+      ],
+      "sha256": "d5db94b5cbe43114a163be71d364075b34bb1fde0b042f7a863c6e8210b4ffaf",
+      "bytes": 469,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_RETRY_RED.txt",
+      "kind": "delta-direct-reference",
+      "referencedBy": [
+        "DELTA_FALLBACK_VERIFIED_CONTINUATION.json:evidenceReferences.originalHalfFrameFailure",
+        "red/fix history log set"
+      ],
+      "sha256": "7a5ac026289868616232d440fb73597231bcc267642293f93fe19fc6ab43ab30",
+      "bytes": 2328,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_LAGGING_RETRY.json",
+      "kind": "supplemental",
+      "referencedBy": [
+        "explicit historical/targeted evidence"
+      ],
+      "sha256": "ac20228153be49d5dcba8a58f533b85577425a4bc6078d7ae72bf27040fc3d31",
+      "bytes": 8887,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_READY_RECOVERY_TEST.txt",
+      "kind": "supplemental",
+      "referencedBy": [
+        "explicit historical/targeted evidence"
+      ],
+      "sha256": "7e43ba0729e81c4f06811efe16161a000cf550d76f20f5f9b3778077292b9c4c",
+      "bytes": 367,
+      "exists": true
+    },
+    {
+      "path": "evidence/RUNTIME_SQLITE_ERROR_CLASSIFICATION.txt",
+      "kind": "supplemental",
+      "referencedBy": [
+        "explicit historical/targeted evidence"
+      ],
+      "sha256": "b58ff8d0c2ba8b0b0f3aa2107e6334f56d82fa3c6cf3c9c9312063b55fe2557c",
+      "bytes": 786,
+      "exists": true
+    },
+    {
+      "path": "evidence/SQL_TARGETED_TEST_RESULTS.txt",
+      "kind": "supplemental",
+      "referencedBy": [
+        "explicit historical/targeted evidence"
+      ],
+      "sha256": "050cff716af5020746efc252c3564876865af20e2a1068b7b877f5c46986b37d",
+      "bytes": 2567,
+      "exists": true
+    }
+  ],
+  "deltaSamples": {
+    "caseCount": 11,
+    "sampleCount": 22,
+    "validatedCount": 22,
+    "allMatch": true,
+    "samples": [
+      {
+        "case": "pure_append",
+        "sampleFile": "before.zstd",
+        "path": "evidence/delta-samples/append-9G4Y2z/before.zstd",
+        "expectedBytes": 221,
+        "actualBytes": 221,
+        "expectedSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "actualSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "matches": true
+      },
+      {
+        "case": "pure_append",
+        "sampleFile": "after.zstd",
+        "path": "evidence/delta-samples/append-9G4Y2z/after.zstd",
+        "expectedBytes": 399,
+        "actualBytes": 399,
+        "expectedSha256": "051d92b2f43e7a5f0aa79b27f12cf0af2e399000fbfe3d138799f3bb6c58f90f",
+        "actualSha256": "051d92b2f43e7a5f0aa79b27f12cf0af2e399000fbfe3d138799f3bb6c58f90f",
+        "matches": true
+      },
+      {
+        "case": "surface_replace",
+        "sampleFile": "before.zstd",
+        "path": "evidence/delta-samples/surface-replace-yRll77/before.zstd",
+        "expectedBytes": 221,
+        "actualBytes": 221,
+        "expectedSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "actualSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "matches": true
+      },
+      {
+        "case": "surface_replace",
+        "sampleFile": "after.zstd",
+        "path": "evidence/delta-samples/surface-replace-yRll77/after.zstd",
+        "expectedBytes": 427,
+        "actualBytes": 427,
+        "expectedSha256": "2a2f8d158108df9087a83d4eb03e720295f1ca1846638e15e6d4a0a1ac0064a5",
+        "actualSha256": "2a2f8d158108df9087a83d4eb03e720295f1ca1846638e15e6d4a0a1ac0064a5",
+        "matches": true
+      },
+      {
+        "case": "cross_window_reference",
+        "sampleFile": "before.zstd",
+        "path": "evidence/delta-samples/cross-window-7kg3sG/before.zstd",
+        "expectedBytes": 221,
+        "actualBytes": 221,
+        "expectedSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "actualSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "matches": true
+      },
+      {
+        "case": "cross_window_reference",
+        "sampleFile": "after.zstd",
+        "path": "evidence/delta-samples/cross-window-7kg3sG/after.zstd",
+        "expectedBytes": 393,
+        "actualBytes": 393,
+        "expectedSha256": "0cb46aeee28201468f10c136cc514906c8e04472a0212a7a59f8de4e3db93cc9",
+        "actualSha256": "0cb46aeee28201468f10c136cc514906c8e04472a0212a7a59f8de4e3db93cc9",
+        "matches": true
+      },
+      {
+        "case": "invalid_offset",
+        "sampleFile": "before.zstd",
+        "path": "evidence/delta-samples/invalid-offset-VLdd37/before.zstd",
+        "expectedBytes": 221,
+        "actualBytes": 221,
+        "expectedSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "actualSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "matches": true
+      },
+      {
+        "case": "invalid_offset",
+        "sampleFile": "after.zstd",
+        "path": "evidence/delta-samples/invalid-offset-VLdd37/after.zstd",
+        "expectedBytes": 364,
+        "actualBytes": 364,
+        "expectedSha256": "eb5873969b4f55529b1d3402390dbbb55074dd592616791655a001fbdb5360ba",
+        "actualSha256": "eb5873969b4f55529b1d3402390dbbb55074dd592616791655a001fbdb5360ba",
+        "matches": true
+      },
+      {
+        "case": "sequence_mismatch",
+        "sampleFile": "before.zstd",
+        "path": "evidence/delta-samples/sequence-mismatch-uYuEz7/before.zstd",
+        "expectedBytes": 221,
+        "actualBytes": 221,
+        "expectedSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "actualSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "matches": true
+      },
+      {
+        "case": "sequence_mismatch",
+        "sampleFile": "after.zstd",
+        "path": "evidence/delta-samples/sequence-mismatch-uYuEz7/after.zstd",
+        "expectedBytes": 405,
+        "actualBytes": 405,
+        "expectedSha256": "0bbea7e908ba40089a5422f59ade8ac4e387f439c3f897ce211af6af662d8e64",
+        "actualSha256": "0bbea7e908ba40089a5422f59ade8ac4e387f439c3f897ce211af6af662d8e64",
+        "matches": true
+      },
+      {
+        "case": "compatibility_reject",
+        "sampleFile": "before.zstd",
+        "path": "evidence/delta-samples/compatibility-reject-SiSmgC/before.zstd",
+        "expectedBytes": 221,
+        "actualBytes": 221,
+        "expectedSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "actualSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "matches": true
+      },
+      {
+        "case": "compatibility_reject",
+        "sampleFile": "after.zstd",
+        "path": "evidence/delta-samples/compatibility-reject-SiSmgC/after.zstd",
+        "expectedBytes": 296,
+        "actualBytes": 296,
+        "expectedSha256": "843693c213305f6deb516babe0936a1e97569fa340905168eb82c233f03a9876",
+        "actualSha256": "843693c213305f6deb516babe0936a1e97569fa340905168eb82c233f03a9876",
+        "matches": true
+      },
+      {
+        "case": "coverage_incomplete",
+        "sampleFile": "before.zstd",
+        "path": "evidence/delta-samples/coverage-incomplete-zmVEog/before.zstd",
+        "expectedBytes": 221,
+        "actualBytes": 221,
+        "expectedSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "actualSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "matches": true
+      },
+      {
+        "case": "coverage_incomplete",
+        "sampleFile": "after.zstd",
+        "path": "evidence/delta-samples/coverage-incomplete-zmVEog/after.zstd",
+        "expectedBytes": 437,
+        "actualBytes": 437,
+        "expectedSha256": "4f23ec3bd57e38fed85c3cffe6b467004e99e981b6df46708afb1044a249989e",
+        "actualSha256": "4f23ec3bd57e38fed85c3cffe6b467004e99e981b6df46708afb1044a249989e",
+        "matches": true
+      },
+      {
+        "case": "unknown_not_guessed",
+        "sampleFile": "before.zstd",
+        "path": "evidence/delta-samples/unknown-rTv8e5/before.zstd",
+        "expectedBytes": 221,
+        "actualBytes": 221,
+        "expectedSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "actualSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "matches": true
+      },
+      {
+        "case": "unknown_not_guessed",
+        "sampleFile": "after.zstd",
+        "path": "evidence/delta-samples/unknown-rTv8e5/after.zstd",
+        "expectedBytes": 409,
+        "actualBytes": 409,
+        "expectedSha256": "bd86ed10aca14c5aeed3c543c1fefaea2503d14796322b9bdfc765930a8e0933",
+        "actualSha256": "bd86ed10aca14c5aeed3c543c1fefaea2503d14796322b9bdfc765930a8e0933",
+        "matches": true
+      },
+      {
+        "case": "partial_frame",
+        "sampleFile": "before.zstd",
+        "path": "evidence/delta-samples/partial-frame-L5XWKN/before.zstd",
+        "expectedBytes": 221,
+        "actualBytes": 221,
+        "expectedSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "actualSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "matches": true
+      },
+      {
+        "case": "partial_frame",
+        "sampleFile": "after.zstd",
+        "path": "evidence/delta-samples/partial-frame-L5XWKN/after.zstd",
+        "expectedBytes": 408,
+        "actualBytes": 408,
+        "expectedSha256": "3db8ce6b2f26188520c2c37c8cefe95888a3902632a86206e74be8188197cc25",
+        "actualSha256": "3db8ce6b2f26188520c2c37c8cefe95888a3902632a86206e74be8188197cc25",
+        "matches": true
+      },
+      {
+        "case": "worker_failure",
+        "sampleFile": "before.zstd",
+        "path": "evidence/delta-samples/worker-exit-dilkyn/before.zstd",
+        "expectedBytes": 221,
+        "actualBytes": 221,
+        "expectedSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "actualSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "matches": true
+      },
+      {
+        "case": "worker_failure",
+        "sampleFile": "after.zstd",
+        "path": "evidence/delta-samples/worker-exit-dilkyn/after.zstd",
+        "expectedBytes": 408,
+        "actualBytes": 408,
+        "expectedSha256": "7ece7f0258aace9167a4a762be2bccc90558aebb02a0e27ece35c58bf8ad70d9",
+        "actualSha256": "7ece7f0258aace9167a4a762be2bccc90558aebb02a0e27ece35c58bf8ad70d9",
+        "matches": true
+      },
+      {
+        "case": "cancelled_unobserved_read",
+        "sampleFile": "before.zstd",
+        "path": "evidence/delta-samples/cancel-unobserved-0bugPj/before.zstd",
+        "expectedBytes": 221,
+        "actualBytes": 221,
+        "expectedSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "actualSha256": "700b5b48bee1e6fb5c9256e6e245af33bdced087ef3f2b1daf2275acb1ff56ad",
+        "matches": true
+      },
+      {
+        "case": "cancelled_unobserved_read",
+        "sampleFile": "after.zstd",
+        "path": "evidence/delta-samples/cancel-unobserved-0bugPj/after.zstd",
+        "expectedBytes": 406,
+        "actualBytes": 406,
+        "expectedSha256": "d7b75ba5a644797efbd5202455f8892d2143acdb7cd8683b6d43be8522161d03",
+        "actualSha256": "d7b75ba5a644797efbd5202455f8892d2143acdb7cd8683b6d43be8522161d03",
+        "matches": true
+      }
+    ]
+  },
+  "missingrefs": [],
+  "missingSampleFiles": [],
+  "excluded": {
+    "patterns": [
+      "evidence/**/data/**",
+      "evidence/**/sessions/**",
+      "evidence/**/*.db",
+      "evidence/**/*.db-wal",
+      "evidence/**/*.db-shm",
+      "lagging-retry-samples/**"
+    ],
+    "rationale": "No database, WAL/SHM, lagging test data directory, session正文, or source session fixture is an allowlist item. Only the 22 before/after synthetic zstd artifacts are included."
+  },
+  "notes": [
+    "FTS fixture gap reports and original/corrected continuation output are included.",
+    "Red and repair text logs referenced by the verified delta continuation are included; supplemental targeted FTS/runtime logs are separately labeled.",
+    "Paths are relative to runtime-fix-20261002 and rooted under evidence/."
+  ]
+}

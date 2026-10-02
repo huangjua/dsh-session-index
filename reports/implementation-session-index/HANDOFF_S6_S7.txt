@@ -1,0 +1,36 @@
+当前最终状态（2026-10-02；更新于 2026-10-02T10:56:44.588Z UTC）
+
+本轮分配的 S6–S7 已完成：候选 0.0.3-rc.1 已按明确授权部署，并完成真实宿主工具注册、查询/anchor、自然续写及检查点验收。
+最终 schema5：331 会话、47092 消息、47870 chunks、331 checkpoint 全部收敛；普通启动后只读复核稳定通过。
+插件活动数据/书签/备份在 E；C 旧插件索引已保全搬 E；官方原始会话日志仍在 C 原位。
+desktop 已优雅退出临时诊断并无参数恢复；main27608/host16488、仅 localhost19387，未留下 inspect/import 或诊断环境。
+实际 ctx/worker 健康证据来自恢复前真实 host15916；普通恢复后的 fresh ctx 未再次提取，普通进程/配置及数据库已另验。
+运行限制：旧库自动迁移的15秒超时未改（本机同版本离线升级恢复）；首次检索加两次SCROLL约76秒并有2次reader恢复；自然续写中间一次回退全量，另外两次尾段读取239/1167B。
+生产书签实际0条；不声称已验证非空生产书签迁移；session_summary仅验证注册，未调用LLM。
+候选清单SHA256仍为 a7ebe5aa640c1b37c2be8f122bd5f4968af802838d46231099e835c60a800ffb；96候选/69运行/22实现源hash保持一致。
+详见 LIVE_TEST_RESULTS.txt、DEPLOYMENT_RESULTS.txt、DEPLOYMENT_RESULTS/S7_STATE.json、PATCHES/S7/manifest.json。
+未push/远端发布，未卸载web；不重复部署/书签迁移/离线升级，不用G旧src build覆盖已验证lib。
+
+以下保留原批准前及曾延后实测的历史文字，只作追溯，不代表当前待办；批准时release目录文件保持不变：
+
+当前接续状态（2026-10-02，覆盖下方批准前历史文字）
+
+S6完成，S7候选0.0.3-rc.1已部署到G；用户“实测再等等，先部署”，真实生产实测明确延后。
+插件索引/书签/完整备份位于E；C旧索引已保全搬E；官方原始session日志保留C原位。
+生产书签0条，迁移changed=false；候选运行文件69项SHA复核通过。
+详见DEPLOYMENT_RESULTS.txt、DEPLOYMENT_RESULTS/DEPLOYMENT_RESULTS.json和DEPLOYMENT_RUNBOOK.txt。
+下一步仅在用户恢复实测后验证真实desktop加载/schema5回填/只读搜索/自然delta，不重新部署或实施S0–S5。
+
+以下为S6批准前的历史记录，候选release目录中的相同文件仍是批准时不可变快照：
+
+DSH session-index S6–S7接续（2026-10-02）
+
+S6完成，S7具体候选待批准；不要重新实施S0–S5，不从旧0.0.1/origin/main开始。
+工作树 E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index；分支review/session-index-hardening；HEAD70800ed7be77b31527a955ea2f6cc6a750dafef8。
+候选release/S6-20261002，0.0.3-rc.1；SHA256.json/CANDIDATE.json锁定授权对象。
+165次测试执行、13迁移检查通过；最初配置编译错误及修正证据均保留。
+所有22源SHA相同，S5基准继承，当前FTSschema5/书签v2/anchor协议未再改。
+所有14项矩阵见 IMPLEMENTATION_STATUS；验证TEST_RESULTS/S6_VALIDATION；README两版已更新；候选全量/增量补丁replay通过。
+S7尚未读写生产数据、未部署、未改junction/宿主、未push。本轮用户说明desktop主要使用，web以后可能卸载，pluginlab不确定；这不授权本轮卸载web。
+下一步：获批具体候选+DEPLOYMENT_RUNBOOK中的运行切换/完整一致备份/生产迁移/停写重启/只读验收后，执行S7并保存新DEPLOYMENT_RESULTS记录；上线后书签不能被旧快照回滚覆盖。
+S7自然增量若尚无真实追加，标待观察，不能凭force假称生产完成。

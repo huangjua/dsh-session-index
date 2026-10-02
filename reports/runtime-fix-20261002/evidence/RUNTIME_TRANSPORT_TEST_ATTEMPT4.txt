@@ -1,0 +1,37 @@
+▶ runtime reader isolation and request deadline
+  ✖ terminates real synchronous SQLite read only; concurrent writer receipt and checkpoint survive (1065.1595ms)
+  ✔ queued request expiry does not replace the running healthy reader; health uses writer (698.8054ms)
+  ✔ recovery wait spends the same query deadline and retains historical failures (853.1576ms)
+  ✔ active read abort replaces only reader and leaves no pending cancellation (575.6535ms)
+✖ runtime reader isolation and request deadline (3194.807ms)
+▶ runtime migration state and bounded initialization
+  ✔ ready deadline does not kill progressing migration; status returns parent progress (914.1186ms)
+  ✔ migration-stall fails within its own bound and factory preserves error/progress (318.2869ms)
+  ✔ migration-total fails within its own bound and factory preserves error/progress (406.2973ms)
+  ✔ opening-stall fails within its own bound and factory preserves error/progress (716.2631ms)
+  ✔ public factory allows actual SQLite batches beyond original 15 seconds (17522.4274ms)
+  ✔ native SQLite migration stall exits its process, rolls back, and releases the writer lock before factory returns (295.9449ms)
+✔ runtime migration state and bounded initialization (20174.3813ms)
+ℹ tests 10
+ℹ suites 2
+ℹ pass 9
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23556.5613
+
+✖ failing tests:
+
+test at .test-build\test\runtime-transport.test.js:39:5
+✖ terminates real synchronous SQLite read only; concurrent writer receipt and checkpoint survive (1065.1595ms)
+  Error [FtsRpcError]: FTS reader exited (1)
+      at rpcError (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/src/fts-client.js:74:12)
+      at FtsProcess.<anonymous> (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/src/fts-client.js:349:46)
+      at FtsProcess.emit (node:events:521:24)
+      at ChildProcess.<anonymous> (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/src/fts-client.js:30:92)
+      at ChildProcess.emit (node:events:509:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:295:12) {
+    code: 'EFTSEXIT'
+  }
+{"exitCode":1,"signal":null}

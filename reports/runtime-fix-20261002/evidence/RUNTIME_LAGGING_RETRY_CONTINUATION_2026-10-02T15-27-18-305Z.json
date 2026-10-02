@@ -1,0 +1,157 @@
+{
+  "scope": "Controlled public apply; real zstd/parser/SQLite/client, captured watcher only; no production actions",
+  "realRetryIntervalMs": 5000,
+  "fingerprintPollIntervalMs": 10000,
+  "observations": [
+    {
+      "name": "unchanged-source-writer-recovery",
+      "root": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\evidence\\lagging-retry-samples\\unchanged-source-writer-recovery-ghrmdA",
+      "watchDeliveries": 1,
+      "samples": {
+        "initial": {
+          "bytes": 236,
+          "sha256": "3b820f82371e5c69f0b0d269d5cf1325c6bb546aa6f56087f4cf25a03a52fe2a"
+        },
+        "partial": {
+          "bytes": 424,
+          "sha256": "fa483124feef52d35a69a2012f96eee98a9c94bd27ea3ebc2443eb32e592c612"
+        },
+        "complete": {
+          "bytes": 427,
+          "sha256": "4d05c5308f593f6f8d6d9140cd3049d16b20e9251294f5b9031ce3dbf36c79f5"
+        }
+      },
+      "before": {
+        "checkpoint": {
+          "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\evidence\\lagging-retry-samples\\unchanged-source-writer-recovery-ghrmdA\\sessions\\controlled\\session.jsonl.zstd",
+          "sessionId": "controlled",
+          "size": 236,
+          "mtimeMs": 1790954838328.2876,
+          "ctimeMs": 1790954838328.2876,
+          "indexedBytes": 236,
+          "indexedSeq": 0,
+          "complete": true,
+          "parserVersion": "session-index/3-chunks",
+          "messageCount": 1
+        },
+        "rows": [
+          {
+            "anchorId": "a1:333d512391a18f0fedf01e1f661b78b7751b1364fe9ed10eadcd98f455bbfad8",
+            "eventSeq": 0,
+            "role": "user",
+            "text": "lagretryoriginal complete prior message",
+            "toolName": ""
+          }
+        ]
+      },
+      "exhausted": {
+        "sourceLagging": true,
+        "automaticRounds": 3,
+        "writerGeneration": 1,
+        "ftsFailed": 1
+      },
+      "autoRefreshLogs": [
+        "[session-index] auto refresh (watch)",
+        "[session-index] auto refresh (deferred)",
+        "[session-index] auto refresh (deferred)"
+      ],
+      "deltaDiagnostics": [
+        {
+          "kind": "delta",
+          "sourceId": "f18f3e6bf8083f8c78e6d9eea5829f8681dc5c6dfaa7fbf42d0828770abdde85",
+          "phase": "attempt",
+          "parsePhase": "delta_validate",
+          "reasonCode": "unknown",
+          "mode": "delta",
+          "previousBytes": 236,
+          "currentBytes": 427,
+          "scannedBytes": 427,
+          "previousSeq": 0,
+          "currentSeq": 1,
+          "startOffset": 236,
+          "attempt": 1,
+          "readBytes": 191,
+          "decodedBytes": 566,
+          "validationDecodedBytes": 283,
+          "deltaBytes": 191,
+          "metricsExact": true,
+          "fallbackMs": 0,
+          "totalMs": 5,
+          "ok": true,
+          "finalConsistency": "pending",
+          "retainedPrevious": false,
+          "published": false,
+          "indexAccepted": false,
+          "observedAtMs": 1790954839833,
+          "finalIndexedBytes": null,
+          "finalIndexedSeq": null,
+          "ftsSynced": null
+        },
+        {
+          "kind": "delta",
+          "sourceId": "f18f3e6bf8083f8c78e6d9eea5829f8681dc5c6dfaa7fbf42d0828770abdde85",
+          "phase": "complete",
+          "parsePhase": "delta_validate",
+          "reasonCode": "unknown",
+          "mode": "delta",
+          "previousBytes": 236,
+          "currentBytes": 427,
+          "scannedBytes": 427,
+          "previousSeq": 0,
+          "currentSeq": 1,
+          "startOffset": 236,
+          "attempt": 1,
+          "readBytes": 191,
+          "decodedBytes": 566,
+          "validationDecodedBytes": 283,
+          "deltaBytes": 191,
+          "metricsExact": true,
+          "fallbackMs": 0,
+          "totalMs": 19,
+          "ok": true,
+          "finalConsistency": "source_stable",
+          "retainedPrevious": false,
+          "published": false,
+          "indexAccepted": true,
+          "observedAtMs": 1790954839847,
+          "finalIndexedBytes": 427,
+          "finalIndexedSeq": 1,
+          "ftsSynced": false
+        },
+        {
+          "kind": "delta",
+          "sourceId": "f18f3e6bf8083f8c78e6d9eea5829f8681dc5c6dfaa7fbf42d0828770abdde85",
+          "phase": "commit",
+          "parsePhase": "delta_validate",
+          "reasonCode": "unknown",
+          "mode": "delta",
+          "previousBytes": 236,
+          "currentBytes": 427,
+          "scannedBytes": 427,
+          "previousSeq": 0,
+          "currentSeq": 1,
+          "startOffset": 236,
+          "attempt": 1,
+          "readBytes": 191,
+          "decodedBytes": 566,
+          "validationDecodedBytes": 283,
+          "deltaBytes": 191,
+          "metricsExact": true,
+          "fallbackMs": 0,
+          "totalMs": 54,
+          "ok": true,
+          "finalConsistency": "source_stable",
+          "retainedPrevious": false,
+          "published": true,
+          "indexAccepted": true,
+          "observedAtMs": 1790954839882,
+          "finalIndexedBytes": 427,
+          "finalIndexedSeq": 1,
+          "ftsSynced": false
+        }
+      ],
+      "closedWatcher": true,
+      "completedDuringFailedPublication": false
+    }
+  ]
+}

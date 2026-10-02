@@ -1,0 +1,100 @@
+定向运行修复候选：部署与回滚方案
+日期：2026-10-02；用户时区：Asia/Hong_Kong（UTC+08:00）。
+状态：可审查的执行方案，尚未部署。本文件未执行任何生产读写、停宿主、重启、部署或回滚。
+验证完成：最终最小回归、公开工具5轮性能、默认factory迁移status、隔离完整检查和旧S6回滚兼容均通过；生产执行待用户另行批准。
+
+一、执行对象与验证清单
+
+新候选：session-index-0.0.3-rc.2-RUNTIME-20261002。
+新候选目录：E:\Do Something\DSH备份\dsh-session-index work\runtime-fix-20261002\release\RUNTIME-20261002
+
+新 CANDIDATE.json：candidateId=session-index-0.0.3-rc.2-RUNTIME-20261002，schema5；完整摘要与数量读取CANDIDATE_READY.json/CANDIDATE.json并核对，不自包含循环哈希。
+新 SHA256.json文件摘要：精确值为CANDIDATE.json.sha256Manifest（根CANDIDATE_READY.json同值），逐项验证清单后执行。
+新 SOURCE_SHA256.json 文件摘要：0d848e99e0f285d561842a610b39468e144b83557295552529b0ab63be4f8277
+本次部署文件清单：RUNTIME_SHA256.json；摘要：d1d8ee4da8245483e3f1ff2cdb930ed1ebe4d1da94607c86b2db93d529e3acd8；仅lib/package/README，通用portable模板不替换用户配置。
+已完成证据：FINAL_ACCEPTANCE.json及QUERY_LATENCY/STARTUP_MIGRATION/DELTA_FALLBACK；运行产物可复现。当前生产正常UI验收待部署后执行。
+
+当前生产插件：G:\AI-Agent\deepseek harness\dsh-session-index
+当前生产 dataDir：E:\Do Something\DSH备份\session-index-data
+官方原始会话日志：C:\Users\admin\.dsh\sessions
+旧已批准候选：session-index-0.0.3-rc.1-S6-20261002（schema5）。
+旧候选目录：E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index\release\S6-20261002
+旧 SHA256.json 文件摘要：a7ebe5aa640c1b37c2be8f122bd5f4968af802838d46231099e835c60a800ffb
+旧候选 CANDIDATE.json：testedNode=v24.16.0；testedDSH=0.2.0-rc.2；FTS schema=5；bookmark format=2。
+旧 S7 部署范围为 lib、package.json、README.md、README_zh.md，历史 69 个部署文件与批准清单相符。
+
+本次备份根建议：
+E:\Do Something\DSH备份\dsh-session-index work\runtime-fix-20261002\deployment-backups\RUNTIME-<本地时间>-<唯一ID>
+其中 runtime-before、user-config-before、data-before、DEPLOYMENT_STATE.json、RESTORE_MANIFEST.json 各自独立；不得覆盖旧 S6/S7/offline 备份。
+
+已知性能边界：正常已索引schema5启动+查询五轮均≤10s；首次安装兼容表达式索引的一个真实慢轮为14370.7ms，含初始化未达10s，保留原始记录。生产首次启动应观察迁移状态与实际耗时，不能承诺该条件总耗时≤10s。
+
+二、授权边界与部署前必须具备的可审查结果
+
+本轮已有授权仅覆盖隔离排查、修复、验证及候选打包。旧 S7 批准不涵盖 rc.2。
+在完成下列检查、填好摘要和形成明确部署文件 diff 后，由 root 单独请求“部署该具体候选并正常重启宿主”的授权。候选未完成前不要求用户额外确认。
+授权前不得停止或重启生产宿主、替换 G 运行产物、迁移/清理/重建生产库、变更生产配置或 push。
+若后来确需恢复生产数据，必须形成具体对应备份与差异后另行确认；不能把一次运行产物部署批准扩大为任意生产数据回滚批准。
+
+部署预检应全部有记录：
+1. 候选 SOURCE/SHA 清单完整，包版本 rc.2，候选输出全来自隔离新版源码。对每个将部署文件核对字节数与 SHA256；清单路径必须是正常相对路径，不能带 ..、绝对路径或指向候选/目标之外的链接。
+2. E 原实现目录未提交新版源码、原 release/S6-20261002、旧验收报告、日志、备份及补丁保持原样；不得仅 checkout HEAD 70800ed 取代新版实现。
+3. G/lib 已是新版 rc.1 运行产物，G/src 仍旧。G 盘任何 build/tsc/npm build 均禁止；本轮也不把新 src 复制到 G 来现场编译。新的 lib 是在隔离目录编译并验证后的完整产物。
+4. 已验证安装的 Electron Node 可创建独立 reader/writer 子进程、加载 node:sqlite/FTS5/zstd，并且普通 Node 与安装运行时的差别已在报告中说明。依赖沿用已匹配的现有运行环境，不临时 npm install、不部署 node_modules、测试夹具、源码日志或隔离数据库。
+5. 新候选 schema5/书签格式2/消息锚点/checkpoint 契约与旧 S6 兼容性有回归依据；新增索引属于 schema5 内的兼容优化。若最后候选改变了这一事实，必须重写回滚方案，不能照本文件继续执行。
+6. 正确性回归、5 轮独立进程冷序列、热查询/SCROLL、reader/native SQL 取消与 writer 并发提交、旧 schema2 公开 FtsClient 自动迁移、进度/卡死/中断/双实例及 delta 原因闭合证据齐备。任何未达目标明确列出，不能把放宽期限、日志增加或第一次成功当通过。
+7. 当前部署差异只含以下 allowlist：完整 lib/、package.json、README.md、README_zh.md，portable模板在此次部署allowlist外。不要按候选目录全部文件递归覆盖生产插件根。
+8. 用户配置单独识别并保全：deployment/cordis.patch.user.yml、当前 dataDir/sessionsDir、provider/凭证/私有参数均不得覆盖。若 G 根的 cordis.patch.yml 实际承载用户配置，也视为用户配置，不能因文件名是 portable 就替换；候选 portable 模板可留在 release 审查，是否需要替换必须列具体配置 diff，不自动改变现有安装配置。
+
+三、获准后的停写与完整备份顺序
+
+1. 从正常界面导出/保存当前受支持的只读诊断，记录应用主进程与真实 host PID、插件状态、版本、dataDir、FTS schema、角色进程/PID、pendingWrites/activeStreams、checkpoint 状态和当前计数。这是本次基线；不能复用历史 PID15916/16488 的健康作为当前事实。
+2. 使用正常界面优雅退出宿主/应用，等待已派发写入、spool 与 flush 完成。确认该 dataDir 的全部共享 writer 已停止，reader/writer 子进程已退出且没有仍会重开数据库的关联实例。确认期间只查看正常受支持诊断/进程关系，不读 hostCookie、ASAR、私有凭证或绕过 401。
+3. 若无法证明共享 writer 都已停写、flush 失败或进程未退出，先保留错误并停止部署步骤。不得在仍写入时只复制 fts.db 主文件，也不以一份可打开的主 DB 文件冒充一致性备份。
+4. 完整运行产物备份：把目标实际 lib 全目录、package.json、README.md、README_zh.md、当前 portable 文件复制到 runtime-before；另外把用户配置原样备份到 user-config-before。保留现有依赖，不更改 node_modules。记录文件名单、大小、时间与 SHA256，并逐文件比较备份和停写后的目标。
+5. 停写一致性数据备份：复制完整 dataDir 到 data-before，包含 fts.db、实际存在的 -wal/-shm、index.json、bookmarks.jsonl、sidecars、索引相关元数据与 staging/owner 文件。不要只挑 db/JSON 或忽略仍存在的 WAL。此备份不复制/变更 C 官方原始会话日志，也不额外读取生产会话正文。
+6. 对停写源、完整复制件及再次读取的停写源逐文件校验，记录文件集合/哈希不变。RESTORE_MANIFEST.json 必须能明确把运行产物和数据备份对应到同一停写窗口，并包含路径、版本、schema、生成时间、大小及 SHA256。只有完整且校验一致的备份才可作为 data rollback 来源。
+7. 不在线 VACUUM、重建、迁移或执行重型 quick_check；历史完整 quick_check 约322秒、600秒 wrapper 超时的证据不被改写。必要完整验证在一致性隔离副本执行，不能把它插入生产启动关键路径。
+
+四、获准后的产物部署
+
+1. 在宿主持续停止的条件下，把候选完整 lib 复制到 G 插件内一个唯一 staging 目录，例如 lib.RUNTIME-20261002.stage-<ID>，先按候选实际运行 manifest 核对 staging 的全部文件与 SHA256。staging 和正式目标都必须解析为上述明确 G 插件根的子路径。
+2. 原实际 lib 已完整备份后，将它保留为 lib.RUNTIME-20261002.previous-<ID>，再把已核对 staging 改名为 lib。目录替换以完整 lib 为单位，防止只 overlay 部分文件留下不匹配的 worker/旧输出。文件系统步骤使用同一 PowerShell、Copy-Item/Move-Item -LiteralPath；不得串到 cmd/batch 拼接路径，也不得对未核对的计算路径递归删除。
+3. 仅复制 manifest 中的 package.json、README.md、README_zh.md ；此次portable模板不在allowlist，不复制。所有用户配置保持原内容和 SHA；不重新生成或覆盖 cordis.patch.user.yml，不改变 dataDir/sessionsDir/provider。不执行 G 盘 build。
+4. 部署后重新枚举 allowlist 运行文件，确认大小/SHA 与 rc.2 候选完全一致，旧多余文件仅保留在 previous/backup 内。保存 DEPLOYMENT_STATE.json，记候选摘要、复制/核对时刻、备份位置与每个实际部署文件。
+5. 不修改 ASAR、不写入 NODE_OPTIONS、不启用后台诊断注入或私有认证入口。子进程运行方式由候选正常代码管理，不手工留下后台 helper/service。正常启动前检查此步骤没有添加诊断参数或持久环境变量。
+
+五、正常启动与本次生产只读验收
+
+1. 用用户正常界面启动应用，记录本次实际 main/host PID、正常 entry/父子关系及版本。进程/端口存在只证明运行，不替代插件健康。启动应显示正常 boot/open/ready；如果迁移/失败状态出现，要保存实际阶段、处理量、耗时与码，不能人工直调 SessionFts 掩盖自动路径失败。
+2. 通过正常界面/受支持诊断入口调用 session_index_status，确认五工具注册、FTS schema5、writer/reader ready、无残留 pending/stream、checkpoint 与当次索引状态收敛。dirtySessionsExact=false 的最近观察不得宣称当前原子一致；结合 observedAt、sourceLagging、incompleteSessions 和真实 checkpoint 观测。
+3. 当前停写基线的 messages/chunks/session 数必须保持或因正常日志自然增长合理前进；331/47092/47870 是历史基准，不强行要求生产此时仍等于旧计数。不得保存私有正文、书签 notes、凭证；诊断只保留脱敏身份/指纹、数量与正确性标志。
+4. 执行约定固定非敏感词（例如 session）的 full 检索、assistant filter，返回有限结果；取其中两个真实 anchor 分别做 SCROLL1/SCROLL2，核对每个 session/anchor 身份、过滤与 coverage，不保存正文。另执行 health/status；search、SCROLL1、SCROLL2、health 分别记录 requestId、真实 backend、角色/代次、ready/recovery/队列、SQL/dispatch、序列化/传输/原文 fallback 和总耗时。
+5. 冷序列是本次正常新进程/新连接首次操作，不等于 OS 磁盘冷缓存；不能清全机缓存或关闭安全软件。隔离的 5 轮冷验收已在候选完成前执行，本步骤无需为了凑轮数反复重启生产。保留 Windows I/O/CPU 与缓存边界，不只选择最快结果。
+6. 正常基准目标沿用本轮定义：冷 search≤5秒、单 SCROLL≤1秒、search+2次SCROLL 总≤10秒；就绪后至少30次热查询/跳回，search p95≤1秒、SCROLL p95≤300ms，并分别报告 p50/p95/max。目标未达明确保留，不能自行放宽。正常序列应无超时、自动重启或静默原文 fallback；backend=source/fts+source 时要说明实际原因与耗时。
+7. 分角色恢复历史不清零：当前可恢复 healthy，但 restarts、transport failures、last error code/at 保留。reader 故障不会连带重启 writer 的故障测试在隔离候选已完成，生产不再注入慢 SQL/崩溃/半帧。
+8. 后续获准自然续写时，观察 delta 结构化原因、offset/seq、累积读量、fallback 与 commit checkpoint；必要 full 应保留，unknown 不猜原因，worker/取消无统计时 metricsExact=false。历史 18,263B 原因仍 unknown，不能借新的控制样本宣称历史根因已还原，也不要求回退归零。
+9. 若没有安全的认证诊断入口，请用户用正常界面执行上述只读工具或导出受支持诊断。未认证 API 的401属于访问边界；不能读私有 hostCookie、调试注入、拦截凭证或以监听端口/旧健康快照/离线一致性替代本次工具验收。尚未取得的生产验证明确标“待验证”。
+
+六、失败后的运行产物回滚（保留现有 schema5 数据）
+
+触发示例：候选无法正常启动、公开工具不正确、reader 故障影响 writer、checkpoint 丢失、非预期重启/超时循环，或正常验收不符合已批准范围。先保留当次 PID、角色、错误码/时间、请求backend与耗时，不吞错误。
+1. 正常退出、停写并确认全部共享 writer 已停止。先把失败候选运行产物和当前完整 dataDir 保存为 incident-after；不覆盖部署前备份，保留可能已经正常完成的新消息/checkpoint。
+2. 优先恢复 runtime-before 中实际旧 S6/rc.1 lib 整目录和配套 package/README/portable 文件，并按其备份 manifest 核对。若使用原 release/S6-20261002，也必须先按旧批准清单证明所选部署文件与备份完全对应。
+3. 保持当前 dataDir 的 schema5、新增正常索引内容、JSON、bookmarks 与用户配置。候选新增兼容索引可继续存在，不在线降 schema、不 DROP 表/删行、不编辑版本号，不人为撤销已提交 checkpoint。schema5/anchor/checkpoint 向旧 S6 兼容已作为部署前要求；若这一要求没有证据，不能擅自执行本步骤。
+4. 完整恢复 lib 后使用正常界面重启，重新核对当前 PID、状态、search/SCROLL 身份与 checkpoint。旧 rc.1 的已知冷检索/15秒首次迁移限制会随代码回滚重新存在，不能把代码回滚描述成已经解决这些历史问题；当前 schema5 库也不应为演示旧问题被改回 schema2。
+
+七、仅在另行确认后恢复生产数据
+
+仅当有具体数据损坏/不兼容证据且无法通过运行产物回滚安全保留当前数据时，提出恢复数据的具体备份、涉及文件和将回退的已提交状态，请求对应授权。
+1. 再次正常退出并停止全部共享 writer；保全 incident-after 的完整运行产物和完整 dataDir。
+2. 校验拟恢复的 data-before 是本次停写后形成且 SHA 全部一致的完整对应快照，确认其 schema5、index/FTS checkpoint、书签与sidecars 彼此对应。
+3. 恢复完整 dataDir 集合，包含当时实际存在的 WAL/SHM 与相关元数据，不能混用“旧 fts.db + 新 index.json”或“新 DB + 旧 WAL”，不能只覆盖主文件。不恢复到迁移前 schema2 快照来做在线降级。
+4. 恢复操作使用已核对绝对路径的同一 PowerShell；将当前目录完整保留到 incident-after，再恢复已验证的完整备份，不递归删除未检查的计算路径。用户配置恢复只有当它属于已批准回滚范围时才进行。
+5. C 官方原始会话日志从未被本次部署改动，不回滚/截断/删除它们。数据快照之后的正常会话增长可能让恢复后的派生索引暂时落后；通过已批准正常路径重新收敛并明确记录 lagging 与新 checkpoint，不把旧快照计数当成当前源日志一致性。
+6. 正常重启后重新验收当前 PID、工具backend/耗时、书签与checkpoint；保存回滚前后清单和失败边界。数据回滚完成前与恢复后都不得借机运行未经批准的在线迁移/VACUUM/全量删除。
+
+八、收尾与留档
+
+最终交付保存：新候选 SOURCE/SHA/CANDIDATE、部署 allowlist diff 与hash、完整停写备份 manifest、部署/回滚日志、当前正常宿主只读验收、QUERY_LATENCY/STARTUP_MIGRATION/DELTA_FALLBACK、未达标/未验证项及授权范围。
+旧 S6/S7 报告、600秒 wrapper 失败、322秒 quick_check 与历史 unknown 回退保持原样。保留备份和 previous 产物供审查，本轮不安排删除；清理备份属于另一个具体高风险动作。

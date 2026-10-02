@@ -1,0 +1,15 @@
+{
+  "scope": "read-only comparison of existing inactive schema2 deployment backup against its original restore manifest",
+  "backup": "implementation-session-index/deployment-backups/S7-20261002-090316-e1190a1f/data-before-switch/fts.db",
+  "manifest": "implementation-session-index/deployment-backups/S7-20261002-090316-e1190a1f/RESTORE_MANIFEST.json",
+  "bytes": 195182592,
+  "expectedBytes": 195182592,
+  "sha256": "45760a512054354c78ac34a562479792215de7c1d22d984801aaa7766868b7c5",
+  "expectedSha256": "45760a512054354c78ac34a562479792215de7c1d22d984801aaa7766868b7c5",
+  "mainDatabaseMatches": true,
+  "companions": [
+    { "suffix": "-wal", "bytes": 0, "inOriginalManifest": false },
+    { "suffix": "-shm", "bytes": 32768, "inOriginalManifest": false }
+  ],
+  "boundary": "No production database opened. Current main DB matches the frozen original manifest; zero-byte WAL contains no committed frames. The current companion file set is explicitly different from the original manifest and is not claimed to match it. Migration-status test copies main/WAL/SHM together into a unique isolated run."
+}

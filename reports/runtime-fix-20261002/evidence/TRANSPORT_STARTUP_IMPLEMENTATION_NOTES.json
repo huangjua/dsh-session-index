@@ -1,0 +1,51 @@
+{
+  "scope": "R1 transport isolation/deadline and R2 public-client startup state machine",
+  "files": ["src/fts-client.ts", "src/fts-worker.ts", "test/runtime-transport.test.ts", "test/runtime-transport-fixture.ts", "test/runtime-transport-parent-fixture.ts", "test/runtime-transport-errors.test.ts", "test/runtime-transport-unsupported-fixture.ts"],
+  "runtime": "Installed E:/Program Files (x86)/DSH-D/DeepSeek Harness.exe with child-scoped ELECTRON_RUN_AS_NODE=1; no persistent NODE_OPTIONS or host restart",
+  "rootCauseEvidence": [
+    "Baseline failWorker rejected all pending RPCs and restart terminated both reader and writer, including healthy writes.",
+    "Baseline startup used one 15-second timer for process handshake plus synchronous migration.",
+    "Actual installed-runtime fault injection established that Worker.terminate did not finish within five seconds during native synchronous SQLite SQL; first test wrapper then reached its 60-second ETIMEDOUT. This is retained as a failed attempt.",
+    "All-process transport initially exposed the existing spool owner process.pid contract and incompatible reader recovery directory naming; both were corrected without weakening directory ownership checks.",
+    "A guardian ref-before-IPC-listener bug caused startup process exit 0 without a ready message. Keeping IPC explicitly referenced and guardian referenced through initialization fixed actual production-worker startup. The failed attempt remains retained."
+  ],
+  "implementation": {
+    "channels": "Separate writer and reader OS processes. Advanced IPC preserves bounded 512 KiB batches and two in-flight batches. The writer and its transaction/spool/checkpoint are untouched by reader recovery.",
+    "cancellation": "Reader execution timeout or abort kills only its owned process. Migration deadline failure also waits for owned writer process exit before factory returns null. OS termination has a four-second two-stage bound; live actor PIDs remain visible and spool cleanup is skipped while actors remain alive.",
+    "parentDeath": "A separate guardian thread in each SQLite process checks the original parent PID every 250 ms. ESRCH kills only that derived SQLite process even while its main thread is blocked in native SQL. Normal parent exit also kills owned children; IPC disconnect closes an idle actor.",
+    "queueSafety": "SQL can start only after the parent has observed the started marker and sent a start permit. A missing permit, cancellation, or expired absolute deadline prevents SQL execution. Deadline is checked again after permit delivery.",
+    "deadline": "One absolute deadline covers ready, recovery, producer/batch admission, worker queue, and execution. No automatic read replay grants a fresh budget. Tool-level parentRequestId and deadlineAt are passed through RPC diagnostics.",
+    "startup": "booting, booted, opening, migrating, ready, failed. Handshake/opening use startupTimeoutMs; migration has separate bounded total/stall/lock-wait deadlines. Only an actual phase or completed-count change resets the stall timer; identical progress does not.",
+    "factoryFailure": "onStartupFailure preserves sanitized name/code, actual last phase/completed/total, and elapsed time even when createFtsClient returns null. Native numeric error.errcode is transported as sqliteErrorCode without parsing exception text; it remains absent for runtime/transport failures without native SQLite metadata.",
+    "health": "Runs on writer rather than blocked reader; migration status returns parent-held progress without SQL. During an admitted writer SQL mutation it immediately returns the most recent actual healthSnapshot with healthBusy=true and observedAt, avoiding the commit queue. Writer ready and successful mutations publish actual engine-health snapshots. Idle health still executes real SQL. A successful health check restores current health while preserving historical failure/restart counters.",
+    "diagnosticPrivacy": "Startup and transport diagnostic error messages use fixed code-based text. Query/body/notes/credentials are absent. Rejected asynchronous diagnostic hooks are caught and recorded using a fixed callback error code. Internal RPC exceptions preserve their original semantics."
+  },
+  "timingDefinitions": {
+    "totalMs": "Parent elapsed time for the complete RPC call, including pre-send waits.",
+    "readyWaitMs": "Awaiting role readiness, including a failing readiness wait.",
+    "recoveryWaitMs": "Waiting for the applicable role recovery, within the same absolute request deadline.",
+    "queueMs": "Worker event-loop queue and start-permit waiting after transport delivery.",
+    "dispatchMs": "Engine dispatch elapsed time; includes sqlMs plus engine processing. Never sum dispatchMs and sqlMs.",
+    "sqlMs": "Actual SQLite prepare/get/all/snapshot SQL measured by SessionFts. Omitted when a native SQL process is killed before it can report its completed SQL duration.",
+    "serializationMs": "Worker response shaping, size checks, and JSON budget validation. Native IPC cloning is not separately instrumented.",
+    "healthSnapshotMs": "Separate writer engine-health snapshot generation after a successful mutation. Excluded from that mutation dispatchMs/sqlMs and explicitly deducted from transport residual.",
+    "transportMs": "Non-negative residual after total minus ready/recovery/admission/queue/dispatch/serialization/healthSnapshot. transportIsResidual=true; includes IPC, scheduling, and small uninstrumented client costs. Millisecond clock rounding can affect exact closure.",
+    "responseTransportMs": "Parent arrival timestamp minus worker response timestamp; reports the response leg separately, already contained in transport residual."
+  },
+  "validated": {
+    "RUNTIME_TRANSPORT_TEST_ATTEMPT5.txt": "11/11 passed in the actual installed runtime. Includes public factory actual SQLite batch progress for 17.436 seconds and native migration stall rollback/released lock before returning null.",
+    "RUNTIME_TRANSPORT_GUARDIAN_PERMIT_ATTEMPT2.txt": "7/7 passed after guardian/ref/deadline/privacy changes. Includes actual production worker, no-permit/no-write, real synchronous SQLite read cancellation with writer commit/checkpoint preservation, queue timeout without restart, bounded recovery deadline, active abort, native migration stall rollback, and forced parent death during synchronous migration lock wait.",
+    "readerTermination": "Real native SQLite fault test asserts observed reader process exit below 1 second; the writer generation stays unchanged and its committed checkpoint is preserved.",
+    "parentDeathTermination": "Actual production worker fault test asserts child process exit below 1.5 seconds after the isolated parent is forcibly killed while its migration main thread is synchronously blocked.",
+    "RUNTIME_READY_RECOVERY_TEST.txt": "Public ready waits through actor termination, spool cleanup and replacement startup rather than resolving the retired actor's ready promise; targeted 1/1 passed, writer generation unchanged and closing ready=false.",
+    "RUNTIME_WRITER_HEALTH_STRESS.txt": "50k x 1000 atomic rollback/replace with concurrent read/status passed, unchanged 2000 ms query timeout. Rollback phase: 18.707 seconds, 459 queries, max 56.482 ms. Commit phase: 35.398 seconds, 906 queries, max 64.234 ms. Cached counts remain previous complete 1 during writes, final actual health/checkpoint=50000; zero restarts/transport failures/request timeouts/queue timeouts/pending requests.",
+    "RUNTIME_SQLITE_ERROR_CLASSIFICATION.txt": "5/5 passed in 5.189 seconds. Public factory fails with state=failed for a non-SQLite file (actual primary SQLITE_NOTADB=26), damaged SQLite schema btree (actual primary SQLITE_CORRUPT=11), and actual disabled SQLite runtime (--no-experimental-sqlite, ERR_UNKNOWN_BUILTIN_MODULE with no fabricated numeric code). Actual progressing migration remains state=migrating. FtsRpcError preserves an extended numeric code unchanged.",
+    "compile": "Latest complete src/test tsconfig.test.json compilation passed after numeric error metadata and calibrated 90-second migration/60-second lock defaults. No query or migration SQL changed in this final metadata patch."
+  },
+  "evidenceBoundaries": [
+    "The 17-second batch fixture tests public-client state/deadline behavior with real SQLite writes. It is not the required 331-session old-schema2 migration dataset; root performs that independent public-factory acceptance.",
+    "Cold/hot full-scale candidate latency, concurrency/backfill correctness, old-schema2 migration calibration, dual-instance migration, release checksums, and deployment/rollback acceptance are handled by root. These are not declared complete by this subtask.",
+    "Default migration limits are calibrated to root's public schema2 measurements: upgrade 25.491 seconds, interrupted recovery 20.165 seconds, dual-client completion 30.092 seconds, maximum real progress gap 8.383 seconds (commit to complete). Total budget is 90 seconds (about 3 times the largest observed public run), progress stall 20 seconds (about 2.4 times the largest measured gap), and lock wait 60 seconds. Handshake remains 15 seconds and ordinary read budget 10 seconds. Final acceptance of these default budgets remains with root.",
+    "An artificial 1.5-second startup smoke deadline produced an opening timeout at 1776 ms on one run. Subsequent production-worker tests with the normal startup limit passed; this artificial timeout is not a performance success or a diagnosis of hardware damage."
+  ]
+}

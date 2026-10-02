@@ -1,0 +1,151 @@
+{
+  "scope": "real SQLite autocommit test fixture; production budgets unchanged",
+  "results": [
+    {
+      "budgetMs": 100,
+      "ready": false,
+      "errorCode": "EFTSMIGRATIONSTALL",
+      "closeErrorCode": "EFTSMIGRATIONSTALL",
+      "maxObservedProgressGapMs": 0,
+      "elapsedMs": 475,
+      "events": [
+        {
+          "atMs": 142,
+          "state": "booted"
+        },
+        {
+          "atMs": 142,
+          "state": "opening"
+        },
+        {
+          "atMs": 294,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 0
+        },
+        {
+          "atMs": 398,
+          "state": "failed",
+          "phase": "batch-copy",
+          "completed": 0,
+          "errorCode": "EFTSMIGRATIONSTALL"
+        }
+      ]
+    },
+    {
+      "budgetMs": 500,
+      "ready": false,
+      "errorCode": "EFTSMIGRATIONTOTAL",
+      "closeErrorCode": "EFTSMIGRATIONTOTAL",
+      "maxObservedProgressGapMs": 274,
+      "elapsedMs": 2309,
+      "events": [
+        {
+          "atMs": 137,
+          "state": "booted"
+        },
+        {
+          "atMs": 137,
+          "state": "opening"
+        },
+        {
+          "atMs": 263,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 0
+        },
+        {
+          "atMs": 359,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 1
+        },
+        {
+          "atMs": 588,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 2
+        },
+        {
+          "atMs": 784,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 3
+        },
+        {
+          "atMs": 958,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 4
+        },
+        {
+          "atMs": 1143,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 5
+        },
+        {
+          "atMs": 1317,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 6
+        },
+        {
+          "atMs": 1513,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 7
+        },
+        {
+          "atMs": 1787,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 8
+        },
+        {
+          "atMs": 1861,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 9
+        },
+        {
+          "atMs": 1935,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 10
+        },
+        {
+          "atMs": 2009,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 11
+        },
+        {
+          "atMs": 2083,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 12
+        },
+        {
+          "atMs": 2157,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 13
+        },
+        {
+          "atMs": 2242,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 14
+        },
+        {
+          "atMs": 2265,
+          "state": "failed",
+          "phase": "batch-copy",
+          "completed": 14,
+          "errorCode": "EFTSMIGRATIONTOTAL"
+        }
+      ]
+    }
+  ]
+}

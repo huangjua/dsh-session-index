@@ -1,0 +1,25 @@
+运行诊断交叉审阅（2026-10-02，隔离源码）
+范围：只读审阅 index.ts、fts-client.ts、fts-worker.ts、fts.ts 及 R3 统计契约；按 root 授权只修取消统计的最后一处边界。没有执行生产动作，也没有追加性能测试。
+
+1. index dirty/status 缓存：通过，边界明确。
+dirtyKey 包含 writerGeneration、来源指纹、indexedBytes/Seq、ftsDirty 与 coverage.complete；只缓存 1 秒内观察为零的 countDirty 结果，并对同 key 的在飞检查 single-flight。状态的 dirtySessionsExact=false 与 dirtySessionsObservedAt 明确其为最近观察或 JSON 标记，不能把它解释为当前跨文件/跨连接原子一致性证明。健康统计优先使用新增 health.sessions；旧 factory/SessionFts 不含 sessions 时仍回退原 sessionCount()，保留旧 callback factory 的单 path 参数。
+
+2. 最后 watcher 事件消失后的补扫：源码逻辑通过，时钟测试归 root。
+autoRefresh 的失败、scan 不完整、raced、failed、ftsFailed，以及 delta complete/commit 中 source_changed 都设 sourceLagging；dirty 由 finally/deferred 定时器推动，不依赖下一次 watcher 事件。deferred/dirty-while-running 不重置计数，初次加 2 次补扫最多 3 轮，启动间隔至少 5 秒。预算导致的 coverage 不完整另有 incompleteSessions 标记；不应通过反复相同预算重建假装能补齐。root 已修异常 catch 与操作类型判断；SCROLL 与失败诊断复用相同 isScroll 条件。
+
+3. 新诊断字段的内容边界：结构审阅通过；完整公开 status 的旧错误字段见第 4 项。
+onRequestDiagnostic 只记录固定 op/backend、requestId、角色/代次、队列/SQL/传输/期限/结果码，未复制 args、原查询、结果正文、snippet 或书签。tool-query/fts-fallback 只记录时长、backend、返回数量、覆盖标志与 errorCode，查询仅留在原工具结果契约，不写 runtime 记录。delta 使用来源路径 SHA256，不记录原路径、会话正文、书签或原始错误文本。startup progress 只含 phase、completed/total 和时间。transportMs 显式标 transportIsResidual；不能把估计余量冒充独立测量的 IPC 时间。SQL 与 dispatch 时间存在包含关系，报告相加时不得重复计算。
+
+4. 错误/回调脱敏：本次发现已通知 owner，需以最终源码确认。
+已确认修复：startupState.error 使用固定角色/错误码消息，不复制原 stack；notifyDiagnostic 同步与异步 callback 失败均被隔离，公开 callbackError 为 EFTSDIAGNOSTICCALLBACK；index.onRuntimeDiagnostic 也隔离 rejected Promise。内部 RPC 仍保留原异常语义。
+最后发现：failStartup 随后 failWorker(error,false) 原先把 error.message 存入 roleLastError/lastTransportError，并通过 diagnostics 公开。startupState 单独脱敏不覆盖这一路径，transport agent 已收到建议：公开历史错误用固定 code/name，次数与 at 保留，内部 reject 不改。此处未从原错误里发现实际私有正文，但不能据此保证任意未来 engine/callback 错误文本都安全；最终交付须检查 owner 是否处理该公开路径。旧 lastWriteError/spool/recovery 错误属于已有接口，未在本只读审阅中全面重新设计。
+
+5. callback 兼容：通过当前安装绑定，直接 builder 调试 hook 需理解其边界。
+旧 onSessionParsed 仍按 Promise receipt 等待，onRemoved/flush 的完成与错误语义保持；createSessionFts 依赖注入仍只接 path，可返回 SessionFts/FtsClient/null。新增 index 与 FtsClient 诊断 observer 的异步拒绝已隔离。直接调用 SessionIndexBuilder 并自定义 onDeltaDiagnostic 时仍是同步通知接口；安装的 index 绑定包装为不抛错误的 recordRuntime，本次没有把用户自定义直接 builder hook 扩大为另一套订阅系统。
+
+6. delta 真实读量与完整性：通过控制样本，历史 unknown 保留。
+runWithRetry 每次累加原始实际 read/decoded/delta/validationDecodedBytes；转 full 后先加此前 delta 累计，再加 full 累计；complete 时清 priorTotals，避免二次加总。raced 成功但拒绝发布的读取也计入报告。native→fzstd 必要回退包含两条实际读取，内存中 fzstd 验证只计解压输出、不虚增磁盘读取。magic 切帧启发式只在整段 fzstd 同样确认 EOF 时标 partial_frame，防止把 magic 碰撞误分类后删除必要解码器回退。
+worker 崩溃且未返回 stats 时 metricsExact=false，readBytes 为已知下界。本轮最后修复：取消且无可靠 stats 同样 metricsExact=false；不能把 0 当作没有实际读取。新增控制取消用例先执行真实 delta 读取，再模拟 stats 丢失的 CancelError，确认 0 为下界、未发布、旧 checkpoint 保持，下一稳定补扫与 full 等价。最终专用编译通过，R3 单文件 10/10，通过输出 DELTA_NEW_TEST_OUTPUT.txt；此轮未重复旧全套或进行性能测试。
+
+7. 验证边界。
+DELTA_FALLBACK.json 的 10 个控制样本及其 before/after.zstd、SHA256 可重放；历史 18,263B 仅有 numeric closure，没有可证明完整前后帧快照，仍 unknown。源码审阅不替代 Windows native SQL 取消故障、5 轮冷序列/热性能、公开 FtsClient 大旧库迁移和正常宿主工具验收；这些由 root/对应 agent 的独立实测证据负责。未将缓存健康、旧 host PID 或纯离线检查写成当前生产工具验收通过。

@@ -1,0 +1,46 @@
+DSH session-index 发布准备（2026-10-02 Asia/Hong_Kong）
+
+结论：S6候选完成；S7生产发布未执行，等待指定候选与具体高风险范围的确认。
+候选ID session-index-0.0.3-rc.1-S6-20261002
+候选目录 E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index\release\S6-20261002
+清单 CANDIDATE.json + SHA256.json（manifest自身SHA在CANDIDATE中）+ SOURCE_SHA256.json。
+基线70800ed7be77b31527a955ea2f6cc6a750dafef8；S0–S6未提交diff，全量/分阶段审查补丁；未push。
+
+关闭与实际验证
+14项全部关闭，逐项实现/正确行为回归见 IMPLEMENTATION_STATUS.txt 和 TEST_RESULTS/S6_VALIDATION.json。
+本轮165次测试执行全部通过、没有skip/cancel：19文件集成159项、新用户流程1项、候选lib/worker同流程1项、生产迁移CLI 4项。
+同一流程对源码编译与最终候选各跑一次，计入执行次数；不宣称都是不同断言。
+类型检查、锁定DSH契约、测试编译、隔离候选编译通过。首次新测试配置缺字段编译错误已保留，补字段后精准重编通过。
+真实流程：generation0..4合成日志→build→跨块及跨消息语义→书签→自然delta→force→restart→删本次派生FTS副本→重建→书签SCROLL。
+另覆盖独立进程书签/SQL锁竞争、事务故障、扫描失败/cap、同数量/同大小改写、卸载重载、v0/v1/v2/v3/v4门禁。
+测试显式DSH_HOME/TEMP/TMP/dataDir/sessionsRoot隔离；LLM关闭/fake；未读取生产会话。
+
+迁移
+最终候选lib运行13项schema2→5/字段和行序保留/回滚重试/书签干预恢复演练，全通过。
+10合成物理书签：resolved2/unresolved3/ambiguous1/session-missing1/anchor-replaced1/session1/alreadyMigrated1。
+6条未恢复消息定位原记录全部保留；numeric缺稳定身份证据、歧义、缺会话或anchor已替换，不猜映射。
+这些是合成统计；生产总数/可恢复数未知。生产显式CLI默认dryRun、readOnly证据库，不先升级/重建毁掉旧证据。
+
+性能与边界
+22个src SHA与S3–S5最终源码相同，沿用已有低负载独立5轮冷/稳态基准，不与本轮测试并跑。
+steady最大heartbeat gap 19.9693..31.9490ms，全≤100ms，最差相对审查1199ms降低97.335%。
+1/16/64MiB前缀各5轮，32B尾帧实际read/压缩输入allocation均32B。
+50k压力失败回滚/成功原子切换、875读查询、最慢133.7911ms证据见S5汇总。
+正文/chunk写入总时长增加；心跳是宿主进程观测，不保证desktop UI延迟。RSS不是8MiB队列上限，active正文单独有64MiB/source预算。
+正文采集50k消息/64MiB，默认单行4MiB/总解压256MiB，显式原文补查单行4..32MiB；coverage/sourceLimits回显限制。
+原始ID可稳定；无ID的fallback受generation+seq+证据约束，不能宣称跨格式无损定位。
+实测Node v24.16.0、DSH0.2.0-rc.2、Cordis4.0.4、Schemastery3.18.4；peer范围不是跨版本测试证据。
+未接桌面原生搜索provider，仍是五个模型工具。
+
+交付与保护
+候选含lib/types/两worker/package/README/LICENSE/锁文件/portable cordis patch/用户配置审查副本/迁移CLI/审查补丁。
+用户绝对E盘dataDir只放deployment/cordis.patch.user.yml，portable默认patch无该路径，不部署覆盖现有profile配置。
+node_modules不打包；使用已核验兼容运行依赖。原S0–S2/S3–S5补丁未覆盖。
+TEST_RESULTS/s6-final-protection.json核对G 68个原src/lib hash、HEAD、干净status和desktop junction仍一致。
+
+S7具体动作与回滚
+按 DEPLOYMENT_RUNBOOK.txt 核实desktop为主要端，web保留；共享取决profile配置。停全部共享写方→完整离线数据/运行码快照→旧证据dryRun/apply→候选切换→授权宿主重启→生产只读工具/书签/进度验收→一次自然增量观察。
+不先force/delete生产FTS、不删现有资源、不安装或改用户依赖、不自动push/远端发布。
+回滚先保全上线后的全部书签；有新用户数据不能盲目用旧备份覆盖，旧版本无法表达的新anchor记录另行保全并审查兼容方案。
+宿主可靠停写/恢复入口仍须现场确认；当前未声称已部署或已生产验收。
+授权要求来自用户提供的AGENTS.md高风险动作边界及EXECUTION_PLAN S7候选确认步骤。

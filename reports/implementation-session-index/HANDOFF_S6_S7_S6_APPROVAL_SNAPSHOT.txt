@@ -1,0 +1,11 @@
+DSH session-index S6–S7接续（2026-10-02）
+
+S6完成，S7具体候选待批准；不要重新实施S0–S5，不从旧0.0.1/origin/main开始。
+工作树 E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index；分支review/session-index-hardening；HEAD70800ed7be77b31527a955ea2f6cc6a750dafef8。
+候选release/S6-20261002，0.0.3-rc.1；SHA256.json/CANDIDATE.json锁定授权对象。
+165次测试执行、13迁移检查通过；最初配置编译错误及修正证据均保留。
+所有22源SHA相同，S5基准继承，当前FTSschema5/书签v2/anchor协议未再改。
+所有14项矩阵见 IMPLEMENTATION_STATUS；验证TEST_RESULTS/S6_VALIDATION；README两版已更新；候选全量/增量补丁replay通过。
+S7尚未读写生产数据、未部署、未改junction/宿主、未push。本轮用户说明desktop主要使用，web以后可能卸载，pluginlab不确定；这不授权本轮卸载web。
+下一步：获批具体候选+DEPLOYMENT_RUNBOOK中的运行切换/完整一致备份/生产迁移/停写重启/只读验收后，执行S7并保存新DEPLOYMENT_RESULTS记录；上线后书签不能被旧快照回滚覆盖。
+S7自然增量若尚无真实追加，标待观察，不能凭force假称生产完成。

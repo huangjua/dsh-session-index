@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseHead, parseFull, parseSearch, streamJsonlLines } from '../src/streaming-parser.js'
 import { parseSession, decompressZstd } from '../src/core.js'
-import { alpha3Assistant, alpha3EventJson, alpha3Jsonl, alpha3User, type Alpha3Event } from './support/alpha3-log.js'
+import { alpha3Assistant, alpha3EventJson, alpha3Jsonl, alpha3ToolCall, alpha3User, type Alpha3Event } from './support/alpha3-log.js'
 
 const fixture = (name: string) =>
   fileURLToPath(new URL(`../../test/fixtures/${name}`, import.meta.url))
@@ -194,6 +194,52 @@ describe('alpha.3 残缺帧', () => {
 })
 
 describe('parseSearch', () => {
+  const roleFile = async (): Promise<string> => {
+    const file = join(generatedRoot, 'search-role.jsonl.zstd')
+    const lines = alpha3Jsonl({
+      id: 'search-role', createdAt: 1, events: [
+        alpha3User('needle user one', 'u1'),
+        alpha3User('needle user two', 'u2'),
+        alpha3User('needle user three', 'u3'),
+        alpha3Assistant('needle\n assistant four', 'a4'),
+        alpha3ToolCall('needle_tool', 't5'),
+      ],
+    })
+    await writeFile(file, zstdCompressSync(Buffer.from(lines.join('\n') + '\n')))
+    return file
+  }
+
+  it('S1.2 role=assistant 在 maxSnippets=3 前过滤前三条 user 与 tool 命中', async () => {
+    const hits = await parseSearch(await roleFile(), 'needle', { role: 'assistant', maxSnippets: 3 })
+    assert.equal(hits.length, 1)
+    assert.equal(hits[0].role, 'assistant')
+    assert.equal(hits[0].type, 'assistant/message')
+    assert.equal(hits[0].snippet, '>>>needle<<< assistant four')
+  })
+
+  it('S1.2 user/tool/any 角色在截断前生效，any 与缺省行为一致', async () => {
+    const file = await roleFile()
+    const users = await parseSearch(file, 'needle', { role: 'user', maxSnippets: 3 })
+    assert.equal(users.length, 3)
+    assert.ok(users.every((hit) => hit.role === 'user'))
+    const tools = await parseSearch(file, 'needle', { role: 'tool', maxSnippets: 1 })
+    assert.equal(tools.length, 1)
+    assert.equal(tools[0].type, 'tool/call')
+    assert.equal(tools[0].snippet, '')
+    assert.equal(tools[0].role, 'tool')
+    assert.equal(tools[0].toolName, 'needle_tool')
+    assert.equal(tools[0].callId, 't5')
+    assert.equal(tools[0].eventSeq, 4)
+    assert.match(tools[0].anchorId!, /^a1:/)
+    const any = await parseSearch(file, 'needle', { role: 'any', maxSnippets: 9 })
+    assert.deepEqual(any, await parseSearch(file, 'needle', { maxSnippets: 9 }))
+    assert.equal(any.length, 5)
+    assert.equal(any.filter((hit) => hit.role === 'user').length, 3)
+    assert.equal(any.filter((hit) => hit.role === 'assistant').length, 1)
+    assert.equal(any.filter((hit) => hit.role === 'tool').length, 1)
+    assert.deepEqual(any.map(hit => hit.eventSeq), [0, 1, 2, 3, 4])
+  })
+
   it('命中 user/message 文本并生成上下文 snippet', async () => {
     const hits = await parseSearch(SAMPLE, 'gemini-code', { maxSnippets: 5 })
     assert.ok(hits.length >= 1)
@@ -253,15 +299,15 @@ describe('STAGE-1 Part C（codex/ccfullsearch 边界 + alpha.3 帧切分）', ()
     for (const d of partcDirs) await rm(d, { recursive: true, force: true }).catch(() => {})
   })
 
-  it('json 转义查询：引号/反斜杠/中文按字面命中正文（codex json_escaped_search_term 语义）', async () => {
+  it('共享查询净化后引号/反斜杠/中文命中原正文并保留标记外的原文', async () => {
     const file = await mkFile([
       user('他说"你好" world', 2),
       assistant('路径 C:\\temp 中文混合', 3),
     ])
     const q1 = await parseSearch(file, '"你好"', { maxSnippets: 3 })
-    assert.ok(q1.some((h) => h.snippet.includes('"你好"')), `引号查询应命中正文：${JSON.stringify(q1)}`)
+    assert.ok(q1.some((h) => h.snippet.includes('">>>你好<<<"')), `引号查询应净化词并保留原文引号：${JSON.stringify(q1)}`)
     const q2 = await parseSearch(file, 'C:\\temp', { maxSnippets: 3 })
-    assert.ok(q2.some((h) => h.snippet.toLowerCase().includes('c:\\temp')), `反斜杠查询应命中正文：${JSON.stringify(q2)}`)
+    assert.ok(q2.some((h) => h.snippet.replace(/>>>|<<</g, '').toLowerCase().includes('c:\\temp')), `反斜杠查询应命中正文：${JSON.stringify(q2)}`)
     const q3 = await parseSearch(file, '中文混合', { maxSnippets: 3 })
     assert.ok(q3.some((h) => h.snippet.includes('中文混合')), `中文查询应命中正文：${JSON.stringify(q3)}`)
   })
@@ -351,7 +397,15 @@ describe('STAGE-1 Part C（codex/ccfullsearch 边界 + alpha.3 帧切分）', ()
     )
     const fA = await parseFull(SINGLE_FRAME)
     const fB = await parseFull(HEADER_FRAME)
-    assert.deepEqual(fA, fB, 'parseFull 两变体全字段等价')
+    const { readBytes: readA, allocatedBytes: allocatedA, discoveredBytes: sizeA, ...contentA } = fA
+    const { readBytes: readB, allocatedBytes: allocatedB, discoveredBytes: sizeB, ...contentB } = fB
+    assert.deepEqual(contentA, contentB, 'parseFull 两变体逻辑字段等价')
+    assert.equal(readA, (await readFile(SINGLE_FRAME)).length)
+    assert.equal(readB, (await readFile(HEADER_FRAME)).length)
+    assert.equal(sizeA, readA)
+    assert.equal(sizeB, readB)
+    assert.equal(allocatedA, readA)
+    assert.equal(allocatedB, readB)
     const sA = await parseSearch(SINGLE_FRAME, 'needle', { maxSnippets: 5 })
     const sB = await parseSearch(HEADER_FRAME, 'needle', { maxSnippets: 5 })
     assert.deepEqual(sA, sB, 'parseSearch 两变体等价')

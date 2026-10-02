@@ -1,0 +1,24 @@
+▶ runtime reader isolation and request deadline
+  ✔ production worker cannot execute a write without the parent start permit (253.249ms)
+  ✔ terminates real synchronous SQLite read only; concurrent writer receipt and checkpoint survive (822.1178ms)
+  ✔ queued request expiry does not replace the running healthy reader; health uses writer (674.871ms)
+  ✔ recovery wait spends the same query deadline and retains historical failures (828.3137ms)
+  ✔ active read abort replaces only reader and leaves no pending cancellation (601.0525ms)
+✔ runtime reader isolation and request deadline (3181.1387ms)
+▶ runtime migration state and bounded initialization
+  ✔ ready deadline does not kill progressing migration; status returns parent progress (796.1193ms)
+  ✔ migration-stall fails within its own bound and factory preserves error/progress (243.5206ms)
+  ✔ migration-total fails within its own bound and factory preserves error/progress (343.6391ms)
+  ✔ opening-stall fails within its own bound and factory preserves error/progress (644.1524ms)
+  ✔ public factory allows actual SQLite batches beyond original 15 seconds (17436.424ms)
+  ✔ native SQLite migration stall exits its process, rolls back, and releases the writer lock before factory returns (330.7725ms)
+✔ runtime migration state and bounded initialization (19795.3366ms)
+ℹ tests 11
+ℹ suites 2
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23119.9946
+{"exitCode":0,"signal":null}

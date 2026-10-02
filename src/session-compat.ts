@@ -75,9 +75,36 @@ export interface CompatibleMessage {
   data: Record<string, unknown>
 }
 
-export class SessionCompatibilityError extends Error {
-  constructor(message: string) {
+export type SessionFailureReason = 'surface_replace' | 'cross_window_reference' | 'partial_frame'
+  | 'invalid_offset' | 'sequence_mismatch' | 'compatibility_reject' | 'source_changed'
+  | 'coverage_incomplete' | 'worker_failure' | 'unknown'
+export type SessionFailurePhase = 'compressed_read' | 'decode' | 'compatibility' | 'delta_validate' | 'worker' | 'publish'
+export interface SessionFailureDiagnostic {
+  reasonCode: SessionFailureReason
+  phase: SessionFailurePhase
+  retryable: boolean
+}
+
+/** Classification is set where a condition is observed, never parsed from error text. */
+export class SessionParseError extends Error implements SessionFailureDiagnostic {
+  constructor(message: string, readonly reasonCode: SessionFailureReason,
+    readonly phase: SessionFailurePhase, readonly retryable = false) {
     super(message)
+    this.name = 'SessionParseError'
+  }
+}
+
+export function sessionFailureOf(value: unknown): SessionFailureDiagnostic {
+  if (value && typeof value === 'object' && 'reasonCode' in value && 'phase' in value) {
+    const typed = value as SessionFailureDiagnostic
+    return { reasonCode: typed.reasonCode, phase: typed.phase, retryable: typed.retryable === true }
+  }
+  return { reasonCode: 'unknown', phase: 'decode', retryable: false }
+}
+
+export class SessionCompatibilityError extends SessionParseError {
+  constructor(message: string, reason: SessionFailureReason = 'compatibility_reject') {
+    super(message, reason, 'compatibility')
     this.name = 'SessionCompatibilityError'
   }
 }
@@ -365,6 +392,7 @@ export class SessionLogCompatibility {
   /** C9：本次解析窗口内发生的 surface 替换次数（delta 安全性判据） */
   private _replaceOps = 0
   private expectedSeq = 0
+  private resumeBaseSeq = 0
   private readonly surface: Record<string, unknown>[] = []
 
   get header(): SessionHeaderView {
@@ -402,6 +430,7 @@ export class SessionLogCompatibility {
     this._generation = state.generation
     this._header = state.header
     this.expectedSeq = state.baseSeq
+    this.resumeBaseSeq = state.baseSeq
   }
 
   consumeLine(value: unknown): Record<string, unknown>[] {
@@ -423,6 +452,11 @@ export class SessionLogCompatibility {
       type: event.type as CompatibleMessage['type'],
       data: event.data as Record<string, unknown>,
     }))
+  }
+
+  /** Index traversal uses writer order after folding; model-visible positions stay intact. */
+  finishBySource(): CompatibleMessage[] {
+    return this.finish().sort((left, right) => left.seq - right.seq)
   }
 
   private consumeHeader(value: unknown): void {
@@ -506,6 +540,9 @@ export class SessionLogCompatibility {
   }
 
   private consumeLegacyEvent(source: Record<string, unknown>): void {
+    if (isEventSeq(source.seq) && source.seq !== this.expectedSeq) {
+      throw new SessionCompatibilityError(`unexpected event sequence; expected ${this.expectedSeq}`, 'sequence_mismatch')
+    }
     if (Object.keys(source).some(key => !LEGACY_EVENT_KEYS.has(key)) || typeof source.type !== 'string'
       || !isEventSeq(source.seq) || source.seq !== this.expectedSeq
       || !Number.isSafeInteger(source.time) || !Object.hasOwn(source, 'data')
@@ -539,6 +576,9 @@ export class SessionLogCompatibility {
    * encodings share one fold.
    */
   private consumeModernEvent(source: Record<string, unknown>): void {
+    if (isEventSeq(source.seq) && source.seq !== this.expectedSeq) {
+      throw new SessionCompatibilityError(`unexpected event sequence; expected ${this.expectedSeq}`, 'sequence_mismatch')
+    }
     if (Object.keys(source).some(key => !MODERN_EVENT_KEYS.has(key)) || typeof source.type !== 'string'
       || !isEventSeq(source.seq) || source.seq !== this.expectedSeq
       || !Number.isSafeInteger(source.time) || !Object.hasOwn(source, 'data')
@@ -592,7 +632,12 @@ export class SessionLogCompatibility {
     }
     const start = this.surface.findIndex(candidate => candidate.seq === replace.start)
     const end = this.surface.findIndex(candidate => candidate.seq === replace.end)
-    if (start < 0 || end < start) throw new SessionCompatibilityError(`invalid surface replacement range at seq ${event.seq}`)
+    if (start < 0 || end < start) {
+      const crossWindow = this.resumeBaseSeq > 0
+        && ((replace.start as number) < this.resumeBaseSeq || (replace.end as number) < this.resumeBaseSeq)
+      throw new SessionCompatibilityError(`invalid surface replacement range at seq ${event.seq}`,
+        crossWindow ? 'cross_window_reference' : 'compatibility_reject')
+    }
     const shadowed = this.surface.slice(start, end + 1)
     const sourceSet = new Set((sources ?? []) as number[])
     if (shadowed.some(candidate => !sourceSet.has(candidate.seq as number))) {

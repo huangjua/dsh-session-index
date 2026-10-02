@@ -1,0 +1,12 @@
+▶ runtime reader isolation and request deadline
+  ✔ public ready waits for reader replacement rather than returning the retired actor readiness (972.8759ms)
+✔ runtime reader isolation and request deadline (974.9726ms)
+ℹ tests 1
+ℹ suites 1
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1194.3168
+{"exitCode":0,"signal":null}

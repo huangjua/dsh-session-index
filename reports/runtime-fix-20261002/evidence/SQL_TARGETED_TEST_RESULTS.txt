@@ -1,0 +1,30 @@
+R1/R2 SessionFts targeted verification, isolated source copy
+Source: runtime-fix-20261002/work/src/fts.ts
+Runtime: ordinary Node v24.16.0. Installed Electron Node integration is recorded separately by root.
+
+Independent focused TypeScript compile:
+node node_modules/typescript/bin/tsc --target ES2023 --module NodeNext --moduleResolution NodeNext --skipLibCheck --strict --types node --rootDir . --outDir .sql-test-build src/fts.ts test/runtime-sql-migration.test.ts
+exitCode=0
+
+Final current-source new tests:
+node --test .sql-test-build/test/runtime-sql-migration.test.js
+PASS schema2 reports completed real batches; schema5 reopen changes no rows and performs no migration (1301.9214 ms)
+PASS migration interruption rolls back schema/chunks/version together; public factory can then safely retry (279.8800 ms)
+PASS migration lock wait is real contention with unchanged work counts and a bounded deadline (471.2533 ms)
+PASS unsupported future schema fails explicitly without downgrading its version or data (177.3340 ms)
+PASS SCROLL expression seek preserves mixed legacy/source order and tie identity without a temp sort (100.4198 ms)
+PASS query timings separate SQLite from processing for search/page/scroll/health (47.7742 ms)
+tests=6 pass=6 fail=0 duration_ms=2587.9856 exitCode=0
+
+Shared-contract minimal regression:
+fts-message-contract.test.js, fts-filter-safety.test.js, fts-recovery.test.js
+Initial .test-build run: tests=18 pass=18 fail=0 duration_ms=11562.858.
+Second independent .sql-test-build run: contract/filter/atomic-recovery plus first four new tests passed (20/22).
+Two independent-process lock tests could not initialize their child fixture because the focused compile had omitted test/support/sqlite-lock-child.ts; withScratch cleanup reported EBUSY on the still-open parent DB. This was a verification harness omission, and that failed run is retained here.
+After explicitly compiling test/support/sqlite-lock-child.ts, reran only the failed lock suite:
+node --test --test-name-pattern='独立进程锁竞争' .sql-test-build/test/fts-recovery.test.js
+PASS 持锁子进程释放后，等待的写入成功提交且未阻塞计时器 (291.8004 ms)
+PASS 持锁超过等待上限明确失败，旧快照保留；释放后重试成功 (384.5249 ms)
+tests=2 pass=2 fail=0 duration_ms=796.5362 exitCode=0
+
+Scope: these synthetic correctness tests prove batching/transaction/order/timing contracts. They do not replace the required same-scale cold/hot performance sequences or public FtsClient old-schema2 migration tests, which root runs serially.

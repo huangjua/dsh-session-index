@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-10-02T15:58:08.796Z",
+  "db": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\datasets\\tool-candidate-c0ae6e50-d3f8-41d0-a81a-8945d693b0e4\\data\\fts.db",
+  "toolBoundary": {
+    "path": "evidence\\candidate-tool-queries-normal-upgraded-final-c0ae6e50\\RUN_BOUNDARY.json",
+    "sha256": "42d9dc4b862b14db05e6d0e36ccd3867ffce54f1a6b340f17a8f0d947a00efff"
+  },
+  "integrityResult": {
+    "path": "evidence\\FINAL_QUERY_INTEGRITY.json",
+    "sha256": "a1d1f23ff8615e768c9ae7925e617ca9e63cfec7c84e0cf7c3d2cecbd1b5699c",
+    "startedAt": "2026-10-02T15:53:11.275Z",
+    "quickCheckMs": 49652.9424,
+    "ok": true
+  },
+  "command": {
+    "cwd": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work",
+    "launcher": "node scripts/runtime-installed-run.mjs",
+    "args": [
+      "scripts/runtime-integrity.mjs",
+      "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\datasets\\tool-candidate-c0ae6e50-d3f8-41d0-a81a-8945d693b0e4\\data\\fts.db",
+      "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\evidence\\FINAL_QUERY_INTEGRITY.json"
+    ]
+  },
+  "exitEvidence": {
+    "source": "controller observed exec session 18623 final write_stdin result; installed-run propagates actual Electron child exit code",
+    "exitCode": 0
+  },
+  "allQueryProcessesClosed": true,
+  "productionOpened": false
+}

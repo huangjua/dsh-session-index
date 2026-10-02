@@ -6,7 +6,7 @@
  * - append + 读回                    ↔ write_index + scan（字段完整回显）
  * - 同锚点最新行胜出                  ↔ find_thread_name_by_id_prefers_latest_entry /
  *                                    find_thread_names_by_ids_prefers_latest_entry
- * - 坏行跳过 + 计数（非 JSON / v!=1） ↔ reverse_lookup_accepts_valid_eof_json_and_skips_invalid
+ * - 坏行跳过 + 计数（非 JSON / 未支持版本） ↔ reverse_lookup_accepts_valid_eof_json_and_skips_invalid
  * - 文件缺失 → 空 / remove → 0       ↔ scan_index_returns_none_when_entry_missing（NotFound→空）
  * - remove 重写文件                  ↔ remove_thread_name_entries
  * - 同锚点 upsert 幂等                ↔ aider .aider.input.history 去重/替换更新思想（C4）
@@ -15,7 +15,7 @@
  */
 import { describe, it, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile, readFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -83,7 +83,7 @@ describe('bookmark 存储（对照 codex session_index_tests.rs）', () => {
     assert.equal(read.bookmarks.length, 1)
     assert.equal(read.skippedBad, 0)
     const b = read.bookmarks[0]
-    assert.equal(b.v, 1)
+    assert.equal(b.v, 2, '新写入使用 v2；v1 仍通过兼容读取保留')
     assert.equal(b.id, bookmarkIdFor('sess-1', null))
     assert.equal(b.sessionId, 'sess-1')
     assert.equal(b.sessionFile, 'C:\\x\\sess-1\\session.jsonl.zstd')
@@ -150,6 +150,40 @@ describe('bookmark 存储（对照 codex session_index_tests.rs）', () => {
     assert.equal(read.skippedBad, 1)
     assert.equal(read.bookmarks.length, 1)
     assert.equal(read.bookmarks[0].id, good.id)
+  })
+
+  it('尾部坏行有诊断，add/remove 拒绝修改并保留全部原始字节', async () => {
+    const d = await tmp()
+    const p = join(d, 'bookmarks.jsonl')
+    const good = makeBookmark()
+    const bytes = `${JSON.stringify(good)}\n{"incomplete":`
+    await writeFile(p, bytes)
+    const read = await readBookmarks(p)
+    assert.equal(read.skippedBad, 1)
+    assert.equal(read.bookmarks.length, 1)
+    const corrupt = (error: any): boolean => error.code === 'EBOOKMARKCORRUPT' && error.skippedBad === 1
+    await assert.rejects(addBookmark(p, input()), corrupt)
+    await assert.rejects(removeBookmarks(p, { id: good.id }), corrupt)
+    assert.equal(await readFile(p, 'utf8'), bytes)
+  })
+
+  it('不可读资源的错误不会被当成空书签覆盖', async () => {
+    const d = await tmp()
+    const p = join(d, 'bookmarks.jsonl')
+    await mkdir(p)
+    await assert.rejects(readBookmarks(p), (error: any) => error.code === 'EISDIR')
+    await assert.rejects(addBookmark(p, input()), (error: any) => error.code === 'EISDIR')
+    await assert.rejects(removeBookmarks(p, { id: 'any' }), (error: any) => error.code === 'EISDIR')
+  })
+
+  it('有效 EOF 行没有换行时追加仍保留旧书签', async () => {
+    const d = await tmp()
+    const p = join(d, 'bookmarks.jsonl')
+    await writeFile(p, JSON.stringify(makeBookmark()))
+    await addBookmark(p, input())
+    const read = await readBookmarks(p)
+    assert.equal(read.skippedBad, 0)
+    assert.equal(read.bookmarks.length, 2)
   })
 
   it('空行跳过不计坏行', () => {

@@ -1,0 +1,20 @@
+R3 公开路径半帧边界：暂停时固化状态（2026-10-02）
+
+根因与修复前证据：
+runtime-lagging-retry.test.ts 第一项已通过公开 apply -> FtsClient -> SQLite 路径重现。
+静态半帧得到明确 partial_frame/retryable=true，但 raced=false。delta 的两次失败与必要 full 回退失败后，builder 原有通用失败分支把旧完整 entry 标记 unindexable 并调用 onSessionRemoved，实际 checkpoint=null、messages=[]。不是仅诊断字段缺失。
+证据：RUNTIME_LAGGING_RETRY_RED.txt、RUNTIME_LAGGING_RETRY.json；该红证据测试 exit 1，证明上述缺陷，不能算候选通过。
+
+已落盘的最小源码补丁（尚未验证）：
+src/session-index-builder.ts 仅在明确 partial_frame 或 source_changed、retryable=true，并且本轮之前存在完整、可索引、具有 indexedBytes/indexedSeq 的 checkpoint 时，保留上一完整 metadata，不执行 FTS 删除。优先读取 oldByFile，避免 force 的 head quick metadata 遮蔽此前完整 checkpoint。
+仍累计已发生的读取/解压统计，保留必要 full fallback；report.raced 增加、report.status=degraded，delta 最终诊断为 source_lagging/retainedPrevious=true，不将旧 checkpoint 伪装为本轮新提交。unknown、compatibility 等失败继续原有严格处理。
+此补丁未改 parser、worker 或重试次数。
+
+暂停与验收边界：
+用户要求完成手头最小工作固化后暂停；没有启动新的编译、绿测试、性能、部署或宿主重启。
+之前 R3 的 10/10 通过证据属于此半帧保留补丁之前，不证明当前源码已通过。
+最新补丁没有执行 --noEmit；没有 emit .test-build、.delta-test-build 或 lib。
+拟新增的第 11 项直接 builder 静态半帧统计闭合测试尚未落盘/运行。
+runtime-lagging-retry.test.ts 第一项修复后绿测试，以及第二项持久半帧三轮边界/无 watch 补齐后指纹巡查恢复测试，均尚未运行。
+后续验收至少需要当前源码最小编译检查、R3 定向回归、公开路径上述两项，并保存旧 SQL checkpoint/anchors 保留、最终 full 等价、真实累计读取闭合证据；不得将当前状态标记候选完成。
+源码已经锁定，等待用户恢复后继续。

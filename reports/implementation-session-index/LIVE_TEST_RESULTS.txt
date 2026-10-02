@@ -1,0 +1,196 @@
+S7 本轮真实部署与验收结果（定稿）
+日期：2026-10-02；时区说明：证据时间均为 UTC，本地时间为 UTC+08:00。
+本轮 S7 真实验收完成：批准候选已部署，schema5 恢复、真实工具/查询与自然续写已验证，
+普通启动已恢复并完成新一轮独立只读数据核查。实际 ctx 健康、五工具注册与只读调用验证来自真实 host PID15916；
+普通 host PID16488 的新 ctx 健康没有再次直接提取。两轮证据边界在下文分别记录。
+
+一、已确认的部署与数据位置
+
+批准候选：session-index-0.0.3-rc.1-S6-20261002。
+候选 SHA256.json 摘要：
+a7ebe5aa640c1b37c2be8f122bd5f4968af802838d46231099e835c60a800ffb。
+真实 G 运行目录：G:\AI-Agent\deepseek harness\dsh-session-index。
+部署范围：lib、package.json、README.md、README_zh.md；69 个部署文件均与批准清单匹配。
+未把 G/src 旧源码重新编译，也未覆盖用户配置或依赖。
+插件活动 dataDir：E:\Do Something\DSH备份\session-index-data。
+原 C 插件索引已保全迁入 E 原部署备份；只读核查确认旧 C 索引目录不存在。
+官方原始会话日志继续使用 C:\Users\admin\.dsh\sessions；未迁移、编辑或删除源日志。
+
+原始部署恢复快照（保持原样）：
+E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index\deployment-backups\S7-20261002-090316-e1190a1f
+
+本轮离线升级前新增的完整快照：
+E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index\deployment-backups\S7-OFFLINE-FTS-2026-10-02T10-04-40-379Z-be4b9b4e-b631-4ce6-b14c-00e22fb4bf79
+其 data-before-offline-upgrade 包含完整 dataDir；RESTORE_MANIFEST.json 记录 5 个文件及 SHA。
+升级前逐文件比较源、复制快照与再次读取的源，确认哈希一致。原恢复快照未被替换。
+
+二、首次启动失败原因及处理
+
+真实宿主第一次加载候选时，五工具已注册，但 FTS 不可用，库仍为 schema2。
+增强诊断在 UTC 09:56:28.706 捕获真实 host PID 17000 的 factory 错误：
+FtsRpcError / EFTSSTARTUP / worker-timeout；模块协议 file:。
+没有记录真实会话正文、书签标签/notes、登录 token、原始错误正文或 stack。
+
+隔离副本复现说明：安装 Electron Node 与普通 Node 均支持 node:sqlite、FTS5/trigram，
+直接 SessionFts 升级成功且消息数保持；旧 schema2 副本经 FtsClient 在约 15015ms 超时；
+已升级 schema5 副本的 FtsClient 约 378ms 即可就绪。
+根因是旧库首次迁移超过候选默认 15 秒 worker 启动期限，不能归因于 Electron 缺少 SQLite。
+本轮处理是在所有共享 writer 停止、完整备份完成后，直接调用同一已批准 G/lib/fts.js
+的 SessionFts 执行 schema 升级，避开 FtsClient 的 15 秒 timer；未修改候选实现或提高部署版期限。
+这是一项首次升级处理，并未证明候选已能自动处理任意大旧库的首次启动迁移。
+
+离线 wrapper 的真实结果必须保留：其 600 秒等待期限在升级后的完整验证阶段耗尽，
+最终 exitCode=null、signal=SIGTERM、spawnErrorCode=ETIMEDOUT，未产生完整成功报告。
+不能把该 wrapper 标为通过。之后独立只读审计确认 schema5、消息保留与数据库完整性。
+
+三、升级后完整只读核查
+
+UTC 10:15:52 至 10:21:14 的独立完整 PRAGMA quick_check 使用 mmap 536870912 字节，
+实际耗时 322103ms，返回 1 行 ok、0 错误；数据库为 schema5。
+该核查没有打开生产 writer，没有启动宿主，没有执行 DDL/DML。
+核查期间数据库大小与 mtime 保持不变；4 个非数据库文件均与升级前快照 SHA 相同，
+bookmarks.jsonl 哈希保持不变。书签实际仍为 0 字节。
+顺序只读数据库哈希另存独立证据，不能与后续宿主回填/增量后的库哈希混为一谈。
+
+UTC 10:32:08.525 的生产只读会话/FTS审计结果：
+  JSON entries=331，sessions=331，messages=47089，checkpoints=331。
+  chunks=47867，chunkedMessages=47089。
+  331 个可核查 JSON 条目与 FTS checkpoint 的 fingerprint、indexedBytes、indexedSeq、
+  parserVersion、messageCount、session identity 均匹配；candidateNeedsSync=0。
+  未发现无对应 JSON 的数据库会话、无对应会话的消息源、孤立 chunks。
+  源文件仅核查 stat 元数据，331 个保持与索引记录相符，缺失/不可用/超批准根目录均为 0。
+
+核查边界：SQL 读取具有自身 snapshot 一致性；JSON、SQL 与源 stat 并非跨文件原子快照。
+该次审计的 JSON 在核查期间发生更新（unchangedDuringAudit=false）。
+以上 331 条 checkpoint 收敛是该次观测结果，不能描述为 JSON/SQL/全部源元数据原子一致。
+
+四、真实宿主注册、查询与健康状态
+
+恢复中的真实 Desktop Host PID 15916 已捕获 ctx；pluginInventory 的目标插件 enabled=true、
+fiberPhase=active。五个工具均具有真实 execute、输入定义与 output schema/render：
+session_index_status、session_index_list、session_index_search、session_summary、session_index_bookmark。
+注册检查通过不等于每个工具的所有行为都已执行。
+
+真实只读调用已覆盖 status、list、bookmark action=list、full 检索及 anchor SCROLL。
+session_summary 此处仅验证注册/schema；没有调用 LLM。
+UTC 10:32:18.065，query=session、mode=full、assistant filter 返回 total=83、hitCount=5；
+5 条均为带 anchor 的 content hit；抽取 2 条做 SCROLL，2/2 的 session/anchor 身份回查通过。
+coverageComplete=true，failedSourceCount=0。未保存检索或滚动正文。
+真实书签 list 为 total=0、matched=0、returned=0；没有新增生产书签。
+该结果不构成对非空生产书签迁移、添加/删除或真实旧书签滚动的验收。
+
+首次 full 查询加 2 次 SCROLL 约耗时 76 秒；期间 reader transport 有两次超时及恢复。
+诊断宿主 PID15916 结束前的 status 已恢复 fts=true、ftsHealth.ok=true、schemaVersion=5；workerReady/readerReady=true。
+dirtySessions、pendingWrites、failedSessions、pendingRequests、activeStreams 均为 0。
+worker.restarts=2 与 lastTransportErrorPresent=true 保留历史记录，不能写成没有历史错误。
+这一轮确认查询/anchor 功能与恢复能力；仍应如实保留冷启动查询时延及 transport 超时问题。
+
+五、自然增量：用户自然续写成功，独立最终审计与三窗口数值闭合已通过
+
+基线文件在 UTC 10:36:37.147 建立；hostPid=15916、JSON entries=331、baselineReady=true，
+jsonStableDuringCapture=true，userAppendMustStartAfterBaselineReportExists=true。
+基线本身 naturalDeltaEvidenceSatisfied=false；baselineCaptureAtomicAcrossSources=false。
+这是等待用户自然追加前的比较起点，不能把基线文件当作自然增量验收完成证据。
+
+用户在基线之后自然发送消息并收到回复，未人工修改生产源日志。
+UTC 10:39:21.020 的 compare 确认仍为同一组 331 个既有源文件：
+  1 个既有源文件从 61356 增至 81025 字节（+19669 字节），事件序号增加 14；
+  没有新增或丢失源文件，没有 generation 变化。
+compare 的 finalHostReady、331 个 checkpoint、source 一致及 index stable 检查均通过。
+
+完整续写对应的同一个既有源文件的三个增长窗口已经闭合：
+  窗口 A：61356→61595（+239 字节）；deltaParsed=1、deltaFallbacks=0。
+    readBytes=239、deltaBytes=239、decodedBytes=237，durationMs=1085，maxEventLoopDelayMs=54。
+  窗口 B：61595→79858（+18263 字节）；deltaParsed=0、deltaFallbacks=1，回退全量解析。
+    readBytes=116384、deltaBytes=36526、decodedBytes=320439，durationMs=1036，maxEventLoopDelayMs=20。
+  窗口 C：79858→81025（+1167 字节）；deltaParsed=1、deltaFallbacks=0。
+    readBytes=1167、deltaBytes=1167、decodedBytes=3206，durationMs=875，maxEventLoopDelayMs=24。
+  三个窗口 ftsSynced=1，failed、raced、ftsFailed 均为 0。
+  两个纯 delta 窗口 processed=fullParsed=deltaParsed=ftsSynced=1；中间窗口成功回退后同步。
+
+239+18263+1167=19669 字节，与基线至最终源文件增长完全相符；两个纯 delta 窗口共 1406 字节。
+三个已核实窗口的实际 readBytes 合计 117790，不能把全部 19669 字节续写描述为仅读取 1406 字节。
+中间窗口的指标包含 delta 尝试及回退全量：36526=2×18263，116384=36526+79858。
+数值闭合与实现中的重试累计口径相符；具体触发回退的事件或解析拒绝原因仍 unknown，
+不能仅凭数值将其归因于某种源事件，也不能把此次整个续写称为全部纯增量完成。
+
+UTC 10:41:55.023 的独立最终只读审计全部通过：
+  JSON stable=true、schema5、JSON/session=331、messages=47092（相较此前 +3）；
+  chunks=47870（+3），checkpoints=331，fullyConvergedEntries=331；orphan=0。
+  331 个源文件元数据保持与索引相符；G 部署 69 文件一致，书签仍为 0，旧 C 插件索引不存在。
+此处稳定性与 SQL snapshot 是分别核查的结果，仍不构成跨 JSON/SQL/源文件的原子快照。
+自然续写、纯 delta 尾段、一次回退全量及最终收敛均有证据；普通重启后的独立数据核查见下一节。
+
+六、普通启动恢复与新一轮独立核查
+
+UTC 10:43:46.742 优雅退出诊断 main PID4008、host PID15916；停后相关进程/监听为 0，未 force kill。
+UTC 10:44:06.525 以无附加参数的正常方式启动 Desktop：main PID27608；
+actual host PID16488 使用同一安装 exe、直接父子关系和真实 desktop-host entry，监听 127.0.0.1:19387。
+main 的所有 child 启动参数中没有 inspect、import 或 diagnostic 参数；9229/9230/3080 无 listener。
+诊断日志在 UTC 10:43:47 冻结；三层诊断环境变量均 clean，没有永久 NODE_OPTIONS 或 ASAR 修改。
+这些证据确认临时诊断已移除、普通 host 进程与端口已恢复；端口监听本身不能替代插件健康验收。
+
+UTC 10:46:31 开始、10:50:50 完成的普通启动后独立只读审计全部通过：
+  schema5，JSON/session=331，messages=47092，checkpoints=331，chunks=47870；
+  331 个 checkpoint 继续完全收敛，全部计数与重启前最终审计相同。
+  JSON unchangedDuringAudit=true；331 个源文件元数据保持相符。
+  G 69 部署文件与批准清单匹配、bookmarks 哈希保持、旧 C 插件索引目录不存在。
+该核查没有再次执行 schema 迁移，也不以稳定 JSON 读取冒充跨文件原子快照。
+
+独立普通进程核查确认父子关系、真实 entry、端口与环境均符合普通启动条件；
+diagnostic flags=false，旧诊断 PID 已不存在，诊断日志继续冻结。
+普通 API 的未认证直接访问得到 401，符合 main 私有 hostCookie 认证要求。
+此次没有官方安全的外部凭证来源；未为再次提取而启动调试、UI 注入或读取凭证。
+因此没有将普通 host 的新 ctx/认证工具健康直接重测记为通过。
+真实 ctx healthy、五工具注册、生产查询/anchor 与自然增量的通过证据属于此前真实 PID15916；
+普通启动收尾的完成依据是无诊断的真实进程/端口恢复与重启后的独立数据收敛核查。
+
+七、已确认的运行限制与处理边界
+
+1. 较大旧 schema2 库的首次升级超过默认 15 秒 worker 启动期限。
+   本轮使用同一已批准候选，在完整停写备份后离线直调 SessionFts 恢复；尚未修复候选超时机制。
+2. 首次 full 查询加两次 SCROLL 约 76 秒，reader transport 两次超时后恢复；
+   这些历史错误与 restarts=2 仍记在该次诊断 host 健康数据中，未修复对应性能/超时实现。
+3. 自然续写的中间 18263 字节窗口发生一次成功的全量回退；具体原因未知。
+   另外两个纯 delta 窗口合计 1406 字节，整段三个窗口实际读取 117790 字节，未作纯增量总量承诺。
+
+此外，离线 wrapper 在升级后验证阶段的 600 秒超时属于真实失败证据；独立完整 quick_check
+和后续审计补齐验证，不能将原 wrapper 改写为成功。已恢复的失败均保留，本报告不宣称从未出错。
+本报告只定稿本轮批准范围内的部署与验收结果；未追加代码修复、推送或其它生产变更。
+
+八、主要实物证据（以下相对路径均位于 E 实现目录）
+
+根目录：E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index
+
+批准与部署：
+  release\S6-20261002\SHA256.json
+  release\S6-20261002\CANDIDATE.json
+  DEPLOYMENT_RESULTS\S7_STATE.json
+  DEPLOYMENT_RESULTS\S7_STATE_before_live_20261002-181548.json
+  DEPLOYMENT_RESULTS\legacy-c-relocation.json
+
+启动原因与恢复：
+  DEPLOYMENT_RESULTS\host-diagnostics.jsonl（按 PID/time 区分每轮；含真实 EFTSSTARTUP 与 PID15916）
+  DEPLOYMENT_RESULTS\LIVE_SQLITE_PROBE_20261002-175037_f5e690c9526845cab9e2a97738e25acf\ROOT_CAUSE_CONCLUSION.json
+  DEPLOYMENT_RESULTS\LIVE_SQLITE_PROBE_20261002-175037_f5e690c9526845cab9e2a97738e25acf\FTS_CLIENT_UPGRADED_EVIDENCE.json
+  DEPLOYMENT_RESULTS\LIVE_TEST_OFFLINE_STOP.json
+  DEPLOYMENT_RESULTS\LIVE_TEST_OFFLINE_INVOCATION.json（真实 ETIMEDOUT）
+  DEPLOYMENT_RESULTS\LIVE_TEST_RECOVERY_DESKTOP_START.json
+  DEPLOYMENT_RESULTS\LIVE_TEST_INVENTORY_1790936751331.json
+  DEPLOYMENT_RESULTS\LIVE_TEST_ORDINARY_STOP_e421b6da7b0848f09e260018d3f049d3.json
+  DEPLOYMENT_RESULTS\LIVE_TEST_ORDINARY_START_7c9244b9db8e4ca3a3e1d36006be3ed9.json
+  DEPLOYMENT_RESULTS\LIVE_TEST_ORDINARY_PROCESS_VERIFICATION_57df6ccbd175439ea853f8bc9ef067e3.json
+
+完整审计与新备份：
+  deployment-backups\S7-OFFLINE-FTS-2026-10-02T10-04-40-379Z-be4b9b4e-b631-4ce6-b14c-00e22fb4bf79\RESTORE_MANIFEST.json
+  DEPLOYMENT_RESULTS\LIVE_TEST_FULL_QUICK_CHECK_MMAP_1790936152430_9a389ab3-e31c-47d8-abed-cd7b070248e3.json
+  DEPLOYMENT_RESULTS\LIVE_TEST_DB_READONLY_SEQUENTIAL_HASH_1790936245253_4d873a85-bcd6-4ad4-ba01-acdf9f4b323f.json
+  DEPLOYMENT_RESULTS\LIVE_DB_AUDIT_20261002103208525_c4301b28-db00-45c8-b512-f016b27ea669.json
+  DEPLOYMENT_RESULTS\LIVE_DB_AUDIT_20261002104155023_820f23ca-4b2e-4053-a456-4108caba4c4a.json
+  DEPLOYMENT_RESULTS\LIVE_DB_AUDIT_20261002104631934_e6fb0df3-8094-4cbe-91ec-8bdc74c041e0.json
+
+自然增量基线、成功 compare、数值闭合与持续观察：
+  DEPLOYMENT_RESULTS\NATURAL_DELTA_baseline_20261002103637147_0ed09737-f6c1-43a1-8dc4-f5b669947888.json
+  DEPLOYMENT_RESULTS\NATURAL_DELTA_compare_20261002103921020_0404482b-169a-4ce0-b57b-97c3723a2aad.json
+  DEPLOYMENT_RESULTS\NATURAL_DELTA_NUMERIC_CLOSURE_1790938013112_e42973c9-a4ca-40f7-abb2-1179b5a6186e.json
+  DEPLOYMENT_RESULTS\LIVE_TEST_BACKFILL_MONITOR_15916_1790936970643_ca645e72-7021-4ed5-8bfb-77baf2363ae8.jsonl

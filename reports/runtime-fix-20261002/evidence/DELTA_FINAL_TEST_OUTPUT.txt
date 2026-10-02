@@ -1,0 +1,56 @@
+▶ native tail range reads
+  ✔ reads only the requested frame and applies the cap to actual input/allocation (15.1964ms)
+  ✔ handles partial FileHandle reads without rereading a prefix (7.0602ms)
+  ✔ rejects an oversized tail before reading or allocating it (5.0252ms)
+  ✔ rejects invalid offsets before opening/reading (1.2121ms)
+  ✔ rejects a source already shorter than the delta offset with an observable race (4.3784ms)
+  ✔ rejects an offset inside a frame, empty range and malformed tail (6.1804ms)
+  ✔ detects shrink during reading and closes its handle (7.2484ms)
+  ✔ detects append during reading before emitting any decoded output (7.9925ms)
+  ✔ detects source changes during sink processing (6.043ms)
+  ✔ checks abort before reading, between reads and after sink, always closing an opened handle (6.2148ms)
+  ✔ closes on decode and sink errors (7.338ms)
+  ✔ retains multi-frame decode, early stop and full-read counter semantics (6.5052ms)
+  ✔ retains tail-frame integrity and total decompression limits (9.4403ms)
+  ✔ validates skippable lengths and skips embedded frame magic in their payload (0.7383ms)
+✔ native tail range reads (102.1391ms)
+✔ pure append reads only the compressed tail and equals full including anchors (424.8755ms)
+✔ within-window replacement keeps full fallback with one delta attempt (384.0451ms)
+✔ cross-window replacement keeps full fallback with one delta attempt (365.8814ms)
+✔ invalid persisted frame offset is classified without repeating deterministic delta (396.1887ms)
+✔ sequence mismatch is explicit and one full pass restores the correct checkpoint (377.8753ms)
+✔ insufficient delta coverage budget retains the necessary full rebuild (412.5142ms)
+✔ unclassified failures retain unknown and the existing bounded retry even when text resembles a known cause (516.5304ms)
+✔ a temporarily incomplete frame is retried once; changed source is retained until stable follow-up (522.3256ms)
+✔ parser worker exit is explicit and safely falls back without claiming unobserved read metrics (400.4958ms)
+▶ S1.2 WorkerPool role 透传
+  ✔ worker: assistant/user/tool/any 在 maxSnippets 截断前过滤 (126.3215ms)
+  ✔ inline: assistant/user/tool/any 在 maxSnippets 截断前过滤 (26.0766ms)
+✔ S1.2 WorkerPool role 透传 (154.1ms)
+▶ WorkerPool（worker_threads 路径）
+  ✔ head 任务：worker 解析返回元数据 (89.005ms)
+  ✔ 错误隔离：损坏文件 → ok:false，池继续可用 (111.4568ms)
+  ✔ 并发上限：size=2，6 个任务全部完成 (137.9162ms)
+  ✔ C5：共享 signal 连跑多任务，settle 后 abort 监听器不累积 (181.0025ms)
+  ✔ search 任务返回命中 (76.9318ms)
+  ✔ 已中止的 signal → 立即 CancelError (0.6957ms)
+  ✔ terminate 后 run 被拒绝 (0.2395ms)
+  ✔ terminate 时在飞任务被 reject（P1-4：不留永久 pending） (54.8019ms)
+  ✔ inline 回退有界并发 ≤2（P1-3：不得全量同时派发卡死主线程） (282.7173ms)
+✔ WorkerPool（worker_threads 路径） (936.0741ms)
+▶ WorkerPool（inline 回退路径）
+  ✔ workerUrl=null → 纯 inline，结果一致 (5.624ms)
+  ✔ inline 错误隔离 + 取消 (2.8874ms)
+✔ WorkerPool（inline 回退路径） (8.7506ms)
+▶ mapLimit
+  ✔ 并发上限正确且结果保序 (54.367ms)
+  ✔ 取消后不再调度新任务 (29.105ms)
+✔ mapLimit (83.8716ms)
+ℹ tests 38
+ℹ suites 5
+ℹ pass 38
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4078.5213

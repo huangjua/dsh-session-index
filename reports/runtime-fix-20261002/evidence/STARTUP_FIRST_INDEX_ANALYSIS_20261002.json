@@ -1,0 +1,452 @@
+{
+  "scope": "Read-only analysis of existing source and isolated recorded evidence; no tests, source edits, lib edits, production actions, or new measurements.",
+  "createdAtUtc": "2026-10-02T16:00:11.5409594Z",
+  "evidenceReferences": {
+    "firstCompatibilityIndexRound": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\evidence\\candidate-tool-queries-verified-continuation-cd94f5fd\\round-1.json",
+    "firstCompatibilityIndexResults": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\evidence\\candidate-tool-queries-verified-continuation-cd94f5fd\\RESULTS.json",
+    "firstCompatibilityIndexBoundary": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\evidence\\candidate-tool-queries-verified-continuation-cd94f5fd\\RUN_BOUNDARY.json",
+    "normalUpgradedResults": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\evidence\\candidate-tool-queries-normal-upgraded-final-c0ae6e50\\RESULTS.json",
+    "normalUpgradedBoundary": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\evidence\\candidate-tool-queries-normal-upgraded-final-c0ae6e50\\RUN_BOUNDARY.json"
+  },
+  "acceptance": {
+    "thresholdMs": 10000,
+    "normalAlreadyUpgradedSchema5": {
+      "condition": "Five independent process starts from verified fixed schema5 snapshot; real candidate reader/writer; frozen metadata; source reads denied; OS disk cache uncontrolled.",
+      "allFiveStartupPlusColdAndRequestsMeetThreshold": true,
+      "rounds": [
+        {
+          "round": 1,
+          "valid": true,
+          "readyMs": 3335.3657000000003,
+          "coldSequenceMs": 458.3204999999998,
+          "startupPlusColdMs": 3793.6862,
+          "startupPlusColdUnder10000Ms": true,
+          "noMigrationEvents": true,
+          "requestsWithin10000Ms": true,
+          "noRestarts": true,
+          "noTimeouts": true
+        },
+        {
+          "round": 2,
+          "valid": true,
+          "readyMs": 616.2927,
+          "coldSequenceMs": 100.25459999999998,
+          "startupPlusColdMs": 716.5473,
+          "startupPlusColdUnder10000Ms": true,
+          "noMigrationEvents": true,
+          "requestsWithin10000Ms": true,
+          "noRestarts": true,
+          "noTimeouts": true
+        },
+        {
+          "round": 3,
+          "valid": true,
+          "readyMs": 551.3709000000001,
+          "coldSequenceMs": 90.49240000000009,
+          "startupPlusColdMs": 641.8633000000002,
+          "startupPlusColdUnder10000Ms": true,
+          "noMigrationEvents": true,
+          "requestsWithin10000Ms": true,
+          "noRestarts": true,
+          "noTimeouts": true
+        },
+        {
+          "round": 4,
+          "valid": true,
+          "readyMs": 525.8630999999999,
+          "coldSequenceMs": 105.18490000000008,
+          "startupPlusColdMs": 631.048,
+          "startupPlusColdUnder10000Ms": true,
+          "noMigrationEvents": true,
+          "requestsWithin10000Ms": true,
+          "noRestarts": true,
+          "noTimeouts": true
+        },
+        {
+          "round": 5,
+          "valid": true,
+          "readyMs": 573.7438,
+          "coldSequenceMs": 120.93809999999996,
+          "startupPlusColdMs": 694.6818999999999,
+          "startupPlusColdUnder10000Ms": true,
+          "noMigrationEvents": true,
+          "requestsWithin10000Ms": true,
+          "noRestarts": true,
+          "noTimeouts": true
+        }
+      ]
+    },
+    "firstCompatibilityIndexInstallation": {
+      "requestsAndCorrectnessValid": true,
+      "publicReadyMs": 11040.298799999999,
+      "coldSequenceMs": 3330.376399999999,
+      "startupPlusColdMs": 14370.675199999998,
+      "meetsThreshold": false,
+      "verdict": "First compatibility-index installation plus cold requests did not meet 10 seconds; keep separate from normal upgraded-schema5 acceptance."
+    },
+    "allStartupConditionsMeetThreshold": false,
+    "minimumInitializationCostProven": false
+  },
+  "startupRecordedEvents": [
+    {
+      "role": "writer",
+      "generation": 1,
+      "state": "booted",
+      "startedAt": 1790955783413,
+      "updatedAt": 1790955783560,
+      "elapsedMs": 147
+    },
+    {
+      "role": "writer",
+      "generation": 1,
+      "state": "opening",
+      "startedAt": 1790955783413,
+      "updatedAt": 1790955783562,
+      "elapsedMs": 149
+    },
+    {
+      "role": "writer",
+      "generation": 1,
+      "state": "migrating",
+      "startedAt": 1790955783413,
+      "updatedAt": 1790955783656,
+      "elapsedMs": 243,
+      "progress": {
+        "phase": "lock-acquire",
+        "completed": 0,
+        "elapsedMs": 93,
+        "at": 1790955783660
+      }
+    },
+    {
+      "role": "writer",
+      "generation": 1,
+      "state": "migrating",
+      "startedAt": 1790955783413,
+      "updatedAt": 1790955783656,
+      "elapsedMs": 243,
+      "progress": {
+        "phase": "schema",
+        "completed": 0,
+        "elapsedMs": 93,
+        "at": 1790955783660
+      }
+    },
+    {
+      "role": "writer",
+      "generation": 1,
+      "state": "migrating",
+      "startedAt": 1790955783413,
+      "updatedAt": 1790955790976,
+      "elapsedMs": 7563,
+      "progress": {
+        "phase": "complete",
+        "completed": 0,
+        "elapsedMs": 7414,
+        "at": 1790955790981
+      }
+    },
+    {
+      "role": "writer",
+      "generation": 1,
+      "state": "ready",
+      "startedAt": 1790955783413,
+      "updatedAt": 1790955793860,
+      "elapsedMs": 10447,
+      "progress": {
+        "phase": "complete",
+        "completed": 0,
+        "elapsedMs": 7414,
+        "at": 1790955790981
+      }
+    },
+    {
+      "role": "reader",
+      "generation": 1,
+      "state": "booted",
+      "startedAt": 1790955793860,
+      "updatedAt": 1790955794005,
+      "elapsedMs": 145
+    },
+    {
+      "role": "reader",
+      "generation": 1,
+      "state": "opening",
+      "startedAt": 1790955793860,
+      "updatedAt": 1790955794009,
+      "elapsedMs": 149
+    },
+    {
+      "role": "reader",
+      "generation": 1,
+      "state": "ready",
+      "startedAt": 1790955793860,
+      "updatedAt": 1790955794011,
+      "elapsedMs": 151
+    }
+  ],
+  "timing": {
+    "writerCompleteReceiptAtMs": 1790955790976,
+    "writerCompleteChildAtMs": 1790955790981,
+    "writerCompleteMigrationElapsedMs": 7414,
+    "writerCompleteActorElapsedMs": 7563,
+    "writerReadyReceiptAtMs": 1790955793860,
+    "writerReadyActorElapsedMs": 10447,
+    "completeReceiptToWriterReadyReceiptMs": 2884,
+    "readerReadyReceiptAtMs": 1790955794011,
+    "readerActorElapsedMs": 151,
+    "writerReadyToReaderReadyReceiptMs": 151,
+    "checkpointZeroDirtyObservedAtMs": 1790955794421,
+    "readerReadyToZeroDirtyObservationReceiptMs": 410,
+    "publicReadyDefinition": "performance.now() since public apply activation until ordinary status shows inactive, FTS available, 331 sessions, zero dirty checkpoints, and a positive dirtySessionsObservedAt; not only the FtsClient ready handshake.",
+    "exactPublicReadyReceiptAtMs": "unknown",
+    "exactReaderReadyToPublicReadyMs": "unknown",
+    "clockBoundary": "Actor elapsed/updatedAt are recorded parent Date.now observations. Migration progress.at/elapsedMs come from the child. publicReadyMs uses performance.now from apply activation; no absolute performance/date anchor is recorded. Do not subtract these independent origins to invent an exact public-ready residual.",
+    "startupRpcCount": 341,
+    "startupRpcGroups": [
+      {
+        "group": "flush, writer",
+        "count": 1
+      },
+      {
+        "group": "health, writer",
+        "count": 8
+      },
+      {
+        "group": "listSessionFiles, reader",
+        "count": 1
+      },
+      {
+        "group": "needsSync, reader",
+        "count": 331
+      }
+    ],
+    "firstSearch": {
+      "backend": "fts",
+      "totalMs": 3288.3025,
+      "sqlMs": 2968.5143,
+      "queueMs": 0,
+      "readyWaitMs": 0,
+      "recoveryWaitMs": 0,
+      "fallbackMs": 0.31159999999908905,
+      "sourceProbedSessions": 0
+    }
+  },
+  "completeToWriterReady": {
+    "established": "Migration complete is emitted after COMMIT; no schema/workspace/chunk/index migration runs after that complete callback in this initialization path.",
+    "possibleOperations": [
+      {
+        "operation": "SessionFts ok assignment, createSessionFts return, initialize await continuation",
+        "durationMs": "unknown",
+        "source": {
+          "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+          "line": 289,
+          "claim": "Constructor sets ok after initSchema; factory returns constructed engine."
+        }
+      },
+      {
+        "operation": "Process memory telemetry and staging counters",
+        "durationMs": "unknown",
+        "source": {
+          "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts-worker.ts",
+          "line": 81,
+          "claim": "telemetry uses process.memoryUsage and in-memory stage counters."
+        }
+      },
+      {
+        "operation": "Initial writer health snapshot: two COUNT queries, four state_meta point queries, synchronous database stat",
+        "sqlDurationMs": "unknown",
+        "healthTotalDurationMs": "unknown",
+        "statDurationMs": "unknown",
+        "source": {
+          "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+          "line": 703,
+          "claim": "health SQL and stat; startup health timing is not published in the ready message."
+        }
+      },
+      {
+        "operation": "Ready object construction, IPC serialization/send/receive and actor scheduling",
+        "durationMs": "unknown",
+        "source": {
+          "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts-worker.ts",
+          "line": 307,
+          "claim": "Ready payload is evaluated before port.postMessage; writer includes healthSnapshot."
+        }
+      }
+    ],
+    "attribution": "Existing startup events measure only the aggregate complete-to-ready interval. Initial health/SQL/telemetry/IPC/scheduling cannot be individually assigned the 2884 ms; do not infer I/O faults or data corruption."
+  },
+  "migrationCostBoundary": {
+    "necessaryExpressionIndex": "CREATE INDEX IF NOT EXISTS idx_messages_source_order ON messages(session_file,COALESCE(event_seq,id),id) establishes the SCROLL expression order. It is created once, and current schema5 with the index returns before DDL.",
+    "indexCreationOnlyMs": "unknown",
+    "transactionCommitMs": "unknown",
+    "migrationAggregateElapsedMs": 7414,
+    "statementTimingAvailable": false,
+    "version5OnlyInference": "The recorded first round contains schema/complete but no workspace/chunks progress. This is consistent with a schema5 compatibility-index-only upgrade; the code gates workspace/chunk rebuilding on version !=5. It does not prove per-statement timing.",
+    "clearRedundantWork": "The shared migration path issues CREATE TRIGGER IF NOT EXISTS messages_fts_trigram_insert/delete and later unconditionally drops both triggers. Their creation has no lasting effect for chunk-writing schema5. Schema/table/column checks and other IF NOT EXISTS DDL also run before the one expression index is installed.",
+    "optionalFutureChanges": [
+      "A separately validated schema5-only migration branch could retain transaction locking/recheck and install only the missing expression index, avoiding unrelated IF NOT EXISTS DDL and transient trigram trigger creation/deletion.",
+      "Initial ready health snapshot followed by status polling repeats exact health SQL; an independently validated cached/deferred startup snapshot strategy could reduce duplicate work while preserving truthful health and status behavior."
+    ],
+    "savingsMeasured": false,
+    "savingsMs": "unknown",
+    "sufficientToReach10000Ms": "unknown",
+    "candidateAlreadyMinimal": false,
+    "candidateChanged": false
+  },
+  "sourceReferences": [
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "line": 204,
+      "claim": "createSessionFts import/construction/return path."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "line": 304,
+      "claim": "Current-schema predicate verifies version and expression index."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "line": 319,
+      "claim": "Current schema5 and present expression index bypasses migration DDL."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "line": 335,
+      "claim": "Migration transaction rechecks schema after locking."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "line": 362,
+      "claim": "Trigram insert trigger CREATE IF NOT EXISTS."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "line": 365,
+      "claim": "Trigram delete trigger CREATE IF NOT EXISTS."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "line": 382,
+      "claim": "COMMIT precedes migration complete progress."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "line": 421,
+      "claim": "Shared message/schema migration checks and IF NOT EXISTS DDL."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "line": 432,
+      "claim": "Workspace rewrite gate for noncurrent schema or missing workspace field."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "line": 442,
+      "claim": "Required source-order expression index installation."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "line": 461,
+      "claim": "Both earlier trigram triggers are dropped before chunk migration gate."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "line": 462,
+      "claim": "Only version !=5 resets/rebuilds message chunks."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "line": 703,
+      "claim": "Initial health performs exact messages/sessions COUNT and four metadata queries."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "line": 719,
+      "claim": "Health also stats database path."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts-worker.ts",
+      "line": 81,
+      "claim": "Telemetry memory/counter calculation."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts-worker.ts",
+      "line": 295,
+      "claim": "Guardian online, adjacent spool initialization and engine creation."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts-worker.ts",
+      "line": 307,
+      "claim": "Ready emission waits for initial writer health snapshot; no startup split timing in payload."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts-client.ts",
+      "line": 247,
+      "claim": "Reader boot starts only after writerReadyPromise resolves."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts-client.ts",
+      "line": 329,
+      "claim": "Startup progress receipt elapsed/updatedAt are recorded here."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts-client.ts",
+      "line": 353,
+      "claim": "Ready receipt updates actor state and elapsed time."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\index.ts",
+      "line": 317,
+      "claim": "Public checkpoint reconciliation counts needsSync across metadata, 32 at a time."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\index.ts",
+      "line": 445,
+      "claim": "Initialization waits on checkpoint reconciliation before ordinary startup state converges."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\scripts\\runtime-tool-query-child.mjs",
+      "line": 148,
+      "claim": "Public ready predicate includes actual dirty-check observation."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\scripts\\runtime-tool-query-child.mjs",
+      "line": 154,
+      "claim": "readyMs uses performance.now from apply activation."
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\scripts\\runtime-tool-query-child.mjs",
+      "line": 164,
+      "claim": "startupPlusColdMs is explicit ready plus cold search/SCROLL sum."
+    }
+  ],
+  "sourceHashes": [
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts.ts",
+      "sha256": "840a9ea25477bcf1e40e4fc64df43cc805559ccdfd042a4ab14b3237600054b2"
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts-worker.ts",
+      "sha256": "9aa56bd6477711bd2ac9328dc5c09d265f2e9902e0c29f4da02c2762059fb980"
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\fts-client.ts",
+      "sha256": "6f79688b256de399016fe9805ffaa6efb86384b6c3fdac6c9515fdd1b66cff6a"
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\src\\index.ts",
+      "sha256": "bc14277e09162742b3b7b3c14bc8033ef97fe2281d9417f25d6db1323aa0a168"
+    },
+    {
+      "file": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\scripts\\runtime-tool-query-child.mjs",
+      "sha256": "439d088817cdad950cac707f98bd4caaef4d8da4fd8eda91b0f884739b8ee78d"
+    }
+  ],
+  "remainingLimits": [
+    "First compatibility-index installation plus cold requests remains over 10 seconds.",
+    "Startup per-statement SQL, health, DB stat and IPC timing are unknown in existing events.",
+    "No measured proof that optional schema5-only cleanup reduces this total below threshold or makes initialization minimal.",
+    "Normal five-round acceptance covers fixed upgraded schema5 and independent processes with uncontrolled OS cache, frozen metadata and denied source parsing; it is not a throughput measurement for actual source scanning/building."
+  ]
+}

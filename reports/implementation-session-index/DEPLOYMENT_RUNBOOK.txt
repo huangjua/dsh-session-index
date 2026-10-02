@@ -1,0 +1,248 @@
+当前最终状态（2026-10-02；更新于 2026-10-02T10:56:44.588Z UTC）
+
+本轮分配的 S6–S7 已完成：候选 0.0.3-rc.1 已按明确授权部署，并完成真实宿主工具注册、查询/anchor、自然续写及检查点验收。
+最终 schema5：331 会话、47092 消息、47870 chunks、331 checkpoint 全部收敛；普通启动后只读复核稳定通过。
+插件活动数据/书签/备份在 E；C 旧插件索引已保全搬 E；官方原始会话日志仍在 C 原位。
+desktop 已优雅退出临时诊断并无参数恢复；main27608/host16488、仅 localhost19387，未留下 inspect/import 或诊断环境。
+实际 ctx/worker 健康证据来自恢复前真实 host15916；普通恢复后的 fresh ctx 未再次提取，普通进程/配置及数据库已另验。
+运行限制：旧库自动迁移的15秒超时未改（本机同版本离线升级恢复）；首次检索加两次SCROLL约76秒并有2次reader恢复；自然续写中间一次回退全量，另外两次尾段读取239/1167B。
+生产书签实际0条；不声称已验证非空生产书签迁移；session_summary仅验证注册，未调用LLM。
+候选清单SHA256仍为 a7ebe5aa640c1b37c2be8f122bd5f4968af802838d46231099e835c60a800ffb；96候选/69运行/22实现源hash保持一致。
+详见 LIVE_TEST_RESULTS.txt、DEPLOYMENT_RESULTS.txt、DEPLOYMENT_RESULTS/S7_STATE.json、PATCHES/S7/manifest.json。
+未push/远端发布，未卸载web；不重复部署/书签迁移/离线升级，不用G旧src build覆盖已验证lib。
+
+以下保留原批准前及曾延后实测的历史文字，只作追溯，不代表当前待办；批准时release目录文件保持不变：
+
+实际首次升级补充（已执行记录，不是再次执行命令）
+
+首次真实 FtsClient 启动因15秒超时而回滚schema升级。全部共享写方停净后，在E新增完整hash核对快照，
+由 s7-offline-fts-upgrade.mjs 调用已批准G/lib/fts.js直接升级，未修改候选、源日志或唯一旧恢复快照。
+s7-run-offline-upgrade.mjs 的600秒wrapper在升级后quick_check阶段超时，报告ETIMEDOUT/SIGTERM，不能记为成功。
+之后独立完整只读quick_check（连接局部mmap512MiB）322103ms通过，并核对4个非DB sidecar未变；
+真实宿主再启动完成回填、只读查询与自然续写；最后两次独立只读审计分别在续写后与普通恢复后证实331CP一致。
+这些补充属于用户已批准的备份/派生schema升级/宿主恢复范围，完整故障与恢复证据保留在DEPLOYMENT_RESULTS。
+备份及lib.before均继续保全。以后若再次部署或回滚，重新核对当前授权对象与最新用户数据，不照抄本次已执行步骤。
+
+DSH session-index S7 部署、生产验收与回滚执行单
+日期：2026-10-02（Asia/Hong_Kong）
+状态：发布准备；下列生产命令尚未执行，未获得候选部署/迁移/宿主重启授权。
+
+完成定义
+S7 只有在指定候选获批、全部共享写方停写、可恢复备份核对、候选切换、书签迁移统计核对、
+获批宿主重启、生产只读验收和一次自然增量观察均通过后才能记为完成。
+完成 S6 候选交付不等于已经部署。推送/远端发布另行授权。
+
+一、具体对象与批准范围
+
+候选目录：
+  E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index\release\S6-20261002
+候选 package：@dsh-external/dsh-session-index 0.0.3-rc.1；lib/index.js、lib/types/index.d.ts。
+批准时锁定候选清单及 SHA256；与 RELEASE_READINESS.txt、release 清单一致方可执行。
+实施目录：
+  E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index
+实际运行目录：
+  G:\AI-Agent\deepseek harness\dsh-session-index
+当前 desktop 插件入口（2026-10-02 只读核对）：
+  C:\Users\admin\.dsh\profiles\desktop\node_modules\@dsh-external\dsh-session-index
+  LinkType=Junction，Target=G:\AI-Agent\deepseek harness\dsh-session-index。
+生产 dataDir：E:\Do Something\DSH备份\session-index-data。
+web 与 pluginlab 也只读核对为相同 G 目录的 junction；headless 未发现此插件链接。
+三个 profile 的 cordis.yml/cordis.patch.yml 没有直接 dataDir/sessionsRoot 覆盖；G 插件本身的
+cordis.patch.yml 明确 dataDir='E:/Do Something/DSH备份/session-index-data'。这证明配置路径与链接，
+不单凭安装链接证明实例正在运行/已加载。共享实际取决宿主最终配置，发布时仍核对有效配置。
+用户后续主要使用 desktop；web 暂时保留，本轮不卸载。pluginlab 角色尚不确定，但若实际加载
+本插件并共用此 dataDir，也必须纳入停写范围。
+
+将变更的运行文件：G 运行目录下 lib/（完整替换，含 types）、package.json、README.md、README_zh.md。
+将按显式迁移变更的用户文件：生产 dataDir/bookmarks.jsonl（保留全部物理行、原字段及旧 numeric）。
+候选首次启动会升级/回填派生 fts.db，并按正常启动对账可能更新 index.json、WAL/SHM、run-marker、
+本版本 worker staging 目录和维护状态。index.json 解析游标与 fts_checkpoints 提交游标分别验收。
+不会部署 cordis.patch.yml；其中此机器绝对 dataDir 只能作为用户配置审查，不能当通用配置发行。
+不覆盖 desktop 的 cordis.yml/cordis.patch.yml、profile package/lock、node_modules、运行依赖、src，
+不更改现有 junction，不改写真实会话日志。运行切换不是执行 scripts/build.sh。
+此次只切换运行产物，G/src 仍为原源码；实际候选源码位于 E/implementation-session-index/src。
+部署后禁止在 G 运行旧源码 build，否则会把已验证 lib 编回旧行为；后续源码合并须另行审查，
+保留 G/用户已有源码修改，不用候选 checkout 覆盖它们。
+
+需要批准的具体动作：以上候选 lib/package/README 运行切换、以下完整生产快照和书签迁移、
+所有已识别共享 dataDir 写方的停止/重启，以及候选启动产生的 schema/索引对账写入。
+授权边界来自用户 AGENTS.md 的删除/部署/生产数据/推送限制及 EXECUTION_PLAN.txt S7。
+
+二、宿主停止/启动入口的已知事实与缺口
+
+本轮另只读核对 desktop 启动入口：C:\Users\admin\Desktop\DeepSeek Harness.lnk，
+Target=E:\Program Files (x86)\DSH-D\DeepSeek Harness.exe，WorkingDirectory=E:\Program Files (x86)\DSH-D，
+目标存在，快捷方式无参数。核对时未发现 ExecutablePath 位于此安装目录的进程；这只是当时
+desktop 进程观察，不证明所有 web/CLI/共享写方都已停止，发布前必须重新核对。
+获准后先在 desktop 窗口内正常退出，等其插件卸载关闭链和子进程退出；不要仅关闭隐藏到托盘。
+需要恢复 desktop 时使用这个已核对的用户应用入口（交互主窗口，非后台辅助服务）：
+  Start-Process -FilePath 'E:\Program Files (x86)\DSH-D\DeepSeek Harness.exe' -WorkingDirectory 'E:\Program Files (x86)\DSH-D' -WindowStyle Normal
+
+已只读查看 G:\AI-Agent\deepseek harness\restart-dsh.ps1：
+它停止 3080 端口首个 listener，然后通过 C:\Program Files\nodejs\node.exe 和
+G:\AI-Agent\deepseek harness\node_modules\@deepseek-ai\dsh\lib\bin.js web 重启 web。
+restart-now.ps1 是延迟 25 秒调用前者；restart-dsh-inspect.ps1 另开 inspector。
+这些脚本不是 desktop/web/pluginlab 全体停写命令；可能杀错端口所属进程，而且会将一次性登录
+token URL 写入日志/输出。不能把关闭一个 web listener 当成所有写方已停，不能未经授权调用。
+
+当前尚未确定：desktop 正常退出是否停止全部插件宿主、web/pluginlab/CLI/后台任务哪些
+实例共用此 dataDir、自动重启来源、各实例的启动环境和实际 sessionsRoot、需要恢复的 PID/服务。
+发布前由用户明确这些入口与范围。不得按“所有 node.exe”批量杀进程，也不得凭过时 PID 停宿主。
+每个待停实例记录 PID、可执行文件、所属 profile、dataDir、启动方式和是否自动重启；不要输出完整
+命令行、环境变量、配置正文、登录 token 或密钥。先优雅停止并等卸载关闭链；只有具体实例获得
+授权且优雅停止失败时才能强制终止。书签旧写方不认识新锁/格式，必须全部停止或升级。
+
+三、获批之后的命令公共变量（Windows PowerShell；本轮仅写入本文件，未运行）
+
+  $ErrorActionPreference = 'Stop'
+  $implementationRoot = 'E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index'
+  $candidateRoot = Join-Path $implementationRoot 'release\S6-20261002'
+  $runtimeRoot = 'G:\AI-Agent\deepseek harness\dsh-session-index'
+  $productionDataRoot = 'E:\Do Something\DSH备份\session-index-data'
+  $deploymentBackupParent = Join-Path $implementationRoot 'deployment-backups'
+  $releaseToken = 'S7-20261002-' + (Get-Date -Format 'HHmmss') + '-' + [guid]::NewGuid().ToString('N')
+  $deploymentBackupRoot = Join-Path $deploymentBackupParent $releaseToken
+  if (Test-Path -LiteralPath $deploymentBackupRoot) { throw 'Backup directory already exists' }
+  New-Item -ItemType Directory -Path $deploymentBackupRoot | Out-Null
+  Set-Location -LiteralPath $implementationRoot
+
+先重新检查 G git HEAD/status、候选所有清单 SHA256、现有 junction 和 runtime package 版本。
+若 G 有本轮之外的新变更、目标链接改变、候选 hash 不符、基线不符，则停止并重新审查，不能覆盖。
+恢复所有共享写方启动方式并核对停止清单。无批准的 PID/服务清单就不执行停止。
+
+四、完整一致备份及旧定位证据保全（必须在候选首次打开生产 FTS 之前）
+
+1. 全部已批准的共享 dataDir 写方停止；防止 supervisor/计划任务/另一 profile 自动重启。
+   等待 builder/worker/书签锁关闭；确认没有仍活跃写方及新增索引/书签变更。
+   run-marker/旧 spool 的存在与否不是“所有进程已停”的充分证明；不能凭 PID/TTL 删除旧锁。
+2. 仅在确认离线后复制完整 dataDir。若无法保证停写，不进入本 runbook 的离线复制/迁移流程。
+   SQLite WAL 活跃时禁止裸拷贝单个 fts.db；离线完整快照必须一起保留 fts.db、存在的 -wal/-shm、
+   index.json、bookmarks.jsonl、llm-summary.jsonl、锁/run-marker/staging 及其它持久文件。
+   别先启动候选升级 schema、force 重建、清空 messages、删派生库再做迁移；那会先毁掉旧 rowid/证据。
+3. 离线完整复制（只能在第 1 步的停写核验之后）：
+
+     $offlineDataSnapshot = Join-Path $deploymentBackupRoot 'data-before-switch'
+     Copy-Item -LiteralPath $productionDataRoot -Destination $offlineDataSnapshot -Recurse -Force
+     $runtimeCodeSnapshot = Join-Path $deploymentBackupRoot 'runtime-before-switch'
+     New-Item -ItemType Directory -Path $runtimeCodeSnapshot | Out-Null
+     Copy-Item -LiteralPath (Join-Path $runtimeRoot 'lib') -Destination (Join-Path $runtimeCodeSnapshot 'lib') -Recurse -Force
+     foreach ($name in @('package.json', 'README.md', 'README_zh.md')) {
+       $sourceFile = Join-Path $runtimeRoot $name
+       if (Test-Path -LiteralPath $sourceFile -PathType Leaf) {
+         Copy-Item -LiteralPath $sourceFile -Destination (Join-Path $runtimeCodeSnapshot $name)
+       }
+     }
+
+4. 逐文件保存 snapshot 相对路径、文件长度、SHA256，并核对源/副本一致；对迁移输入另记 SHA。
+   清单只含路径/长度/hash，不包含书签备注、标签、会话正文或密钥。快照保留在受用户保护的位置。
+   校验快照中的 SQLite quick_check/打开能力，应只读或在完整快照的额外工作副本上验证；
+   不打开唯一恢复快照为 writer，不让校验过程自动迁移 schema。若 backup 不完整/校验失败则不切换。
+   code snapshot 的版本与完整 lib（含所有 worker 文件）必须能还原。备份不自动删除。
+
+五、显式书签 dry-run、批准范围内 apply（仍全部停写）
+
+脚本：候选 scripts/production-bookmark-migration.mjs（其 hash 已在候选清单中核对）。
+默认只读 dry-run；不初始化 DSH，不调用 writer FtsClient，不升级 schema，不读消息正文。
+FTS 参数只指向上述保全的离线快照的额外工作副本；尤其不能为了获取 anchor 先打开生产 fts.db
+为 writer。只读 SQLite 仍可能使用 WAL/SHM 协调文件，原始 before 恢复快照不直接用来演练。
+resolver 要求书签原已保存 legacyEvidence.anchorId 与 identityEvidence，且会话/anchor 唯一、
+证据严格一致。只凭旧 rowid、同数字 seq、文本相似或邻居编号绝不转换。
+schema2 没有持久身份列时可报告会话缺失，其余保守 unresolved；不能保证恢复历史失效书签。
+
+  $migrationScript = Join-Path $candidateRoot 'scripts\production-bookmark-migration.mjs'
+  $migrationEvidenceCopy = Join-Path $deploymentBackupRoot 'migration-evidence-work'
+  Copy-Item -LiteralPath $offlineDataSnapshot -Destination $migrationEvidenceCopy -Recurse -Force
+  $snapshotBookmarks = Join-Path $migrationEvidenceCopy 'bookmarks.jsonl'
+  $snapshotFts = Join-Path $migrationEvidenceCopy 'fts.db'
+  $dryRunReport = Join-Path $deploymentBackupRoot 'bookmarks-dry-run.json'
+  node $migrationScript --candidate $candidateRoot --bookmarks $snapshotBookmarks --fts-db $snapshotFts --report $dryRunReport
+  if ($LASTEXITCODE -ne 0) { throw 'Bookmark dry-run failed' }
+
+若源没有 bookmarks.jsonl：记录零条/不存在，不创建用户书签文件。若源缺失 FTS：停止此脚本路径，
+不能创建空库假装有证明；保留全部 legacy 行，将无证据迁移路径另行验证后审查。
+审核统计 records/resolved/unresolved/ambiguous/session-missing/anchor-replaced/session/alreadyMigrated
+及 diagnosticCounts。生产数量此前未知，本轮 MIGRATION_DRY_RUN.json 只含合成数据，不能冒充生产统计。
+若生产 dry-run 与用户批准的迁移范围不符，保持停止并在 apply 前确认具体变更。
+
+  $migrationPlan = Get-Content -LiteralPath $dryRunReport -Raw | ConvertFrom-Json
+  $productionBookmarks = Join-Path $productionDataRoot 'bookmarks.jsonl'
+  $uniqueBookmarkBackup = Join-Path $deploymentBackupRoot 'bookmarks-before-migrate.jsonl'
+  $appliedReport = Join-Path $deploymentBackupRoot 'bookmarks-applied.json'
+  node $migrationScript --candidate $candidateRoot --bookmarks $productionBookmarks --fts-db $snapshotFts --report $appliedReport --apply --backup $uniqueBookmarkBackup --expect-source-sha256 $migrationPlan.sourceHash --ack-stopped-writers all
+  if ($LASTEXITCODE -ne 0) { throw 'Migration failed: keep hosts stopped and inspect backup/report status' }
+
+脚本在新跨进程书签锁内核对 dry-run sourceHash，再写唯一 wx/fsync 备份、原子替换。
+保留每条物理记录及顺序，包括重复、notes/tags/custom/time/id、原 numeric；未解条目显式标记。
+apply counts 应与 dry-run 完全一致；若无待迁移行则 changed=false，不产生不必要的书签替换。
+报告无正文。任何中途失败保留原恢复快照/唯一书签备份，不覆盖或删除它们；重跑前重新 dry-run，
+使用新的 report/backup 文件名与新的 sourceHash。迁移完 v2 不重复转换，普通 search/list 不隐式迁移。
+
+六、部署已验证产物（全部宿主仍停止）
+
+候选必须已含 lib/types、FTS/parser worker、package 和两份 README，且 hash 清单已核对。
+先按下列完整绝对路径检验，再移动当前 lib 保留第二个就地回退副本；没有递归删除步骤。
+
+  $runtimeLib = (Get-Item -LiteralPath (Join-Path $runtimeRoot 'lib')).FullName
+  $expectedRuntimeLib = [IO.Path]::GetFullPath((Join-Path $runtimeRoot 'lib'))
+  $preservedRuntimeLib = [IO.Path]::GetFullPath((Join-Path $runtimeRoot ('lib.before-' + $releaseToken)))
+  if ($runtimeLib -ne $expectedRuntimeLib -or [IO.Path]::GetDirectoryName($runtimeLib) -ne $runtimeRoot) { throw 'Unexpected runtime lib path' }
+  if ([IO.Path]::GetDirectoryName($preservedRuntimeLib) -ne $runtimeRoot -or (Test-Path -LiteralPath $preservedRuntimeLib)) { throw 'Unsafe/existing preserve path' }
+  Move-Item -LiteralPath $runtimeLib -Destination $preservedRuntimeLib
+  Copy-Item -LiteralPath (Join-Path $candidateRoot 'lib') -Destination (Join-Path $runtimeRoot 'lib') -Recurse
+  foreach ($name in @('package.json', 'README.md', 'README_zh.md')) {
+    Copy-Item -LiteralPath (Join-Path $candidateRoot $name) -Destination (Join-Path $runtimeRoot $name) -Force
+  }
+
+对新运行文件逐项核对候选 SHA；部署文件齐全才继续。不能边复制边启动。
+不运行 build.sh/npm install/peer 重建，不部署机器专用 cordis.patch，不复制整个 checkout，不改 junction。
+若复制失败，所有宿主保持停止，通过已核验就地 lib 副本与 code snapshot 恢复后再决定重试。
+
+七、恢复获批宿主与生产只读验收
+
+按第二节最终由用户确认的启动入口恢复授权实例，明确 profile/DSH_HOME/dataDir/sessionsRoot。
+web restart-dsh.ps1 只有在用户明确授权该 web 入口且已核对目标时可作为该实例启动方式；
+它不能代替 desktop 的入口，认证 token URL 不写验收日志/公开回复。
+候选启动进行正常 schema/FTS checkpoint 回填，仍要防止未升级旧宿主回到共享 dataDir。
+启动失败、worker 持续失败、书签计数不符或 checkpoint 不能收敛则停止新实例，走第八节。
+
+只读验收（不得在真实会话里写合成内容或新增/删除测试书签）：
+1. 确认加载的 package 版本为 0.0.3-rc.1，入口和 junction target 与批准目录一致；五工具已注册。
+2. session_index_status：ftsHealth schemaVersion=5（启用时）、worker reader/writer 健康、pendingWrites
+   收敛到0、failedSessions=0、lastWriteError 为空或历史错误被明确解释、构建非持续degraded。
+   对账必须分别核对 JSON 已解析进度与 FTS 已提交 checkpoint，不能只比 sessionCount。
+3. 用已知非敏感词做 meta/full/auto 查询，检查 workspace/role/since/until 与 coverage；正文结果包含
+   真实 sessionId/file/anchorId 同源组合、totalExact/hasMore 语义。没有真实内容验收授权时仅记录统计。
+4. session_index_bookmark action=list：数量/已迁移状态与报告一致。已有 resolved 书签用
+   session_index_search {session_id:<该sessionId>,anchor_id:<该anchorId>,window:1} 触发 SCROLL；
+   mode 仅有 auto/meta/full，不能传 mode='SCROLL'。旧 unresolved 明确过期/未解，不猜跳回。
+   session_summary 的参数是 id；bookmarks add 的参数是 sessionId（本节不用 add/remove）。
+5. 生产工具的只读操作仍可能触发正常自动对账；这些索引写入在候选启动范围内，书签迁移不会被隐藏
+   在普通 list/search。统计/验收记录不复制会话正文、bookmark note/label、token 或密钥。
+6. 在自然使用产生追加之后短时观察一次增量 readBytes/deltaBytes/deltaParsed 与 FTS 提交收敛，
+   不强行改写真实会话或force所有生产来源。无自然追加则记待观察，不虚报完成。
+7. 保存生产验收时间、加载版本/hash、健康字段和迁移统计；完成清单满足后才把 S7 写为已部署。
+
+八、回滚（始终保护上线后新增的用户书签）
+
+1. 获批范围内停止全部共享写方并防自动重启。先将当前完整 dataDir 保存为新的 data-after-candidate
+   离线快照，特别保存上线后 bookmarks.jsonl 与其 hash；不得以 before 快照直接覆盖新增书签。
+2. 将失败候选 lib/package/README 保存在独立目录，按第六节同样核验的绝对路径执行移动/恢复；
+   恢复 code snapshot 的完整 lib 与旧 package/README，核对其 hash。不能混用新worker与旧入口。
+3. 旧 0.0.2 只认识 v1，不能直接让它读写候选 v2 书签。回滚数据策略必须在恢复旧写方前选择：
+   a. 若候选上线后没有任何新增/更新用户书签，且当前 sidecar hash/全物理行与已记录迁移结果能证明
+      只有本次格式转换，才可恢复 before 书签；保留 after 快照。
+   b. 若有新增/更新或无法证明没有变化，保留 after 书签为用户权威数据。先在离线工作副本合并/转换
+      并逐物理行核验。不把新 anchorId 反推成旧 numeric，不丢新记录；旧版不能表达的新书签仍要
+      保全为独立可读存档，说明限制，并在用户确认具体兼容方案前禁止旧书签写方启动。
+4. 派生 FTS 可以从 before 一致快照恢复（db与其WAL/SHM整组一致），或在保全 before/after 后走获批
+   重建；index.json 的游标也必须匹配或让旧版安全重新对账。禁止只恢复 fts.db 主文件混入另一时点WAL。
+   任何移走现有生产目录均先核验绝对目标正是批准的 productionDataRoot，保存after再移动，不能
+   删除用户数据、盲目覆盖整个 dataDir，不能依据遗留 spool owner 诊断自动清理。
+5. 恢复授权宿主，按第七节的旧版本适用字段只读验收；记录回滚版本、原因、数据策略与仍保留的新书签。
+   before/after 快照和 lib.before 目录清理由用户单独批准，本 runbook 不执行清理。
+
+九、推送与本轮交付边界
+
+本轮仅候选开发和发布准备。S7 生产 dry-run/apply、部署、宿主停止/重启和生产验收命令没有运行；
+生产书签数量/可恢复数量目前未知。S7 授权不足时保留上述具体执行单，不能标成已完成生产发布。
+git push、远端发布、npm/市场发布不包含在部署授权中；只有用户独立授权后才执行。

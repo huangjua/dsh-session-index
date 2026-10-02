@@ -1,0 +1,888 @@
+{
+  "generatedAtUtc": "2026-10-02T15:24:30.5066985Z",
+  "purpose": "compact historical query performance comparison; derived from stored RESULTS.json only",
+  "measurementBoundary": "No benchmark rerun. Cold means independent process/new SQLite connection; operating-system disk cache uncontrolled and may be warm, as stated by source artifacts. Each cold sequence summary includes one process-cold search plus SCROLL1 and SCROLL2 per report when present.",
+  "percentileMethod": "Nearest-rank: sorted value at ceil(p*n), 1-indexed; milliseconds rounded to 0.001.",
+  "sources": [
+    {
+      "name": "baselineQueriesWithLoad",
+      "sourcePath": "runtime-fix-20261002/evidence/baseline-queries-with-load/RESULTS.json",
+      "sourceSha256": "b54aa8a7c8f2d1ef854e2aa15522411e034aa168644d83bed397000b17430bce",
+      "label": "baseline",
+      "generatedAt": "2026-10-02T14:55:52.488Z",
+      "reportCount": 5,
+      "environment": {
+        "node": "v24.18.1",
+        "electron": "44.0.0",
+        "sqlite": "3.53.1",
+        "platform": "win32"
+      },
+      "coldCondition": "independent process/new SQLite connections; OS disk cache is uncontrolled and may be warm",
+      "cache": "unknown OS cache; no machine cache clearing",
+      "rounds": [
+        {
+          "round": 1,
+          "processTotalMs": 5470.9681,
+          "readyMs": 970.4252,
+          "coldSequenceReportedMs": 293.0038000000002,
+          "coldSearchScrollSumMs": 293.004,
+          "coldSearchMs": 286.47800000000007,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 3.964300000000094,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 2.5615000000000236,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": null,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": null,
+          "queueTimeouts": null,
+          "restarts": null,
+          "readerRestarts": null,
+          "writerRestarts": null,
+          "readerTransportFailures": null,
+          "writerTransportFailures": null
+        },
+        {
+          "round": 2,
+          "processTotalMs": 4943.9685,
+          "readyMs": 173.7342,
+          "coldSequenceReportedMs": 134.5118,
+          "coldSearchScrollSumMs": 134.512,
+          "coldSearchMs": 128.6562,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 2.9511999999999716,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 2.9044000000000096,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": null,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": null,
+          "queueTimeouts": null,
+          "restarts": null,
+          "readerRestarts": null,
+          "writerRestarts": null,
+          "readerTransportFailures": null,
+          "writerTransportFailures": null
+        },
+        {
+          "round": 3,
+          "processTotalMs": 4291.9708,
+          "readyMs": 115.958,
+          "coldSequenceReportedMs": 158.42800000000005,
+          "coldSearchScrollSumMs": 158.428,
+          "coldSearchMs": 151.74920000000003,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 3.5796000000000276,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 3.099199999999996,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": null,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": null,
+          "queueTimeouts": null,
+          "restarts": null,
+          "readerRestarts": null,
+          "writerRestarts": null,
+          "readerTransportFailures": null,
+          "writerTransportFailures": null
+        },
+        {
+          "round": 4,
+          "processTotalMs": 4240.015,
+          "readyMs": 134.9193,
+          "coldSequenceReportedMs": 103.74669999999998,
+          "coldSearchScrollSumMs": 103.747,
+          "coldSearchMs": 99.0034,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 2.317099999999982,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 2.4261999999999944,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": null,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": null,
+          "queueTimeouts": null,
+          "restarts": null,
+          "readerRestarts": null,
+          "writerRestarts": null,
+          "readerTransportFailures": null,
+          "writerTransportFailures": null
+        },
+        {
+          "round": 5,
+          "processTotalMs": 7181.1641,
+          "readyMs": 224.0668,
+          "coldSequenceReportedMs": 185.01839999999993,
+          "coldSearchScrollSumMs": 185.018,
+          "coldSearchMs": 179.95749999999998,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 2.65259999999995,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 2.408299999999997,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": null,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": null,
+          "queueTimeouts": null,
+          "restarts": null,
+          "readerRestarts": null,
+          "writerRestarts": null,
+          "readerTransportFailures": null,
+          "writerTransportFailures": null
+        }
+      ],
+      "queryOperationStats": [
+        {
+          "condition": "hot",
+          "operation": "SCROLL",
+          "n": 150,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 2.97,
+          "p95Ms": 6.101,
+          "maxMs": 33.22,
+          "failures": 0
+        },
+        {
+          "condition": "hot",
+          "operation": "search",
+          "n": 150,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 130.095,
+          "p95Ms": 237.524,
+          "maxMs": 448.603,
+          "failures": 0
+        },
+        {
+          "condition": "process-cold",
+          "operation": "SCROLL1",
+          "n": 5,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 2.951,
+          "p95Ms": 3.964,
+          "maxMs": 3.964,
+          "failures": 0
+        },
+        {
+          "condition": "process-cold",
+          "operation": "SCROLL2",
+          "n": 5,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 2.562,
+          "p95Ms": 3.099,
+          "maxMs": 3.099,
+          "failures": 0
+        },
+        {
+          "condition": "process-cold",
+          "operation": "search",
+          "n": 5,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 151.749,
+          "p95Ms": 286.478,
+          "maxMs": 286.478,
+          "failures": 0
+        }
+      ],
+      "totals": {
+        "processTotalMsP50": 4943.968,
+        "processTotalMsP95": 7181.164,
+        "processTotalMsMax": 7181.164,
+        "operationFailures": 0,
+        "invalidReports": 0,
+        "requestTimeouts": 0,
+        "queueTimeouts": 0,
+        "restarts": 0,
+        "readerRestarts": 0,
+        "writerRestarts": 0,
+        "transportFailures": 0,
+        "runCheckFailures": []
+      }
+    },
+    {
+      "name": "candidateQueriesWithLoad",
+      "sourcePath": "runtime-fix-20261002/evidence/candidate-queries-with-load/RESULTS.json",
+      "sourceSha256": "38eade160f9ffad8b2ac2db4a67a3f7bf5510c7d9f8365d0817465de584ad737",
+      "label": "candidate",
+      "generatedAt": "2026-10-02T14:56:42.705Z",
+      "reportCount": 5,
+      "environment": {
+        "node": "v24.18.1",
+        "electron": "44.0.0",
+        "sqlite": "3.53.1",
+        "platform": "win32"
+      },
+      "coldCondition": "independent process/new SQLite connections; OS disk cache is uncontrolled and may be warm",
+      "cache": "unknown OS cache; no machine cache clearing",
+      "rounds": [
+        {
+          "round": 1,
+          "processTotalMs": 4983.5219,
+          "readyMs": 2945.7302,
+          "coldSequenceReportedMs": 115.4423999999999,
+          "coldSearchScrollSumMs": 115.442,
+          "coldSearchMs": 109.18179999999984,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 3.3640000000000327,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 2.896600000000035,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": null,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": null,
+          "queueTimeouts": null,
+          "restarts": null,
+          "readerRestarts": null,
+          "writerRestarts": null,
+          "readerTransportFailures": null,
+          "writerTransportFailures": null
+        },
+        {
+          "round": 2,
+          "processTotalMs": 2412.4005,
+          "readyMs": 277.3641,
+          "coldSequenceReportedMs": 65.09079999999994,
+          "coldSearchScrollSumMs": 65.091,
+          "coldSearchMs": 61.552599999999984,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 2.172799999999995,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 1.3653999999999655,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": null,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": null,
+          "queueTimeouts": null,
+          "restarts": null,
+          "readerRestarts": null,
+          "writerRestarts": null,
+          "readerTransportFailures": null,
+          "writerTransportFailures": null
+        },
+        {
+          "round": 3,
+          "processTotalMs": 2341.6255,
+          "readyMs": 392.6953,
+          "coldSequenceReportedMs": 101.58879999999999,
+          "coldSearchScrollSumMs": 101.589,
+          "coldSearchMs": 96.66160000000002,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 3.0574000000000296,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 1.869799999999941,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": null,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": null,
+          "queueTimeouts": null,
+          "restarts": null,
+          "readerRestarts": null,
+          "writerRestarts": null,
+          "readerTransportFailures": null,
+          "writerTransportFailures": null
+        },
+        {
+          "round": 4,
+          "processTotalMs": 2223.8286,
+          "readyMs": 436.1129,
+          "coldSequenceReportedMs": 130.4934,
+          "coldSearchScrollSumMs": 130.493,
+          "coldSearchMs": 125.35070000000002,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 3.36099999999999,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 1.7817000000000007,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": null,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": null,
+          "queueTimeouts": null,
+          "restarts": null,
+          "readerRestarts": null,
+          "writerRestarts": null,
+          "readerTransportFailures": null,
+          "writerTransportFailures": null
+        },
+        {
+          "round": 5,
+          "processTotalMs": 2298.9555,
+          "readyMs": 316.69440000000003,
+          "coldSequenceReportedMs": 65.03759999999994,
+          "coldSearchScrollSumMs": 65.038,
+          "coldSearchMs": 61.47219999999999,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 2.41579999999999,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 1.149599999999964,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": null,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": null,
+          "queueTimeouts": null,
+          "restarts": null,
+          "readerRestarts": null,
+          "writerRestarts": null,
+          "readerTransportFailures": null,
+          "writerTransportFailures": null
+        }
+      ],
+      "queryOperationStats": [
+        {
+          "condition": "hot",
+          "operation": "SCROLL",
+          "n": 150,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 1.574,
+          "p95Ms": 2.629,
+          "maxMs": 3.495,
+          "failures": 0
+        },
+        {
+          "condition": "hot",
+          "operation": "search",
+          "n": 150,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 56.221,
+          "p95Ms": 79.808,
+          "maxMs": 94.163,
+          "failures": 0
+        },
+        {
+          "condition": "process-cold",
+          "operation": "SCROLL1",
+          "n": 5,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 3.057,
+          "p95Ms": 3.364,
+          "maxMs": 3.364,
+          "failures": 0
+        },
+        {
+          "condition": "process-cold",
+          "operation": "SCROLL2",
+          "n": 5,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 1.782,
+          "p95Ms": 2.897,
+          "maxMs": 2.897,
+          "failures": 0
+        },
+        {
+          "condition": "process-cold",
+          "operation": "search",
+          "n": 5,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 96.662,
+          "p95Ms": 125.351,
+          "maxMs": 125.351,
+          "failures": 0
+        }
+      ],
+      "totals": {
+        "processTotalMsP50": 2341.626,
+        "processTotalMsP95": 4983.522,
+        "processTotalMsMax": 4983.522,
+        "operationFailures": 0,
+        "invalidReports": 0,
+        "requestTimeouts": 0,
+        "queueTimeouts": 0,
+        "restarts": 0,
+        "readerRestarts": 0,
+        "writerRestarts": 0,
+        "transportFailures": 0,
+        "runCheckFailures": []
+      }
+    },
+    {
+      "name": "candidateToolQueriesWithLoad_f7d5648f",
+      "sourcePath": "runtime-fix-20261002/evidence/candidate-tool-queries-with-load-f7d5648f/RESULTS.json",
+      "sourceSha256": "26414af6ec9573ec06146dde954eb04dcfc9b64b5898493e8a1c3b484d83ab35",
+      "label": "candidate",
+      "generatedAt": "2026-10-02T14:58:28.749Z",
+      "reportCount": 5,
+      "environment": {
+        "node": "v24.18.1",
+        "electron": "44.0.0",
+        "sqlite": "3.53.1",
+        "platform": "win32"
+      },
+      "coldCondition": "independent process and new SQLite connections; OS disk cache uncontrolled and may already be warm",
+      "cache": "no global cache clearing; frozen metadata validated only",
+      "rounds": [
+        {
+          "round": 1,
+          "processTotalMs": 9064.0639,
+          "readyMs": 2844.3256,
+          "coldSequenceReportedMs": 231.35689999999977,
+          "coldSearchScrollSumMs": 231.357,
+          "coldSearchMs": 225.9110999999998,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 3.2656999999999243,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 2.1801000000000386,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": false,
+          "exitCode": 1,
+          "reportedRunCheckFailures": [
+            "noPending"
+          ],
+          "requestTimeouts": 0,
+          "queueTimeouts": 0,
+          "restarts": 0,
+          "readerRestarts": 0,
+          "writerRestarts": 0,
+          "readerTransportFailures": 0,
+          "writerTransportFailures": 0
+        },
+        {
+          "round": 2,
+          "processTotalMs": 6615.3383,
+          "readyMs": 1070.5355,
+          "coldSequenceReportedMs": 244.07680000000028,
+          "coldSearchScrollSumMs": 244.077,
+          "coldSearchMs": 236.74300000000017,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 3.5438000000001466,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 3.7899999999999636,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": true,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": 0,
+          "queueTimeouts": 0,
+          "restarts": 0,
+          "readerRestarts": 0,
+          "writerRestarts": 0,
+          "readerTransportFailures": 0,
+          "writerTransportFailures": 0
+        },
+        {
+          "round": 3,
+          "processTotalMs": 7420.0935,
+          "readyMs": 971.9328,
+          "coldSequenceReportedMs": 258.6028000000001,
+          "coldSearchScrollSumMs": 258.603,
+          "coldSearchMs": 250.64319999999998,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 4.1047000000000935,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 3.8549000000000433,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": false,
+          "exitCode": 1,
+          "reportedRunCheckFailures": [
+            "noPending"
+          ],
+          "requestTimeouts": 0,
+          "queueTimeouts": 0,
+          "restarts": 0,
+          "readerRestarts": 0,
+          "writerRestarts": 0,
+          "readerTransportFailures": 0,
+          "writerTransportFailures": 0
+        },
+        {
+          "round": 4,
+          "processTotalMs": 5434.5672,
+          "readyMs": 814.0101999999999,
+          "coldSequenceReportedMs": 143.63159999999993,
+          "coldSearchScrollSumMs": 143.632,
+          "coldSearchMs": 138.36699999999996,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 3.0208000000000084,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 2.2437999999999647,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": true,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": 0,
+          "queueTimeouts": 0,
+          "restarts": 0,
+          "readerRestarts": 0,
+          "writerRestarts": 0,
+          "readerTransportFailures": 0,
+          "writerTransportFailures": 0
+        },
+        {
+          "round": 5,
+          "processTotalMs": 7313.763,
+          "readyMs": 669.7396000000001,
+          "coldSequenceReportedMs": 146.22620000000006,
+          "coldSearchScrollSumMs": 146.226,
+          "coldSearchMs": 133.77689999999996,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 9.27030000000002,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 3.1790000000000873,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": false,
+          "exitCode": 1,
+          "reportedRunCheckFailures": [
+            "noPending"
+          ],
+          "requestTimeouts": 0,
+          "queueTimeouts": 0,
+          "restarts": 0,
+          "readerRestarts": 0,
+          "writerRestarts": 0,
+          "readerTransportFailures": 0,
+          "writerTransportFailures": 0
+        }
+      ],
+      "queryOperationStats": [
+        {
+          "condition": "hot",
+          "operation": "SCROLL",
+          "n": 150,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 3.405,
+          "p95Ms": 38.092,
+          "maxMs": 54.505,
+          "failures": 0
+        },
+        {
+          "condition": "hot",
+          "operation": "search",
+          "n": 150,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 163.564,
+          "p95Ms": 248.077,
+          "maxMs": 382.686,
+          "failures": 0
+        },
+        {
+          "condition": "process-cold",
+          "operation": "SCROLL1",
+          "n": 5,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 3.544,
+          "p95Ms": 9.27,
+          "maxMs": 9.27,
+          "failures": 0
+        },
+        {
+          "condition": "process-cold",
+          "operation": "SCROLL2",
+          "n": 5,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 3.179,
+          "p95Ms": 3.855,
+          "maxMs": 3.855,
+          "failures": 0
+        },
+        {
+          "condition": "process-cold",
+          "operation": "search",
+          "n": 5,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 225.911,
+          "p95Ms": 250.643,
+          "maxMs": 250.643,
+          "failures": 0
+        }
+      ],
+      "totals": {
+        "processTotalMsP50": 7313.763,
+        "processTotalMsP95": 9064.064,
+        "processTotalMsMax": 9064.064,
+        "operationFailures": 0,
+        "invalidReports": 3,
+        "requestTimeouts": 0,
+        "queueTimeouts": 0,
+        "restarts": 0,
+        "readerRestarts": 0,
+        "writerRestarts": 0,
+        "transportFailures": 0,
+        "runCheckFailures": [
+          {
+            "round": 1,
+            "check": "noPending"
+          },
+          {
+            "round": 3,
+            "check": "noPending"
+          },
+          {
+            "round": 5,
+            "check": "noPending"
+          }
+        ]
+      }
+    },
+    {
+      "name": "candidateToolQueriesFinal_ae61e469",
+      "sourcePath": "runtime-fix-20261002/evidence/candidate-tool-queries-final-ae61e469/RESULTS.json",
+      "sourceSha256": "490816ce8132c139b22189b843afd86f8f07222c58a2240fe58246081d102191",
+      "label": "candidate",
+      "generatedAt": "2026-10-02T14:38:58.633Z",
+      "reportCount": 5,
+      "environment": {
+        "node": "v24.18.1",
+        "electron": "44.0.0",
+        "sqlite": "3.53.1",
+        "platform": "win32"
+      },
+      "coldCondition": "independent process and new SQLite connections; OS disk cache uncontrolled and may already be warm",
+      "cache": "no global cache clearing; frozen metadata validated only",
+      "rounds": [
+        {
+          "round": 1,
+          "processTotalMs": 11520.6079,
+          "readyMs": 7560.532099999999,
+          "coldSequenceReportedMs": 453.85469999999987,
+          "coldSearchScrollSumMs": 453.855,
+          "coldSearchMs": 445.8186999999998,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 6.5534999999999854,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 1.4825000000000728,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": true,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": 0,
+          "queueTimeouts": 0,
+          "restarts": 0,
+          "readerRestarts": 0,
+          "writerRestarts": 0,
+          "readerTransportFailures": 0,
+          "writerTransportFailures": 0
+        },
+        {
+          "round": 2,
+          "processTotalMs": 4909.7816,
+          "readyMs": 534.5724,
+          "coldSequenceReportedMs": 154.72050000000002,
+          "coldSearchScrollSumMs": 154.721,
+          "coldSearchMs": 144.56320000000005,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 8.073600000000056,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 2.083699999999908,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": true,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": 0,
+          "queueTimeouts": 0,
+          "restarts": 0,
+          "readerRestarts": 0,
+          "writerRestarts": 0,
+          "readerTransportFailures": 0,
+          "writerTransportFailures": 0
+        },
+        {
+          "round": 3,
+          "processTotalMs": 5464.7203,
+          "readyMs": 791.8475,
+          "coldSequenceReportedMs": 233.09030000000018,
+          "coldSearchScrollSumMs": 233.09,
+          "coldSearchMs": 218.6432000000001,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 10.884199999999964,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 3.562900000000127,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": true,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": 0,
+          "queueTimeouts": 0,
+          "restarts": 0,
+          "readerRestarts": 0,
+          "writerRestarts": 0,
+          "readerTransportFailures": 0,
+          "writerTransportFailures": 0
+        },
+        {
+          "round": 4,
+          "processTotalMs": 4055.7434,
+          "readyMs": 531.7145,
+          "coldSequenceReportedMs": 102.10520000000008,
+          "coldSearchScrollSumMs": 102.105,
+          "coldSearchMs": 93.48760000000004,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 6.37360000000001,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 2.244000000000028,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": true,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": 0,
+          "queueTimeouts": 0,
+          "restarts": 0,
+          "readerRestarts": 0,
+          "writerRestarts": 0,
+          "readerTransportFailures": 0,
+          "writerTransportFailures": 0
+        },
+        {
+          "round": 5,
+          "processTotalMs": 4294.0907,
+          "readyMs": 675.7562,
+          "coldSequenceReportedMs": 114.27030000000002,
+          "coldSearchScrollSumMs": 114.27,
+          "coldSearchMs": 105.23149999999998,
+          "coldSearchBackend": "fts",
+          "coldScroll1Ms": 5.93240000000003,
+          "coldScroll1Backend": "fts",
+          "coldScroll2Ms": 3.106400000000008,
+          "coldScroll2Backend": "fts",
+          "coldOperationFailures": 0,
+          "reportedValid": true,
+          "exitCode": 0,
+          "reportedRunCheckFailures": [],
+          "requestTimeouts": 0,
+          "queueTimeouts": 0,
+          "restarts": 0,
+          "readerRestarts": 0,
+          "writerRestarts": 0,
+          "readerTransportFailures": 0,
+          "writerTransportFailures": 0
+        }
+      ],
+      "queryOperationStats": [
+        {
+          "condition": "hot",
+          "operation": "SCROLL",
+          "n": 150,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 2.584,
+          "p95Ms": 25.88,
+          "maxMs": 33.305,
+          "failures": 0
+        },
+        {
+          "condition": "hot",
+          "operation": "search",
+          "n": 150,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 105.912,
+          "p95Ms": 163.017,
+          "maxMs": 202.456,
+          "failures": 0
+        },
+        {
+          "condition": "process-cold",
+          "operation": "SCROLL1",
+          "n": 5,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 6.553,
+          "p95Ms": 10.884,
+          "maxMs": 10.884,
+          "failures": 0
+        },
+        {
+          "condition": "process-cold",
+          "operation": "SCROLL2",
+          "n": 5,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 2.244,
+          "p95Ms": 3.563,
+          "maxMs": 3.563,
+          "failures": 0
+        },
+        {
+          "condition": "process-cold",
+          "operation": "search",
+          "n": 5,
+          "backendValues": [
+            "fts"
+          ],
+          "p50Ms": 144.563,
+          "p95Ms": 445.819,
+          "maxMs": 445.819,
+          "failures": 0
+        }
+      ],
+      "totals": {
+        "processTotalMsP50": 4909.782,
+        "processTotalMsP95": 11520.608,
+        "processTotalMsMax": 11520.608,
+        "operationFailures": 0,
+        "invalidReports": 0,
+        "requestTimeouts": 0,
+        "queueTimeouts": 0,
+        "restarts": 0,
+        "readerRestarts": 0,
+        "writerRestarts": 0,
+        "transportFailures": 0,
+        "runCheckFailures": []
+      }
+    }
+  ],
+  "limitations": [
+    "Historical operation telemetry does not include all queue/SQL/transport decompositions in every old artifact.",
+    "A result with valid=false may be a harness drain/pending check failure while request operations themselves completed; both are recorded separately.",
+    "Source query fingerprints and response content are excluded; only operation metrics, backend, and correctness/failure counters are summarized."
+  ]
+}

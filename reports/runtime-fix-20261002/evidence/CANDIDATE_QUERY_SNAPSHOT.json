@@ -1,0 +1,18 @@
+{
+  "source": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\datasets\\tool-candidate-cd94f5fd-d4b9-485e-badd-785238611dfa\\data\\fts.db",
+  "target": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\datasets\\candidate-schema5-verified.db",
+  "method": "read-only SQLite backup API includes committed WAL",
+  "backupMs": 9543.7883,
+  "schema": "5",
+  "sourceOrderIndex": true,
+  "counts": {
+    "sessions": 331,
+    "messages": 47092,
+    "chunks": 47870,
+    "checkpoints": 331
+  },
+  "incompleteCheckpoints": 0,
+  "mismatch": 0,
+  "generatedAt": "2026-10-02T15:47:36.781Z",
+  "valid": true
+}

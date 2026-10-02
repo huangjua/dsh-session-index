@@ -1,0 +1,16 @@
+▶ public startup errors retain actual SQLite numeric codes
+  ✔ a non-SQLite file fails publicly with the actual SQLITE_NOTADB code (772.9843ms)
+  ✔ an actual SQLite schema btree fault fails publicly with SQLITE_CORRUPT (1998.523ms)
+  ✔ unsupported SQLite is an actual disabled-runtime module failure, without a fabricated SQLite code (550.6953ms)
+  ✔ progressing migration remains migrating, separate from failed/corrupt/unsupported states (1091.928ms)
+  ✔ FtsRpcError preserves the transferred numeric metadata without interpreting message text (0.681ms)
+✔ public startup errors retain actual SQLite numeric codes (4417.8749ms)
+ℹ tests 5
+ℹ suites 1
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5188.7109
+{"exitCode":0,"signal":null}

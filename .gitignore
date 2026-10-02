@@ -1,8 +1,22 @@
 node_modules/
-lib/
 *.tsbuildinfo
 *.tgz
 .test-build/
+.test-build-*/
+.isolation/
 
 *.bak
 *.bak-*
+
+# stale compiled-output backups
+lib.before-*/
+
+# runtime/validation artifacts: real FTS databases and user session logs
+*.db
+*.db-wal
+*.db-shm
+*.zstd
+datasets/
+validation/
+DEPLOYMENT_RESULTS/
+deployment-backups/

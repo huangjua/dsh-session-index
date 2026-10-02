@@ -1,0 +1,213 @@
+{
+  "startedAt": "2026-10-02T13:46:00.746Z",
+  "method": "node:sqlite backup API from read-only connection; includes committed WAL; no source DDL/DML",
+  "source": "E:/Do Something/DSH备份/session-index-data/fts.db",
+  "target": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\datasets\\schema5-snapshot.db",
+  "progress": [
+    {
+      "totalPages": 79446,
+      "remainingPages": 77398,
+      "elapsedMs": 1033.0142
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 75350,
+      "elapsedMs": 1760.6166
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 73302,
+      "elapsedMs": 2411.6803999999997
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 71254,
+      "elapsedMs": 3558.1151
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 69206,
+      "elapsedMs": 4169.4735
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 67158,
+      "elapsedMs": 4906.8527
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 65110,
+      "elapsedMs": 5525.6308
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 63062,
+      "elapsedMs": 6597.3899
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 61014,
+      "elapsedMs": 7552.6764
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 58966,
+      "elapsedMs": 8166.150600000001
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 56918,
+      "elapsedMs": 9091.0165
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 54870,
+      "elapsedMs": 10450.4854
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 52822,
+      "elapsedMs": 11460.3226
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 50774,
+      "elapsedMs": 12035.6043
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 48726,
+      "elapsedMs": 12904.3428
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 46678,
+      "elapsedMs": 14280.562100000001
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 44630,
+      "elapsedMs": 14825.9247
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 42582,
+      "elapsedMs": 15646.8627
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 40534,
+      "elapsedMs": 16862.2454
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 38486,
+      "elapsedMs": 17547.3569
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 36438,
+      "elapsedMs": 20205.8767
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 34390,
+      "elapsedMs": 21977.3373
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 32342,
+      "elapsedMs": 24046.1866
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 30294,
+      "elapsedMs": 25434.234800000002
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 28246,
+      "elapsedMs": 25896.412800000002
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 26198,
+      "elapsedMs": 26878.6434
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 24150,
+      "elapsedMs": 27127.031600000002
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 22102,
+      "elapsedMs": 27871.8672
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 20054,
+      "elapsedMs": 28401.1928
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 18006,
+      "elapsedMs": 28762.4045
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 15958,
+      "elapsedMs": 29509.2251
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 13910,
+      "elapsedMs": 30473.9994
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 11862,
+      "elapsedMs": 31338.6684
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 9814,
+      "elapsedMs": 32154.518
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 7766,
+      "elapsedMs": 32712.2713
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 5718,
+      "elapsedMs": 33140.4526
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 3670,
+      "elapsedMs": 33772.1482
+    },
+    {
+      "totalPages": 79446,
+      "remainingPages": 1622,
+      "elapsedMs": 34689.2947
+    }
+  ],
+  "pages": 79446,
+  "backupMs": 36138.5168,
+  "schema": "5",
+  "counts": {
+    "sessions": 331,
+    "messages": 47092,
+    "message_chunks": 47870,
+    "fts_checkpoints": 331
+  },
+  "checkpointMessageMismatches": 0,
+  "incompleteCheckpoints": 0,
+  "orphanChunks": 0,
+  "bytes": 325410816,
+  "totalMs": 132656.895,
+  "completedAt": "2026-10-02T13:48:13.404Z"
+}

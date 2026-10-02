@@ -1,0 +1,166 @@
+{
+  "scope": "real SQLite autocommit test fixture; production budgets unchanged",
+  "results": [
+    {
+      "budgetMs": 1000,
+      "totalBudgetMs": 10000,
+      "ready": true,
+      "maxObservedProgressGapMs": 274,
+      "elapsedMs": 3539,
+      "events": [
+        {
+          "atMs": 318,
+          "state": "booted"
+        },
+        {
+          "atMs": 319,
+          "state": "opening"
+        },
+        {
+          "atMs": 467,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 0
+        },
+        {
+          "atMs": 566,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 1
+        },
+        {
+          "atMs": 650,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 2
+        },
+        {
+          "atMs": 758,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 3
+        },
+        {
+          "atMs": 870,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 4
+        },
+        {
+          "atMs": 1074,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 5
+        },
+        {
+          "atMs": 1159,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 6
+        },
+        {
+          "atMs": 1433,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 7
+        },
+        {
+          "atMs": 1651,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 8
+        },
+        {
+          "atMs": 1736,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 9
+        },
+        {
+          "atMs": 1821,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 10
+        },
+        {
+          "atMs": 2017,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 11
+        },
+        {
+          "atMs": 2104,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 12
+        },
+        {
+          "atMs": 2220,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 13
+        },
+        {
+          "atMs": 2427,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 14
+        },
+        {
+          "atMs": 2546,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 15
+        },
+        {
+          "atMs": 2642,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 16
+        },
+        {
+          "atMs": 2716,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 17
+        },
+        {
+          "atMs": 2801,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 18
+        },
+        {
+          "atMs": 2976,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 19
+        },
+        {
+          "atMs": 3064,
+          "state": "migrating",
+          "phase": "batch-copy",
+          "completed": 20
+        },
+        {
+          "atMs": 3065,
+          "state": "ready",
+          "phase": "batch-copy",
+          "completed": 20
+        },
+        {
+          "atMs": 3428,
+          "state": "booted"
+        },
+        {
+          "atMs": 3430,
+          "state": "opening"
+        },
+        {
+          "atMs": 3430,
+          "state": "ready"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": [
+      "ES2023"
+    ],
+    "strict": true,
+    "types": [
+      "node"
+    ],
+    "declaration": true,
+    "declarationDir": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\release\\RUNTIME-20261002\\lib\\types",
+    "outDir": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\release\\RUNTIME-20261002\\lib",
+    "rootDir": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\release\\RUNTIME-20261002\\src",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "sourceMap": true,
+    "baseUrl": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work",
+    "paths": {
+      "@deepseek-ai/dsh-llm": [
+        "./node_modules/@deepseek-ai/dsh-llm"
+      ],
+      "@deepseek-ai/dsh-llm/*": [
+        "./node_modules/@deepseek-ai/dsh-llm/*"
+      ],
+      "@deepseek-ai/dsh-tools": [
+        "./node_modules/@deepseek-ai/dsh-tools"
+      ],
+      "@deepseek-ai/dsh-tools/*": [
+        "./node_modules/@deepseek-ai/dsh-tools/*"
+      ],
+      "@deepseek-ai/cordis": [
+        "./node_modules/@deepseek-ai/cordis"
+      ],
+      "@deepseek-ai/cordis/*": [
+        "./node_modules/@deepseek-ai/cordis/*"
+      ],
+      "@deepseek-ai/schemastery": [
+        "./node_modules/@deepseek-ai/schemastery"
+      ],
+      "@deepseek-ai/schemastery/*": [
+        "./node_modules/@deepseek-ai/schemastery/*"
+      ]
+    },
+    "typeRoots": [
+      "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\node_modules\\@types"
+    ]
+  },
+  "include": [
+    "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\release\\RUNTIME-20261002\\src"
+  ]
+}

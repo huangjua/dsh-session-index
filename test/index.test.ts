@@ -11,16 +11,20 @@
  */
 import { describe, it, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, mkdir, copyFile, utimes, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, mkdir, copyFile, utimes, writeFile, appendFile } from 'node:fs/promises'
 import { existsSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { zstdCompressSync } from 'node:zlib'
 import { DatabaseSync } from 'node:sqlite'
-import { apply } from '../src/index.js'
-import { createSessionFts } from '../src/fts.js'
-import { alpha3Assistant, alpha3Jsonl, alpha3User } from './support/alpha3-log.js'
+import { apply, indexNeedsReconcile } from '../src/index.js'
+import type { PluginDependencies } from '../src/index.js'
+import { getBuilder } from '../src/session-index-builder.js'
+import { loadIndex, scanSessionFiles } from '../src/core.js'
+import type { SessionIndex, SessionMeta, ScanSessionFilesResult } from '../src/core.js'
+import { createSessionFts, checkpointOf, FTS_PARSER_VERSION } from '../src/fts.js'
+import { alpha3Assistant, alpha3EventJson, alpha3Jsonl, alpha3User } from './support/alpha3-log.js'
 
 const FIXTURE = fileURLToPath(new URL('../../test/fixtures/sample-session.jsonl.zstd', import.meta.url))
 
@@ -53,6 +57,10 @@ interface SetupOpts {
   llm?: unknown
   /** STAGE-4：llmSummaryEnabled 开关（缺省 true，与 Config 默认一致） */
   llmSummaryEnabled?: boolean
+  preIndex?: boolean
+  preseedFts?: boolean
+  beforeApply?: (files: string[], sessionsRoot: string, indexFile: string) => Promise<void>
+  dependencies?: PluginDependencies
 }
 
 interface Tool {
@@ -67,7 +75,7 @@ interface Env {
   home: string
   ftsDb: string
   tools: FakeTools
-  cleanups: (() => void)[]
+  cleanups: (() => unknown)[]
   files: string[]
   restore: () => void
 }
@@ -80,7 +88,7 @@ const bases: string[] = []
  * session_summary 的 llmSummary 路径走真实 HostLlmProvider 组装逻辑。 */
 function makeCtx(llm?: unknown) {
   const tools: FakeTools = {}
-  const cleanups: (() => void)[] = []
+  const cleanups: (() => unknown)[] = []
   const ctx = {
     logger: () => ({ info: () => {}, warn: () => {}, error: () => {} }),
     tools: {
@@ -90,7 +98,7 @@ function makeCtx(llm?: unknown) {
     },
     effect: (fn: () => unknown) => {
       const r = fn()
-      if (typeof r === 'function') cleanups.push(r as () => void)
+      if (typeof r === 'function') cleanups.push(r as () => unknown)
     },
   }
   if (llm !== undefined) (ctx as Record<string, unknown>).llm = llm
@@ -125,14 +133,32 @@ async function setup(opts: SetupOpts = {}): Promise<Env> {
   }
   const oldHome = process.env.DSH_HOME
   process.env.DSH_HOME = home
+  const indexFile = join(home, 'session-index', 'index.json')
+  if (opts.preIndex) {
+    const builder = getBuilder(sessionsRoot, indexFile)
+    const seededFts = opts.preseedFts ? await createSessionFts(join(home, 'session-index', 'fts.db')) : null
+    const report = await builder.build({
+      retentionDays: opts.retentionDays ?? 90,
+      collectMessages: seededFts?.ok ?? false,
+      onSessionParsed: seededFts ? async (_file, meta, messages) => {
+        await seededFts.syncSession({
+          meta, sourceFingerprint: checkpointOf(meta), parserVersion: FTS_PARSER_VERSION, mode: 'replace', messages,
+        })
+      } : undefined,
+    })
+    assert.equal(report.status, 'completed')
+    builder.dispose()
+    await seededFts?.close()
+  }
   // 预置 watermark：先建库并 markPruned(0)（count=0），再 apply（其 createSessionFts 复用该库）
   if (opts.preseedWatermark) {
     const f = await createSessionFts(join(home, 'session-index', 'fts.db'))
     assert.ok(f?.ok, '预置 fts.db 应可用')
-    f!.markPruned(0)
+    await f!.markPruned(0)
     await f!.flush()
-    f!.close()
+    await f!.close()
   }
+  await opts.beforeApply?.(files, sessionsRoot, indexFile)
   const { ctx, tools, cleanups } = makeCtx(opts.llm)
   apply(ctx as never, {
     sessionsRoot,
@@ -144,7 +170,7 @@ async function setup(opts: SetupOpts = {}): Promise<Env> {
     ftsEnabled: opts.ftsEnabled ?? true,
     retentionDays: opts.retentionDays ?? 90,
     llmSummaryEnabled: opts.llmSummaryEnabled ?? true,
-  })
+  }, opts.dependencies)
   const env: Env = {
     home,
     ftsDb: join(home, 'session-index', 'fts.db'),
@@ -184,11 +210,173 @@ function ftsDbSnapshot(home: string): { sessions: number; messages: number } {
 after(async () => {
   for (const e of envs) {
     for (const c of e.cleanups) {
-      try { c() } catch { /* ignore */ }
+      await c()
     }
     try { e.restore() } catch { /* ignore */ }
   }
   for (const b of bases) await rm(b, { recursive: true, force: true })
+})
+
+async function appendAssistant(file: string, value: string): Promise<void> {
+  const row = alpha3EventJson(alpha3Assistant(value, `assistant-${value}`, Date.now()), 1, Date.now())
+  await appendFile(file, zstdCompressSync(Buffer.from(row + '\n')))
+}
+
+const silentWatcher: PluginDependencies['createSessionWatcher'] = () => ({ ok: true, close: () => {} })
+
+describe('S1.4 启动、回退指纹对账与卸载', () => {
+  it('指纹逐项比较、root、retention、扫描完整性使用同一规则', () => {
+    const now = Date.now()
+    const file = join(tmpdir(), 'reconcile-test', 'session.jsonl.zstd')
+    const meta = {
+      id: 'test', file, size: 10, mtimeMs: now, ctimeMs: now, lastTime: now,
+    } as SessionMeta
+    const idx: SessionIndex = { version: 1, root: dirname(file), updatedAt: now, sessions: [meta] }
+    const scan: ScanSessionFilesResult = {
+      files: [{ file, size: 10, mtimeMs: now, ctimeMs: now }],
+      complete: true, truncated: false, errors: [], failedSubtrees: [],
+    }
+    assert.equal(indexNeedsReconcile(idx, idx.root, scan, 90, now), false)
+    for (const field of ['size', 'mtimeMs', 'ctimeMs'] as const) {
+      const changed = { ...scan, files: [{ ...scan.files[0], [field]: scan.files[0][field] + 1 }] }
+      assert.equal(indexNeedsReconcile(idx, idx.root, changed, 90, now), true, field)
+    }
+    assert.equal(indexNeedsReconcile(idx, join(idx.root, 'different-root'), scan, 90, now), true)
+    assert.equal(indexNeedsReconcile(idx, idx.root, { ...scan, files: [{ ...scan.files[0], file: file + '.v4' }] }, 90, now), true)
+    assert.equal(indexNeedsReconcile(idx, idx.root, { ...scan, files: [], complete: false }, 90, now), false)
+    assert.equal(indexNeedsReconcile(idx, idx.root, { ...scan, files: [] }, 90, now), true)
+    const oldTime = now - 100 * 86400e3
+    const oldFile = { ...scan.files[0], mtimeMs: oldTime, ctimeMs: oldTime }
+    const retained = { ...meta, mtimeMs: oldTime, ctimeMs: oldTime }
+    assert.equal(indexNeedsReconcile({ ...idx, sessions: [retained] }, idx.root, { ...scan, files: [oldFile] }, 90, now), false,
+      '文件 mtime 旧但已解析 lastTime 新，与 builder 一样保留')
+    assert.equal(indexNeedsReconcile({ ...idx, sessions: [] }, idx.root, { ...scan, files: [oldFile] }, 90, now), false,
+      '已按 retention 移除的旧文件不能反复触发重建')
+  })
+
+  it('停机期间追加且会话数相等：启动自动补齐，无 force refresh', async () => {
+    const env = await setup({
+      ftsEnabled: false, retentionDays: 0, preIndex: true,
+      sessions: [{ name: 'offline-append', ts: Date.now() }],
+      dependencies: { createSessionWatcher: silentWatcher },
+      beforeApply: async (files) => appendAssistant(files[0], 'latest disk content'),
+    })
+    await waitFor(() => loadIndex(join(env.home, 'session-index', 'index.json'))?.sessions[0]?.lastAssistantText === 'latest disk content', 10000)
+    const idx = loadIndex(join(env.home, 'session-index', 'index.json'))!
+    assert.equal(idx.sessions.length, 1)
+  })
+
+  it('停机期间同数量删除、新增：启动替换会话集合', async () => {
+    let replacement = ''
+    const env = await setup({
+      ftsEnabled: false, retentionDays: 0, preIndex: true,
+      sessions: [{ name: 'offline-old', ts: Date.now() }],
+      dependencies: { createSessionWatcher: silentWatcher },
+      beforeApply: async (files, sessionsRoot) => {
+        await rm(files[0])
+        replacement = await craftOldSession(sessionsRoot, 'offline-new', Date.now())
+      },
+    })
+    await waitFor(() => {
+      const idx = loadIndex(join(env.home, 'session-index', 'index.json'))
+      return idx?.sessions.length === 1 && idx.sessions[0]?.file === replacement
+    }, 10000)
+    assert.equal(loadIndex(join(env.home, 'session-index', 'index.json'))!.sessions.length, 1)
+  })
+
+  it('watcher 运行中失效后自动按指纹回退，追加文件数不变', async () => {
+    let failWatch: (() => void) | undefined
+    const env = await setup({
+      ftsEnabled: false, retentionDays: 0, preIndex: true,
+      sessions: [{ name: 'lost-watcher', ts: Date.now() }],
+      dependencies: {
+        createSessionWatcher: (_root, _debounce, _change, onError) => {
+          failWatch = onError
+          return { ok: true, close: () => {} }
+        },
+      },
+    })
+    await new Promise((r) => setTimeout(r, 100))
+    await appendAssistant(env.files[0], 'watch fallback catches append')
+    failWatch!()
+    await waitFor(() => loadIndex(join(env.home, 'session-index', 'index.json'))?.sessions[0]?.lastAssistantText === 'watch fallback catches append', 10000)
+  })
+
+  it('已有今日 prune watermark 仍对账停机内容，超龄文件不反复收录', async () => {
+    const env = await setup({
+      retentionDays: 90, preseedWatermark: true, preIndex: true, preseedFts: true,
+      dependencies: { createSessionWatcher: silentWatcher },
+      sessions: [
+        { name: 'watermark-old', ts: Date.now() - 100 * 86400e3 },
+        { name: 'watermark-current', ts: Date.now() },
+      ],
+      beforeApply: async (files) => appendAssistant(files[1], 'watermark current append'),
+    })
+    await waitFor(() => loadIndex(join(env.home, 'session-index', 'index.json'))?.sessions[0]?.lastAssistantText === 'watermark current append', 10000)
+    const idx = loadIndex(join(env.home, 'session-index', 'index.json'))!
+    assert.equal(idx.sessions.length, 1)
+    const scan = await scanSessionFiles(join(env.home, 'sessions'))
+    assert.equal(indexNeedsReconcile(idx, idx.root, scan, 90), false)
+  })
+
+  it('dispose 后异步 FTS 初始化只关闭迟到连接，不启动维护或构建', async () => {
+    let release: (value: Awaited<ReturnType<typeof createSessionFts>>) => void = () => {}
+    let closes = 0
+    let maintenance = 0
+    const env = await setup({
+      sessions: [],
+      dependencies: {
+        createSessionFts: () => new Promise((resolveFts) => { release = resolveFts }),
+      },
+    })
+    for (const cleanup of env.cleanups.splice(0)) cleanup()
+    release({ ok: true, close: async () => { closes++ }, maybeMaintenance: async () => { maintenance++ } } as never)
+    await new Promise((r) => setTimeout(r, 100))
+    assert.equal(closes, 1)
+    assert.equal(maintenance, 0)
+    assert.equal(existsSync(join(env.home, 'session-index', 'index.json')), false)
+  })
+
+  it('dispose 取消尚未结束的启动扫描；重载用新 builder 补齐变更', async () => {
+    let release: (scan: ScanSessionFilesResult) => void = () => {}
+    const env = await setup({
+      ftsEnabled: false, retentionDays: 0, preIndex: true,
+      sessions: [{ name: 'reload', ts: Date.now() }],
+      dependencies: { scanSessionFiles: () => new Promise((resolveScan) => { release = resolveScan }) },
+    })
+    for (const cleanup of env.cleanups.splice(0)) cleanup()
+    await appendAssistant(env.files[0], 'reload latest snapshot')
+    const root = join(env.home, 'sessions')
+    release(await scanSessionFiles(root))
+    await new Promise((r) => setTimeout(r, 100))
+    const indexFile = join(env.home, 'session-index', 'index.json')
+    assert.equal(loadIndex(indexFile)!.sessions[0].lastAssistantText, '')
+    const next = makeCtx()
+    apply(next.ctx as never, {
+      sessionsRoot: root, indexFile, dataDir: join(env.home, 'session-index'),
+      maxHits: 10, maxSnippetsPerSession: 3, ftsEnabled: false, retentionDays: 0, llmSummaryEnabled: false,
+    })
+    env.cleanups.push(...next.cleanups)
+    await waitFor(() => loadIndex(indexFile)?.sessions[0]?.lastAssistantText === 'reload latest snapshot', 10000)
+  })
+
+  it('worker role 在 snippet 截断前过滤：前三条 user 后第四条 assistant 仍返回', async () => {
+    const env = await setup({
+      ftsEnabled: false, retentionDays: 0,
+      sessions: [{ name: 'role-before-limit', ts: Date.now() }],
+      beforeApply: async (files) => {
+        const ts = Date.now()
+        const rows = alpha3Jsonl({ id: 'role-before-limit', createdAt: ts, events: [
+          alpha3User('needle first', 'u1'), alpha3User('needle second', 'u2'), alpha3User('needle third', 'u3'),
+          alpha3Assistant('needle assistant fourth', 'a1'),
+        ] })
+        await writeFile(files[0], zstdCompressSync(Buffer.from(rows.join('\n') + '\n')))
+      },
+    })
+    const result = await env.tools['session_index_search'].execute({ query: 'needle', mode: 'full', filter: { role: 'assistant' } })
+    assert.equal(result.hits.length, 1)
+    assert.match(result.hits[0].snippet, /assistant fourth/)
+  })
 })
 
 describe('ftsEnabled（P2.1/2.2）', () => {
@@ -224,9 +412,9 @@ describe('ftsEnabled（P2.1/2.2）', () => {
 
   it('默认 ftsEnabled=true：创建 fts.db；status 健康快照字段齐全', async () => {
     const env = await setup({})
-    await waitFor(() => existsSync(env.ftsDb), 5000)
     const status = env.tools['session_index_status']
     assert.ok(status, 'session_index_status 已注册')
+    await waitFor(async () => (await status.execute({})).ftsHealth?.ok === true, 5000)
     const r = await status.execute({})
     // 平铺兼容字段保持原键名原类型
     assert.equal(r.fts, true)
@@ -239,8 +427,8 @@ describe('ftsEnabled（P2.1/2.2）', () => {
     assert.equal(typeof h.sessions, 'number')
     assert.equal(typeof h.messages, 'number')
     assert.ok(h.dbSizeBytes > 0, `dbSizeBytes=${h.dbSizeBytes}`)
-    // C2：新库直接按 schema v2 建表（无 unicode61 表）；旧库启动时自动迁移 v1→v2
-    assert.equal(h.schemaVersion, '2')
+    // 新库使用原消息/分块 schema；兼容迁移由 fts-message-contract 覆盖。
+    assert.equal(h.schemaVersion, '5')
     assert.equal(typeof h.lastOptimizeAt, 'number')
     assert.ok(h.lastOptimizeAt >= 0)
     // P3 可观测字段也在快照里
@@ -328,6 +516,7 @@ describe('ftsEnabled（P2.1/2.2）', () => {
     const ix = readIndexHome(env.home)!
     assert.ok(!ix.sessions.some((s) => s.file.includes('ret-old-s')), '常规构建也应过滤超龄条目')
     const status = env.tools['session_index_status']
+    await waitFor(async () => (await status.execute({})).ftsHealth?.ok === true, 5000)
     const r = await status.execute({})
     // 专用通道被 24h 门控跳过：不重写 watermark、不 markPruned（→ VACUUM 不重跑）
     assert.ok(Math.abs(r.ftsHealth.lastPruneAt - seedTs) < 5000, `lastPruneAt=${r.ftsHealth.lastPruneAt} seed=${seedTs}`)

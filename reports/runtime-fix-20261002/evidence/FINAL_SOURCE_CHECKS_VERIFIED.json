@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-10-02T15:34:37.498Z",
+  "node": "v24.16.0",
+  "runs": [
+    {
+      "label": "source-typecheck",
+      "args": [
+        "node_modules/typescript/bin/tsc",
+        "-p",
+        "tsconfig.json",
+        "--noEmit"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "errorCode": null
+    },
+    {
+      "label": "test-typecheck",
+      "args": [
+        "node_modules/typescript/bin/tsc",
+        "-p",
+        "tsconfig.test.json",
+        "--noEmit"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "errorCode": null
+    },
+    {
+      "label": "contract",
+      "args": [
+        "scripts/check-dsh-contract.mjs"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "errorCode": null
+    },
+    {
+      "label": "work-runtime-build",
+      "args": [
+        "node_modules/typescript/bin/tsc",
+        "-p",
+        "tsconfig.json"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "errorCode": null
+    }
+  ],
+  "exitCode": 0
+}

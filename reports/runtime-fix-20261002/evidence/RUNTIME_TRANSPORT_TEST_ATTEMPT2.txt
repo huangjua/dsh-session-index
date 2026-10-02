@@ -1,0 +1,46 @@
+▶ runtime reader isolation and request deadline
+  ✔ terminates real synchronous SQLite read only; concurrent writer receipt and checkpoint survive (1769.9155ms)
+  ✔ queued request expiry does not replace the running healthy reader; health uses writer (545.32ms)
+  ✔ recovery wait spends the same query deadline and retains historical failures (770.6016ms)
+  ✔ active read abort replaces only reader and leaves no pending cancellation (484.972ms)
+✔ runtime reader isolation and request deadline (3572.2366ms)
+▶ runtime migration state and bounded initialization
+  ✔ ready deadline does not kill progressing migration; status returns parent progress (730.0898ms)
+  ✔ migration-stall fails within its own bound and factory preserves error/progress (191.1884ms)
+  ✖ migration-total fails within its own bound and factory preserves error/progress (255.4933ms)
+  ✔ opening-stall fails within its own bound and factory preserves error/progress (564.5465ms)
+  ✖ public factory allows actual SQLite batches beyond original 15 seconds (8494.4721ms)
+✖ runtime migration state and bounded initialization (10236.6225ms)
+ℹ tests 9
+ℹ suites 2
+ℹ pass 7
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13981.1164
+
+✖ failing tests:
+
+test at .test-build\test\runtime-transport.test.js:151:9
+✖ migration-total fails within its own bound and factory preserves error/progress (255.4933ms)
+  [Error: EBUSY: resource busy or locked, unlink 'C:\Users\admin\AppData\Local\Temp\dsh-runtime-transport-gMopm6\migration-total.db'] { errno: -4082, code: 'EBUSY', syscall: 'unlink', path: 'C:\\Users\\admin\\AppData\\Local\\Temp\\dsh-runtime-transport-gMopm6\\migration-total.db' }
+
+test at .test-build\test\runtime-transport.test.js:165:5
+✖ public factory allows actual SQLite batches beyond original 15 seconds (8494.4721ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(client)
+  
+      at file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/runtime-transport.test.js:170:16
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/runtime-transport.test.js:13:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+{"exitCode":1,"signal":null}

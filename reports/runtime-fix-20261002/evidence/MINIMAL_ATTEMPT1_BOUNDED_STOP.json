@@ -1,0 +1,20 @@
+[
+  {
+    "ProcessId": 7496,
+    "ParentProcessId": 41556,
+    "CommandLine": "\"C:\\Program Files\\nodejs\\node.exe\" scripts\\run-isolated-tests.mjs RUNTIME_MINIMAL fts-client fts-recovery fts-message-contract index-fts-recovery builder-fts-sync native-zstd runtime-index",
+    "depth": 0
+  },
+  {
+    "ProcessId": 33324,
+    "ParentProcessId": 7496,
+    "CommandLine": "\"C:\\Program Files\\nodejs\\node.exe\" --test --test-concurrency=1 .test-build/test/fts-client.test.js .test-build/test/fts-recovery.test.js .test-build/test/fts-message-contract.test.js .test-build/test/index-fts-recovery.test.js .test-build/test/builder-fts-sync.test.js .test-build/test/native-zstd.test.js .test-build/test/runtime-index.test.js",
+    "depth": 1
+  },
+  {
+    "ProcessId": 35136,
+    "ParentProcessId": 33324,
+    "CommandLine": "\"C:\\Program Files\\nodejs\\node.exe\" --use-largepages=off --trace-event-file-pattern=node_trace.${rotation}.log --v8-pool-size=4 --node-snapshot --cpu-prof-interval=1000 --report-signal=SIGUSR2 --tls-cipher-list=TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA384:ECDHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA256:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA --secure-heap=0 --secure-heap-min=2 --stack-trace-limit=10 --test-isolation=process --network-family-autoselection-attempt-timeout=250 --heapsnapshot-near-heap-limit=0 --heap-prof-interval=524288 --max-http-header-size=16384 --test-concurrency=1 --test-timeout=0 --test-coverage-branches=0 --test-coverage-functions=0 --test-coverage-lines=0 --watch-kill-signal=SIGTERM --inspect-port=127.0.0.1:9229 --inspect-publish-uid=stderr,http .test-build\\test\\runtime-index.test.js",
+    "depth": 2
+  }
+]

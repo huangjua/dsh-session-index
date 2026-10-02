@@ -902,7 +902,7 @@ describe('SessionIndexBuilder alpha.3 变更文件安全重解析', () => {
     }
   })
 
-  it('尾帧截断（mid-write）→ 全量解析失败，旧条目保留 + error 记录', async () => {
+  it('尾帧截断（mid-write）→ degraded/raced，保留旧完整快照供有界追平', async () => {
     const sb = await makeSandbox()
     try {
       const target = await addSession(sb.sessions, 's1')
@@ -919,13 +919,19 @@ describe('SessionIndexBuilder alpha.3 变更文件安全重解析', () => {
       assert.ok(st.size > size0)
 
       const rep = await b.build()
-      assert.equal(rep.status, 'completed')
-      assert.ok(rep.failed >= 1, `failed=${rep.failed}`)
+      assert.equal(rep.status, 'degraded')
+      assert.equal(rep.failed, 0)
+      assert.equal(rep.raced, 1)
       const after = loadIndex(sb.indexFile)!.sessions.find((s) => s.file.includes('s1'))!
       // 旧条目保留（含旧 indexedBytes），不写入半帧数据
       assert.equal(after.counts['user/message'], before.counts['user/message'])
       assert.equal(after.indexedBytes, size0)
-      assert.ok(after.error)
+      assert.equal(after.error, before.error)
+      assert.equal(after.unindexable, before.unindexable)
+      assert.equal(after.size, before.size)
+      assert.equal(after.mtimeMs, before.mtimeMs)
+      assert.equal(after.ctimeMs, before.ctimeMs)
+      assert.equal(after.raced, true)
     } finally {
       await rm(sb.root, { recursive: true, force: true })
     }
