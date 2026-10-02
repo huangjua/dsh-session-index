@@ -7,7 +7,7 @@
  *  - 维护轻量索引（不存正文，只存元数据/摘要字段）
  *  - 提供元数据搜索与按需全文搜索
  */
-import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, readdirSync, statSync, openSync, fsyncSync, closeSync } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { join, basename, dirname, isAbsolute, resolve } from 'node:path'
 import * as fzstd from 'fzstd'
@@ -15,7 +15,50 @@ import { throwIfAborted } from './cancel.js'
 import { SessionLogCompatibility, textFromCompatibleMessage } from './session-compat.js'
 import type { SessionCompatibilityVersion } from './session-compat.js'
 
+/* ── 命中片段标记与生成（C11：fts 与 streaming-parser 两份实现统一到此处）────
+ * 常量与实现下沉到 core，避免 fts ↔ core 的循环依赖（fts 负责 SQLite，
+ * 不负责纯文本片段规则）。fts.ts 仍 re-export，外部引用不变。
+ */
+/** 命中区间标记（Hermes MATCH_OPEN/CLOSE，dsh-local-memory 同款 >>> <<<） */
+export const MATCH_OPEN = '>>>'
+export const MATCH_CLOSE = '<<<'
+
+/**
+ * 对应 search.rs::excerpt_around_match：归一化空白后取 charsBefore/charsAfter
+ * 字符上下文，并用 >>> <<< 包住命中区间（P1.4）。
+ */
+export function excerptAroundMatch(
+  text: string,
+  query: string,
+  charsBefore: number,
+  charsAfter: number,
+): string {
+  const normalized = text.split(/\s+/).filter(Boolean).join(' ')
+  const idx = normalized.toLowerCase().indexOf(query.toLowerCase())
+  if (idx === -1) return normalized.slice(0, charsBefore + charsAfter + 40)
+  const start = Math.max(0, idx - charsBefore)
+  const end = Math.min(normalized.length, idx + query.length + charsAfter)
+  let snippet = ''
+  if (start > 0) snippet += '… '
+  snippet += normalized.slice(start, idx)
+  snippet += MATCH_OPEN + normalized.slice(idx, idx + query.length) + MATCH_CLOSE
+  snippet += normalized.slice(idx + query.length, end)
+  if (end < normalized.length) snippet += ' …'
+  return snippet.slice(0, 400)
+}
+
+export interface TextCoverage {
+  complete: boolean
+  reasons: string[]
+  indexedMessages: number
+  indexedTextBytes: number
+  maxMessages: number
+  maxTextBytes: number
+}
+
 export interface SessionMeta {
+  generation?: number
+  coverage?: TextCoverage
   id: string
   file: string
   workspace: string
@@ -42,6 +85,12 @@ export interface SessionMeta {
    * 缺省/0 → 全量重解析（旧索引迁移 / detailMissing 条目 / 文件被替换）。
    */
   indexedBytes?: number
+  /**
+   * C9b：已解析到的最大事件 seq（与 indexedBytes 配套）。
+   * 下次增量的窗口起点 = indexedSeq + 1；用于判定 delta 窗口内的 surface
+   * replace 是否跨越窗口边界（引用窗口外旧帧 → 必须回退全量）。
+   */
+  indexedSeq?: number
   /** 构建期间文件被改写：条目保留旧值 */
   raced?: boolean
   /** 本次构建解析失败：保留旧条目，只追加 error */
@@ -54,6 +103,8 @@ export interface SessionMeta {
    * unsafe.  Kept in index.json solely as a diagnostic marker.
    */
   unindexable?: true
+  /** Parsed JSON metadata may lead FTS; retry until its independent commit catches up. */
+  ftsDirty?: boolean
 }
 
 export interface SessionIndex {
@@ -64,7 +115,12 @@ export interface SessionIndex {
 }
 
 export interface BuildReport {
-  status: 'completed' | 'cancelled' | 'failed' | 'skipped'
+  status: 'completed' | 'degraded' | 'cancelled' | 'failed' | 'skipped'
+  scanComplete?: boolean
+  scanTruncated?: boolean
+  failedSubtrees?: string[]
+  ftsSynced?: number
+  ftsFailed?: number
   totalFiles: number
   processed: number
   headParsed: number
@@ -79,7 +135,20 @@ export interface BuildReport {
    * 从索引/派生层移除的条目数。可选字段，既有断言不受影响。 */
   pruned: number
   errors: string[]
+  discoveredBytes?: number
+  readBytes?: number
+  decodedBytes?: number
+  deltaBytes?: number
+  incompleteSessions?: number
   scannedBytes: number
+  /**
+   * C9b：本次构建**成功走完增量窗口**的文件数（真正只解了新增帧）。
+   * 与 `scannedBytes` 配合可判定增量是否生效：scannedBytes 记的是"逻辑上纳入
+   * 考虑的文件总大小"，增量生效时它会明显小于全量（旧实现恒等于全量）。
+   */
+  deltaParsed?: number
+  /** C9b：delta 尝试后回退全量重解析的文件数（replace 命中 / 偏移失效）。 */
+  deltaFallbacks?: number
   indexFile: string
   durationMs: number
   maxEventLoopDelayMs: number
@@ -95,6 +164,26 @@ export interface ScanFile {
   ctimeMs: number
 }
 
+export interface ScanSessionFilesResult {
+  files: ScanFile[]
+  complete: boolean
+  truncated: boolean
+  errors: string[]
+  failedSubtrees: string[]
+}
+
+export interface ScanSessionFilesOptions {
+  signal?: AbortSignal
+  cap?: number
+  /** Fault injection uses the same I/O contract without changing real permissions. */
+  io?: { readdir: typeof readdir; stat: typeof stat }
+}
+
+export function isRetainedSession(file: ScanFile, previous: SessionMeta | undefined, cutoff: number): boolean {
+  const activity = Math.max(previous?.lastTime ?? 0, file.mtimeMs)
+  return !(cutoff > 0 && activity > 0 && activity < cutoff)
+}
+
 export interface SearchHit {
   sessionId: string
   workspace: string
@@ -104,6 +193,8 @@ export interface SearchHit {
   snippet: string
   /** P3 SCROLL 锚点：FTS messages 行 id（meta/worker 路径为 0） */
   messageId?: number
+  anchorId?: string
+  lineageRoot?: string
 }
 
 export interface SessionSummary {
@@ -121,6 +212,15 @@ export interface SessionSummary {
   toolCalls: { name: string; count: number }[]
 }
 
+/* ── 旧同步实现（@legacy：整读整解压，仅测试/等值对比使用）─────────────────
+ * C11：生产路径一律走 streaming-parser（流式）+ SessionIndexBuilder（worker 池）。
+ * 以下 5 个导出（decompressZstd / parseSession / findSessionFiles /
+ * buildIndexSync / searchSessionFile）被 core.test.ts 与 streaming-parser.test.ts
+ * 用作"旧实现等值校验"的参照实现，**生产代码不调用**。保留勿误删；
+ * 后续可整体迁入 test/support/legacy-core.ts（PLAN_v5 记录）。
+ */
+
+/** @legacy 整读整解压（仅测试对比用） */
 export function decompressZstd(file: string): string {
   const compressed = readFileSync(file)
   const buf = fzstd.decompress(new Uint8Array(compressed))
@@ -230,22 +330,42 @@ function generationOf(name: string): number | undefined {
  */
 export async function scanSessionFiles(
   root: string,
-  options: { signal?: AbortSignal; cap?: number } = {},
-): Promise<{ files: ScanFile[]; truncated: boolean }> {
-  const cap = options.cap ?? 10000
+  options: ScanSessionFilesOptions = {},
+): Promise<ScanSessionFilesResult> {
+  const cap = Math.max(0, options.cap ?? 10000)
   const signal = options.signal
+  const io = options.io ?? { readdir, stat }
   const files: ScanFile[] = []
+  const errors: string[] = []
+  const failedSubtrees: string[] = []
   let truncated = false
   let visited = 0
+  const failed = (path: string, error: unknown) => {
+    errors.push(`${path}: ${String(error).slice(0, 200)}`)
+    failedSubtrees.push(path)
+  }
   const walk = async (dir: string): Promise<void> => {
     if (truncated) return
+    throwIfAborted(signal)
     let entries
     try {
-      entries = await readdir(dir, { withFileTypes: true })
-    } catch {
+      entries = await io.readdir(dir, { withFileTypes: true })
+    } catch (error) {
+      failed(dir, error)
       return
     }
+    // Resolve generations before applying the budget or stat: an unavailable
+    // highest generation must never silently turn into its older sibling.
+    let highest: string | undefined
+    let highestVersion = -1
     for (const entry of entries) {
+      const version = entry.isFile() ? generationOf(entry.name) : undefined
+      if (version !== undefined && version > highestVersion) {
+        highest = entry.name
+        highestVersion = version
+      }
+    }
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
       if (truncated) return
       visited++
       if (visited % 20 === 0) {
@@ -258,38 +378,28 @@ export async function scanSessionFiles(
         continue
       }
       if (!entry.isFile() || !entry.name.endsWith('.jsonl.zstd')) continue
-      let st
-      try {
-        st = await stat(full)
-      } catch {
-        continue
-      }
-      if (!st.isFile()) continue
+      if (generationOf(entry.name) !== undefined && entry.name !== highest) continue
       if (files.length >= cap) {
         truncated = true
         return
+      }
+      let st
+      try {
+        st = await io.stat(full)
+      } catch (error) {
+        failed(full, error)
+        continue
+      }
+      if (!st.isFile()) {
+        failed(full, new Error('session file changed type during scan'))
+        continue
       }
       files.push({ file: full, size: st.size, mtimeMs: st.mtimeMs, ctimeMs: st.ctimeMs })
     }
   }
   await walk(root)
-  // 每个会话目录只保留最高代际的规范日志；非规范名的 .jsonl.zstd 一律保留。
-  const bestByDir = new Map<string, { file: string; version: number }>()
-  for (const f of files) {
-    const version = generationOf(basename(f.file))
-    if (version === undefined) continue
-    const dir = dirname(f.file)
-    const best = bestByDir.get(dir)
-    if (!best || version > best.version) bestByDir.set(dir, { file: f.file, version })
-  }
-  const kept = files.filter((f) => {
-    const version = generationOf(basename(f.file))
-    return version === undefined || bestByDir.get(dirname(f.file))?.file === f.file
-  })
-  files.length = 0
-  files.push(...kept)
   files.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0))
-  return { files, truncated }
+  return { files, complete: !truncated && errors.length === 0, truncated, errors, failedSubtrees }
 }
 
 /* ── P0-1：loadIndex 内存缓存（882KB index.json 每次调用解析 → 按指纹缓存） ────
@@ -336,10 +446,20 @@ export function loadIndex(indexFile: string): SessionIndex | null {
   }
 }
 
+/** 同步写索引（legacy 同步路径/测试用；生产路径走 builder 的 atomicWriteJson）。
+ *  C10：补齐 fsync + 唯一 tmp 名——旧实现无 fsync、固定 tmp 名，跨进程并发时
+ *  可能互相踩踏，且崩溃时可能留下未落盘的 tmp。 */
+let saveIndexSeq = 0
 export function saveIndex(indexFile: string, index: SessionIndex): void {
   mkdirSync(dirname(indexFile), { recursive: true })
-  const tmp = indexFile + '.tmp'
-  writeFileSync(tmp, JSON.stringify(index), 'utf8')
+  const tmp = `${indexFile}.tmp.${process.pid}.${saveIndexSeq++}`
+  const fd = openSync(tmp, 'wx')
+  try {
+    writeFileSync(fd, JSON.stringify(index), 'utf8')
+    fsyncSync(fd)
+  } finally {
+    closeSync(fd)
+  }
   renameSync(tmp, indexFile)
   invalidateIndexCache(indexFile)
 }

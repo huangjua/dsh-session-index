@@ -1,0 +1,414 @@
+{
+  "version": 1,
+  "generatedAt": "2026-10-02T08:30:46.558Z",
+  "node": "v24.16.0",
+  "scope": "synthetic-fixtures-only",
+  "productionDataRead": false,
+  "productionDataWritten": false,
+  "status": "passed",
+  "fixtureRoot": "E:\\Do Something\\DSH备份\\dsh-session-index work\\implementation-session-index\\validation\\MIGRATION_EVIDENCE\\synthetic-NPPxWl",
+  "compiledDirectory": "E:\\Do Something\\DSH备份\\dsh-session-index work\\implementation-session-index\\release\\S6-20261002\\lib",
+  "reportPath": "E:\\Do Something\\DSH备份\\dsh-session-index work\\implementation-session-index\\validation\\s6-final-MIGRATION_DRY_RUN.json",
+  "environment": {
+    "DSH_HOME": "E:\\Do Something\\DSH备份\\dsh-session-index work\\implementation-session-index\\validation\\s6-environment\\dsh-home",
+    "TEMP": "E:\\Do Something\\DSH备份\\dsh-session-index work\\implementation-session-index\\validation\\s6-environment\\temp",
+    "TMP": "E:\\Do Something\\DSH备份\\dsh-session-index work\\implementation-session-index\\validation\\s6-environment\\temp"
+  },
+  "checks": [
+    {
+      "name": "schema2-to-5-preserves-original-fields-and-row-order",
+      "passed": true
+    },
+    {
+      "name": "legacy-numeric-scroll-remains-rowid-without-invented-eventSeq",
+      "passed": true
+    },
+    {
+      "name": "schema2-full-text-backfill-covers-tail-and-unicode",
+      "passed": true
+    },
+    {
+      "name": "bookmark-dry-run-is-byte-identical-and-does-not-create-backup",
+      "passed": true
+    },
+    {
+      "name": "bookmark-all-resolution-statuses-are-real-database-lookups",
+      "passed": true,
+      "counts": {
+        "resolved": 2,
+        "unresolved": 3,
+        "ambiguous": 1,
+        "session-missing": 1,
+        "anchor-replaced": 1,
+        "session": 1,
+        "alreadyMigrated": 1
+      }
+    },
+    {
+      "name": "bookmark-apply-preserves-physical-order-duplicates-fields-notes-tags-times-and-ids",
+      "passed": true
+    },
+    {
+      "name": "bookmark-apply-retains-an-exact-unique-backup",
+      "passed": true
+    },
+    {
+      "name": "bookmark-repeat-is-byte-identical-and-does-not-overwrite-backup",
+      "passed": true
+    },
+    {
+      "name": "bookmark-interruption-after-backup-fsync-retains-original-source-and-reuses-identical-backup",
+      "passed": true
+    },
+    {
+      "name": "bookmark-different-backup-and-source-as-backup-are-rejected-without-overwrite",
+      "passed": true
+    },
+    {
+      "name": "bookmark-corrupt-physical-record-is-diagnostic-and-never-overwritten",
+      "passed": true
+    },
+    {
+      "name": "schema2-interruption-rolls-back-partial-chunks-and-retries-to-5",
+      "passed": true
+    },
+    {
+      "name": "schema5-reopen-retains-stable-anchor-order-and-does-not-reinterpret-numeric-rowid",
+      "passed": true
+    }
+  ],
+  "failures": [],
+  "schemaMigration": {
+    "from": "2",
+    "to": "5",
+    "databasePath": "E:\\Do Something\\DSH备份\\dsh-session-index work\\implementation-session-index\\validation\\MIGRATION_EVIDENCE\\synthetic-NPPxWl\\schema2.db",
+    "originalSessions": 2,
+    "originalMessages": 3,
+    "originalRowsPreserved": true,
+    "legacyIdentityColumnsRemainNull": true,
+    "chunks": 4,
+    "legacyNumericNeighbors": [
+      1,
+      3
+    ],
+    "originalSnapshotHash": "e7bfeb8550f636e25c470799a3caa54bd0b4005d52bbc49c67a8e613f9c61043",
+    "migratedOriginalFieldsHash": "e7bfeb8550f636e25c470799a3caa54bd0b4005d52bbc49c67a8e613f9c61043",
+    "interruptedRetry": {
+      "databasePath": "E:\\Do Something\\DSH备份\\dsh-session-index work\\implementation-session-index\\validation\\MIGRATION_EVIDENCE\\synthetic-NPPxWl\\schema2-interrupted.db",
+      "failedChunkInsertAttempt": 2,
+      "schemaAfterFailure": "2",
+      "originalRowsAfterFailurePreserved": true,
+      "partialChunkTableRolledBack": true,
+      "schemaAfterRetry": "5"
+    }
+  },
+  "bookmarkMigration": {
+    "sourcePath": "E:\\Do Something\\DSH备份\\dsh-session-index work\\implementation-session-index\\validation\\MIGRATION_EVIDENCE\\synthetic-NPPxWl\\bookmarks.jsonl",
+    "backupPath": "E:\\Do Something\\DSH备份\\dsh-session-index work\\implementation-session-index\\validation\\MIGRATION_EVIDENCE\\synthetic-NPPxWl\\bookmarks-before.jsonl",
+    "physicalRecords": 10,
+    "effectiveRecords": 9,
+    "dryRun": {
+      "version": 2,
+      "dryRun": true,
+      "records": 10,
+      "counts": {
+        "resolved": 2,
+        "unresolved": 3,
+        "ambiguous": 1,
+        "session-missing": 1,
+        "anchor-replaced": 1,
+        "session": 1,
+        "alreadyMigrated": 1
+      },
+      "entries": [
+        {
+          "line": 1,
+          "id": "proven",
+          "sessionId": "verified",
+          "status": "resolved"
+        },
+        {
+          "line": 2,
+          "id": "no-proof",
+          "sessionId": "verified",
+          "status": "unresolved",
+          "reason": "legacy-rowid-without-proof"
+        },
+        {
+          "line": 4,
+          "id": "ambiguous",
+          "sessionId": "ambiguous",
+          "status": "ambiguous",
+          "reason": "ambiguous"
+        },
+        {
+          "line": 5,
+          "id": "session-missing",
+          "sessionId": "missing",
+          "status": "session-missing",
+          "reason": "session-missing"
+        },
+        {
+          "line": 6,
+          "id": "anchor-replaced",
+          "sessionId": "replaced",
+          "status": "anchor-replaced",
+          "reason": "anchor-replaced"
+        },
+        {
+          "line": 7,
+          "id": "session-only",
+          "sessionId": "verified",
+          "status": "session"
+        },
+        {
+          "line": 9,
+          "id": "wrong-evidence",
+          "sessionId": "verified",
+          "status": "unresolved",
+          "reason": "legacy-rowid-without-proof"
+        },
+        {
+          "line": 10,
+          "id": "missing-anchor-proof",
+          "sessionId": "verified",
+          "status": "unresolved",
+          "reason": "legacy-rowid-without-proof"
+        },
+        {
+          "line": 11,
+          "id": "proven",
+          "sessionId": "verified",
+          "status": "resolved"
+        }
+      ],
+      "sourceHash": "605d785adb8b7aea67cc26a9cc494ba6eea678c1ffeb9613ecd4b1a4d7b32f6f"
+    },
+    "applied": {
+      "version": 2,
+      "dryRun": false,
+      "records": 10,
+      "counts": {
+        "resolved": 2,
+        "unresolved": 3,
+        "ambiguous": 1,
+        "session-missing": 1,
+        "anchor-replaced": 1,
+        "session": 1,
+        "alreadyMigrated": 1
+      },
+      "entries": [
+        {
+          "line": 1,
+          "id": "proven",
+          "sessionId": "verified",
+          "status": "resolved"
+        },
+        {
+          "line": 2,
+          "id": "no-proof",
+          "sessionId": "verified",
+          "status": "unresolved",
+          "reason": "legacy-rowid-without-proof"
+        },
+        {
+          "line": 4,
+          "id": "ambiguous",
+          "sessionId": "ambiguous",
+          "status": "ambiguous",
+          "reason": "ambiguous"
+        },
+        {
+          "line": 5,
+          "id": "session-missing",
+          "sessionId": "missing",
+          "status": "session-missing",
+          "reason": "session-missing"
+        },
+        {
+          "line": 6,
+          "id": "anchor-replaced",
+          "sessionId": "replaced",
+          "status": "anchor-replaced",
+          "reason": "anchor-replaced"
+        },
+        {
+          "line": 7,
+          "id": "session-only",
+          "sessionId": "verified",
+          "status": "session"
+        },
+        {
+          "line": 9,
+          "id": "wrong-evidence",
+          "sessionId": "verified",
+          "status": "unresolved",
+          "reason": "legacy-rowid-without-proof"
+        },
+        {
+          "line": 10,
+          "id": "missing-anchor-proof",
+          "sessionId": "verified",
+          "status": "unresolved",
+          "reason": "legacy-rowid-without-proof"
+        },
+        {
+          "line": 11,
+          "id": "proven",
+          "sessionId": "verified",
+          "status": "resolved"
+        }
+      ],
+      "sourceHash": "605d785adb8b7aea67cc26a9cc494ba6eea678c1ffeb9613ecd4b1a4d7b32f6f"
+    },
+    "repeated": {
+      "version": 2,
+      "dryRun": false,
+      "records": 10,
+      "counts": {
+        "resolved": 0,
+        "unresolved": 0,
+        "ambiguous": 0,
+        "session-missing": 0,
+        "anchor-replaced": 0,
+        "session": 0,
+        "alreadyMigrated": 10
+      },
+      "entries": [],
+      "sourceHash": "b9bbe134ecfbe1a0859d64cb2b29e4bbae0fad560c3edcb2a346a1bdcb828b89"
+    },
+    "originalHash": "605d785adb8b7aea67cc26a9cc494ba6eea678c1ffeb9613ecd4b1a4d7b32f6f",
+    "backupHash": "605d785adb8b7aea67cc26a9cc494ba6eea678c1ffeb9613ecd4b1a4d7b32f6f",
+    "migratedHash": "b9bbe134ecfbe1a0859d64cb2b29e4bbae0fad560c3edcb2a346a1bdcb828b89",
+    "allOriginalFieldsPreserved": true,
+    "physicalOrderPreserved": true,
+    "idempotent": true,
+    "interruptedRetry": {
+      "sourcePath": "E:\\Do Something\\DSH备份\\dsh-session-index work\\implementation-session-index\\validation\\MIGRATION_EVIDENCE\\synthetic-NPPxWl\\interrupted-bookmarks.jsonl",
+      "backupPath": "E:\\Do Something\\DSH备份\\dsh-session-index work\\implementation-session-index\\validation\\MIGRATION_EVIDENCE\\synthetic-NPPxWl\\interrupted-before.jsonl",
+      "injectedFailures": 1,
+      "sourceUnchangedAfterFailure": true,
+      "backupUnchangedAcrossRetry": true,
+      "retry": {
+        "version": 2,
+        "dryRun": false,
+        "records": 10,
+        "counts": {
+          "resolved": 2,
+          "unresolved": 3,
+          "ambiguous": 1,
+          "session-missing": 1,
+          "anchor-replaced": 1,
+          "session": 1,
+          "alreadyMigrated": 1
+        },
+        "entries": [
+          {
+            "line": 1,
+            "id": "proven",
+            "sessionId": "verified",
+            "status": "resolved"
+          },
+          {
+            "line": 2,
+            "id": "no-proof",
+            "sessionId": "verified",
+            "status": "unresolved",
+            "reason": "legacy-rowid-without-proof"
+          },
+          {
+            "line": 4,
+            "id": "ambiguous",
+            "sessionId": "ambiguous",
+            "status": "ambiguous",
+            "reason": "ambiguous"
+          },
+          {
+            "line": 5,
+            "id": "session-missing",
+            "sessionId": "missing",
+            "status": "session-missing",
+            "reason": "session-missing"
+          },
+          {
+            "line": 6,
+            "id": "anchor-replaced",
+            "sessionId": "replaced",
+            "status": "anchor-replaced",
+            "reason": "anchor-replaced"
+          },
+          {
+            "line": 7,
+            "id": "session-only",
+            "sessionId": "verified",
+            "status": "session"
+          },
+          {
+            "line": 9,
+            "id": "wrong-evidence",
+            "sessionId": "verified",
+            "status": "unresolved",
+            "reason": "legacy-rowid-without-proof"
+          },
+          {
+            "line": 10,
+            "id": "missing-anchor-proof",
+            "sessionId": "verified",
+            "status": "unresolved",
+            "reason": "legacy-rowid-without-proof"
+          },
+          {
+            "line": 11,
+            "id": "proven",
+            "sessionId": "verified",
+            "status": "resolved"
+          }
+        ],
+        "sourceHash": "605d785adb8b7aea67cc26a9cc494ba6eea678c1ffeb9613ecd4b1a4d7b32f6f"
+      },
+      "repeated": {
+        "version": 2,
+        "dryRun": false,
+        "records": 10,
+        "counts": {
+          "resolved": 0,
+          "unresolved": 0,
+          "ambiguous": 0,
+          "session-missing": 0,
+          "anchor-replaced": 0,
+          "session": 0,
+          "alreadyMigrated": 10
+        },
+        "entries": [],
+        "sourceHash": "b9bbe134ecfbe1a0859d64cb2b29e4bbae0fad560c3edcb2a346a1bdcb828b89"
+      }
+    }
+  },
+  "limits": [
+    "Counts describe freshly generated synthetic records, not production bookmarks.",
+    "A historical numeric rowid is never evidence by itself.",
+    "Resolved fixtures persist both the exact stable anchor and the exact source identity evidence.",
+    "The interrupted bookmark case injects a rename failure after backup fsync; it does not kill a real host."
+  ],
+  "sourceHashes": {
+    "bookmark.ts": "2cb94a7567e5b5747dd40eda5fc23a72205d7309d0b9e83974f4c35df50d6a98",
+    "fts.ts": "42c742d30682a70364cedbb5d61b78f4790116e60058326611aa2fc448aae2bd",
+    "core.ts": "3b23703d412b17c8c6c01e778dc076a529591659d1c8bf4e1d4b5ca8eac2eb12",
+    "query-plan.ts": "96f48cea17c008750fbd169a4bbd5b57b8fde102f48cda33d19f7cf91f7b0ffd",
+    "message-anchor.ts": "8210895dfaa582e92c6b246505a7945c50cf96c5ffbb3c51d5cf12cf66f61676",
+    "sidecar.ts": "117bb1ab664d48ceffea59045a02a6fd0e55e8f951f234c4ca5af4637278f70f",
+    "cancel.ts": "4bd453032f315b758657dbecf20bd513d45ba52fe26a793be9e9e2b414fda3c8",
+    "session-compat.ts": "f10a30ef5b61fc4de7a1f84ebf8290dc30b8ec8fad2cf76c0a238a4e0353b7a8"
+  },
+  "compiledHashes": {
+    "bookmark.js": "7aaa44927ab6335c8d56b4c209e376a72f410c01861f3a9774256ff9b8dc38f9",
+    "fts.js": "42507d088099ae0fb5f4561b1b3a8c74e6721171594fb0d239c17dfc134cea8d",
+    "core.js": "f6e42f450ce5dab313be248f9c289e82950aa5c9b3c235b5d5fd74840b4cda98",
+    "query-plan.js": "9481b296eaa6cfaf31b57b15c1a381b67e2309cde484d2f61093c7570252fd29",
+    "message-anchor.js": "61e5a085f29578fbc75073bb6fd6f4218e94d07429924784fdf9530aa4750fb6",
+    "sidecar.js": "e6cc43ae74cefacbce54d8651ace151b6fd21d90bbf44bada9e67bcf7b044ac0"
+  },
+  "completedAt": "2026-10-02T08:30:50.421Z",
+  "checkCount": 13,
+  "evidenceLog": "E:\\Do Something\\DSH备份\\dsh-session-index work\\implementation-session-index\\validation\\MIGRATION_EVIDENCE\\synthetic-NPPxWl\\migration-checks.log"
+}

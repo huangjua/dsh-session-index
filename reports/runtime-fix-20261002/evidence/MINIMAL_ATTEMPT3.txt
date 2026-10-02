@@ -1,0 +1,112 @@
+✔ S2 builder awaits async FTS receipt before releasing the run marker or reporting completion (1023.4053ms)
+✔ S2 JSON can lead failed FTS; unchanged-file retry performs a full parse from the committed base (774.816ms)
+✔ S2 FTS COMMIT followed by JSON failure recovers without duplicate append or checkpoint regression (864.5814ms)
+✔ S2 builder dispose drains the dispatched callback and refuses later builds (414.832ms)
+▶ FTS worker RPC and bounded transport
+  ✔ all reads, checkpoints, short-word search, metadata and maintenance work through RPC (851.4374ms)
+  ✔ failed multi-batch replace preserves old complete snapshot and checkpoint, and flush reports it (2634.4561ms)
+  ✔ concurrent flush calls both observe their accepted write failure boundary (1080.448ms)
+FTS source memory evidence {"maxActiveSourceBytes":2942886,"maxActiveBodyBytes":2391898,"maxQueueBytes":1049020,"maxBatchBytes":524288,"maxInFlightBatches":2}
+  ✔ two producers obey the shared two-batch, 512 KiB and 8 MiB limits, including Unicode slice boundaries (1621.5636ms)
+  ✔ queries can observe the old complete snapshot while disk staging is still in progress (4560.7397ms)
+  ✔ restart releases pending operations and retains committed checkpoints (1797.0046ms)
+  ✔ waiting producers retain a bounded input queue and all admitted sessions settle (2003.1274ms)
+  ✔ cancelling before staging acknowledgement cleans the known client staging token (1702.9857ms)
+  ✔ cancelled queries settle promptly and do not retain queue bytes (654.9161ms)
+  ✖ hang timeout rejects every pending request and automatically restarts the worker (636.3042ms)
+  ✔ worker exit rejects pending requests and bounded request admission returns a structured error (752.7218ms)
+  ✔ reconnection runs its recovery callback exactly once, and callback errors keep the transport usable (663.4925ms)
+  ✔ unload suppresses a recovery callback during a pending restart (265.0405ms)
+[session-index] FTS spool cleanup warning {"code":"EFTSSPOOLPATH","message":"Refusing cleanup of a staging directory not created by this client","id":"ce89076a-d8a6-43f6-9e89-639c0beb33c9","path":"E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\validation\\temp\\dsh-fts-client-uxtSdm\\.fts-staging-4236-38ed6228-29fb-4c5e-9e3c-ee739a4bafd9-reader","phase":"restart","at":1790950803486}
+  ✔ repeated crashes stop automatic restart loops and can be recovered explicitly (1176.9044ms)
+  ✔ oversized query DTO limits fail explicitly (355.4611ms)
+  ✔ legacy search and searchPage truncate message DTOs explicitly, retaining tail-match snippets (1794.6906ms)
+  ✔ a session body exceeding 64 MiB fails before transport and preserves its checkpoint (2014.7269ms)
+  ✔ a response beyond 8 MiB fails explicitly and leaves the worker usable (2002.4527ms)
+  ✔ close has a bounded drain even when its worker is unresponsive (1366.2024ms)
+  ✔ close drains accepted staged writes, refuses new work and terminates every transport (4793.5177ms)
+  ✔ FTS unavailable returns null, and repeated apply/dispose removes staging resources (4621.9752ms)
+✖ FTS worker RPC and bounded transport (37354.2352ms)
+✔ SCROLL neighbors use session source order despite A/B/A writes; force and new database keep stable anchor (2785.5915ms)
+✔ full original text verifies head/middle/tail, distributed AND, Unicode and longer-than-overlap queries (1378.8928ms)
+✔ 40/500 repeated messages cannot starve another session; independent-session total and cap are explicit (1794.9428ms)
+✔ schema v2 adds identity columns without interpreting rowid as eventSeq and retains numeric compatibility only for legacy rows (1542.3521ms)
+▶ S2 FTS 原子提交与恢复
+  ✔ after-delete 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛 (1071.8218ms)
+  ✔ first-insert 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛 (1352.5672ms)
+  ✔ middle-insert 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛 (2448.6608ms)
+  ✔ commit 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛 (1933.8101ms)
+  ✔ FTS 已提交而 JSON 尚旧：重启重投 delta 幂等；错误基点不能追加 (2359.0838ms)
+  ✔ FTS 删除失败保留孤儿标记，重启可发现并重试清理 (2488.9345ms)
+  ✔ append rejects parser-version mismatch and regressing committed progress without changing the snapshot (831.4927ms)
+  ✔ 会话数量相等但正文缺失需要回填；已提交空会话及坏会话不反复回填 (1492.0059ms)
+  ✔ close 停止接单并排空已接受写入；所有 Promise settle 后可重开数据库 (2023.9299ms)
+  ✔ flush 仅报告调用边界前的写失败，后续失败仍由后续 flush 报告 (955.2051ms)
+  ✔ 同一写边界的并发 flush 都报告失败，后续 flush 可在消费后成功 (1150.5008ms)
+✔ S2 FTS 原子提交与恢复 (18112.6287ms)
+▶ S2 SQLite 独立进程锁竞争
+  ✔ 持锁子进程释放后，等待的写入成功提交且未阻塞计时器 (1769.6803ms)
+  ✔ 持锁超过等待上限明确失败，旧快照保留；释放后重试成功 (1508.9174ms)
+✔ S2 SQLite 独立进程锁竞争 (3279.2106ms)
+▶ FTS spool cleanup outcome and read-only owner diagnostics
+  ✔ PID probes distinguish alive/dead/unknown without treating permission denial as dead (2.6487ms)
+  ✔ inventory reports live owner, malformed metadata, legacy uncertainty and scan errors without deletion (71.1941ms)
+  ✔ inventory refuses to follow a spool junction (58.4223ms)
+  ✔ client close surfaces its own cleanup failure and leaves unrelated historical paths alone (1804.0138ms)
+  ✔ restart records cleanup warnings, still recovers SQLite, and close retries only its retired directories (2350.0512ms)
+  ✔ unlink failure after COMMIT remains a cleanup warning, preserving the successful receipt and checkpoint (3042.5447ms)
+  ✔ cleanup failure after rollback cannot replace the primary SQL error or lose stage diagnostics (3522.417ms)
+  ✔ a retained stage can retry cleanup on the next write without another failed transaction (3001.9498ms)
+Read-only orphan evidence {"parentPath":"E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\validation\\temp\\dsh-fts-spool-RaK1Lp","scannedAt":1790950869238,"entries":[{"path":"E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\validation\\temp\\dsh-fts-spool-RaK1Lp\\.fts-staging-34928-354a7138-67de-4fab-b1a0-dc07d6381b6b","ownerState":"dead","verification":"owner-metadata-and-pid","ownerPid":34928,"role":"writer","owner":{"pid":34928,"token":"354a7138-67de-4fab-b1a0-dc07d6381b6b","role":"writer","version":1,"createdAt":1790950866488,"databasePath":"E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\validation\\temp\\dsh-fts-spool-RaK1Lp\\parent-crash.db","workerPid":36216}},{"path":"E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\validation\\temp\\dsh-fts-spool-RaK1Lp\\.fts-staging-34928-354a7138-67de-4fab-b1a0-dc07d6381b6b-reader","ownerState":"dead","verification":"owner-metadata-and-pid","ownerPid":34928,"role":"reader","owner":{"pid":34928,"token":"354a7138-67de-4fab-b1a0-dc07d6381b6b","role":"reader","version":1,"createdAt":1790950868786,"databasePath":"E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\validation\\temp\\dsh-fts-spool-RaK1Lp\\parent-crash.db","workerPid":29988}}],"truncated":false}
+  ✔ hard owner-process death leaves a diagnosed orphan that reopening never deletes (7240.1796ms)
+✔ FTS spool cleanup outcome and read-only owner diagnostics (21097.4921ms)
+▶ S2 apply 启动 FTS 恢复
+  ✔ 启动不执行重型维护，仍恢复 JSON 领先的正文与 checkpoint (5946.0704ms)
+  ✔ JSON 指纹/游标领先 FTS 而会话数相等，启动自动补齐当前完整正文 (6388.1907ms)
+  ✔ 会话数相等但 FTS 无正文/无 checkpoint，启动仍自动回填 (5426.4759ms)
+  ✔ INSERT 失败标记 dirty/降级与健康错误，恢复写入后后台重试成功 (7643.3865ms)
+  ✔ JSON 删除已提交但 FTS 删除失败，重启识别孤儿并继续清理 (6313.7584ms)
+  ✔ 已提交空会话与已有 unindexable 坏条目不会触发回填循环 (6377.4557ms)
+✔ S2 apply 启动 FTS 恢复 (38098.1601ms)
+▶ S2 apply 卸载生命周期
+  ✔ dispose 期间已接受的 FTS 队列排空，停止新写入且无后台再建库 (4668.6495ms)
+  ✔ dispose 后延迟 FTS 工厂返回的连接立即关闭，启动写入不会复活 (4143.9816ms)
+✔ S2 apply 卸载生命周期 (8813.1999ms)
+▶ native tail range reads
+  ✔ reads only the requested frame and applies the cap to actual input/allocation (402.2203ms)
+  ✔ handles partial FileHandle reads without rereading a prefix (9.6814ms)
+  ✔ rejects an oversized tail before reading or allocating it (4.1963ms)
+  ✔ rejects invalid offsets before opening/reading (1.1687ms)
+  ✔ rejects a source already shorter than the delta offset with an observable race (4.3333ms)
+  ✔ rejects an offset inside a frame, empty range and malformed tail (10.3839ms)
+  ✔ detects shrink during reading and closes its handle (6.5074ms)
+  ✔ detects append during reading before emitting any decoded output (5.5922ms)
+  ✔ detects source changes during sink processing (7.4437ms)
+  ✔ checks abort before reading, between reads and after sink, always closing an opened handle (6.855ms)
+  ✔ closes on decode and sink errors (8.2169ms)
+  ✔ retains multi-frame decode, early stop and full-read counter semantics (4.4903ms)
+  ✔ retains tail-frame integrity and total decompression limits (15.9718ms)
+  ✔ validates skippable lengths and skips embedded frame magic in their payload (0.4912ms)
+✔ native tail range reads (497.6656ms)
+✔ public full/SCROLL expose actual FTS backend and bounded diagnostics without source/query/body text (3974.9005ms)
+✔ source backend is explicit when FTS is disabled and results retain full coverage (828.3068ms)
+ℹ tests 75
+ℹ suites 7
+ℹ pass 74
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 146800.2519
+
+✖ failing tests:
+
+test at .test-build\test\fts-client.test.js:205:5
+✖ hang timeout rejects every pending request and automatically restarts the worker (636.3042ms)
+  Error [FtsRpcError]: FTS sessionCount deadline exhausted during recovery
+      at rpcError (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/src/fts-client.js:74:12)
+      at Timeout.<anonymous> (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/src/fts-client.js:583:88)
+      at listOnTimeout (node:internal/timers:605:17)
+      at process.processTimers (node:internal/timers:541:7) {
+    code: 'EFTSTIMEOUT'
+  }

@@ -1,0 +1,35 @@
+{
+  "candidateId": "session-index-0.0.3-rc.2-RUNTIME-20261002",
+  "packageVersion": "0.0.3-rc.2",
+  "ftsSchema": "5",
+  "bookmarkFormat": "2",
+  "scope": "isolated validated candidate; production deployment pending separate authorization",
+  "base": "verified S6 SOURCE 22/22 plus uncommitted implementation; never checkout HEAD70800ed as replacement",
+  "files": 466,
+  "deploymentFiles": 69,
+  "sha256Manifest": "624359c1eb06c5b73e1a65b1d9e87075bd25e504a487586081f0e537d037d72b",
+  "sourceManifest": "0d848e99e0f285d561842a610b39468e144b83557295552529b0ab63be4f8277",
+  "runtimeManifest": "d1d8ee4da8245483e3f1ff2cdb930ed1ebe4d1da94607c86b2db93d529e3acd8",
+  "compiledNode": "v24.16.0",
+  "testedRuntime": {
+    "electron": "44.0.0",
+    "node": "24.18.1",
+    "sqlite": "3.53.1"
+  },
+  "testedDSH": "0.2.0-rc.2",
+  "runtimeDependencies": "existing compatible locked fzstd and host peers; node_modules not bundled",
+  "userConfiguration": "preserve production config; portable cordis.patch.yml excluded from RUNTIME_SHA256 deployment allowlist",
+  "excluded": [
+    "production data",
+    "source session logs",
+    "node_modules",
+    "credentials"
+  ],
+  "generatedAt": "2026-10-02T16:03:25.157Z",
+  "candidatePath": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\release\\RUNTIME-20261002",
+  "candidateMetadataSha256": "bb19f3145d7e88fe07c586e47e948aac13cdf27cfc814a9b2467e226679e3ac1",
+  "verified": true,
+  "productionDeploymentPerformed": false,
+  "productionHostRestartPerformed": false,
+  "productionDataChanged": false
+}

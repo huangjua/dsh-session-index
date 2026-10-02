@@ -1,0 +1,326 @@
+{
+  "generatedAtUtc": "2026-10-02T15:23:05.1732199Z",
+  "status": "source resume check; hashes observed while writing; read-only",
+  "origin": {
+    "candidateId": "session-index-0.0.3-rc.1-S6-20261002",
+    "packageVersion": "0.0.3-rc.1",
+    "baseCommit": "70800ed7be77b31527a955ea2f6cc6a750dafef8",
+    "sourceManifestPath": "runtime-fix-20261002/baseline/S6-20261002/SOURCE_SHA256.json",
+    "sourceManifestSha256": "c70a6c4f24fd64c223857a7d9d3f06f931340b058fe5ef07996596108a8fdd5e",
+    "scopeCount": 22
+  },
+  "implementation": {
+    "root": "implementation-session-index",
+    "pathsChecked": 22,
+    "matchesS6": 22,
+    "sourceChecks": [
+      {
+        "path": "src/atomic-write.ts",
+        "expectedS6Sha256": "d51262dad619e01c9005f72d16ac72318f97e7929834086d1cf409b60fa38059",
+        "implementationActualSha256": "d51262dad619e01c9005f72d16ac72318f97e7929834086d1cf409b60fa38059",
+        "implementationMatchesS6": true,
+        "workSha256": "d51262dad619e01c9005f72d16ac72318f97e7929834086d1cf409b60fa38059",
+        "checkpointSha256": "d51262dad619e01c9005f72d16ac72318f97e7929834086d1cf409b60fa38059",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": false
+      },
+      {
+        "path": "src/bookmark.ts",
+        "expectedS6Sha256": "2cb94a7567e5b5747dd40eda5fc23a72205d7309d0b9e83974f4c35df50d6a98",
+        "implementationActualSha256": "2cb94a7567e5b5747dd40eda5fc23a72205d7309d0b9e83974f4c35df50d6a98",
+        "implementationMatchesS6": true,
+        "workSha256": "2cb94a7567e5b5747dd40eda5fc23a72205d7309d0b9e83974f4c35df50d6a98",
+        "checkpointSha256": "2cb94a7567e5b5747dd40eda5fc23a72205d7309d0b9e83974f4c35df50d6a98",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": false
+      },
+      {
+        "path": "src/cancel.ts",
+        "expectedS6Sha256": "4bd453032f315b758657dbecf20bd513d45ba52fe26a793be9e9e2b414fda3c8",
+        "implementationActualSha256": "4bd453032f315b758657dbecf20bd513d45ba52fe26a793be9e9e2b414fda3c8",
+        "implementationMatchesS6": true,
+        "workSha256": "4bd453032f315b758657dbecf20bd513d45ba52fe26a793be9e9e2b414fda3c8",
+        "checkpointSha256": "4bd453032f315b758657dbecf20bd513d45ba52fe26a793be9e9e2b414fda3c8",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": false
+      },
+      {
+        "path": "src/core.ts",
+        "expectedS6Sha256": "3b23703d412b17c8c6c01e778dc076a529591659d1c8bf4e1d4b5ca8eac2eb12",
+        "implementationActualSha256": "3b23703d412b17c8c6c01e778dc076a529591659d1c8bf4e1d4b5ca8eac2eb12",
+        "implementationMatchesS6": true,
+        "workSha256": "3b23703d412b17c8c6c01e778dc076a529591659d1c8bf4e1d4b5ca8eac2eb12",
+        "checkpointSha256": "3b23703d412b17c8c6c01e778dc076a529591659d1c8bf4e1d4b5ca8eac2eb12",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": false
+      },
+      {
+        "path": "src/fts-client.ts",
+        "expectedS6Sha256": "7433104aa1d1e817f0f79986f76f83d758f15b1d08cda3e41e44ef0596ec4b63",
+        "implementationActualSha256": "7433104aa1d1e817f0f79986f76f83d758f15b1d08cda3e41e44ef0596ec4b63",
+        "implementationMatchesS6": true,
+        "workSha256": "6f79688b256de399016fe9805ffaa6efb86384b6c3fdac6c9515fdd1b66cff6a",
+        "checkpointSha256": "6f79688b256de399016fe9805ffaa6efb86384b6c3fdac6c9515fdd1b66cff6a",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": true
+      },
+      {
+        "path": "src/fts-spool.ts",
+        "expectedS6Sha256": "609226890c3729143556056c0588a9747ff96879884c823d64696edeb4cf99ce",
+        "implementationActualSha256": "609226890c3729143556056c0588a9747ff96879884c823d64696edeb4cf99ce",
+        "implementationMatchesS6": true,
+        "workSha256": "180330188501736a17cb78d7204c397e73a8c4df498412af5a4188d942f29400",
+        "checkpointSha256": "180330188501736a17cb78d7204c397e73a8c4df498412af5a4188d942f29400",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": true
+      },
+      {
+        "path": "src/fts-worker.ts",
+        "expectedS6Sha256": "5ac022dc756c49ef2b27ba5d272500ecefd17b34e445b2bf77d4f51d3fc75aa1",
+        "implementationActualSha256": "5ac022dc756c49ef2b27ba5d272500ecefd17b34e445b2bf77d4f51d3fc75aa1",
+        "implementationMatchesS6": true,
+        "workSha256": "9aa56bd6477711bd2ac9328dc5c09d265f2e9902e0c29f4da02c2762059fb980",
+        "checkpointSha256": "9aa56bd6477711bd2ac9328dc5c09d265f2e9902e0c29f4da02c2762059fb980",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": true
+      },
+      {
+        "path": "src/fts.ts",
+        "expectedS6Sha256": "42c742d30682a70364cedbb5d61b78f4790116e60058326611aa2fc448aae2bd",
+        "implementationActualSha256": "42c742d30682a70364cedbb5d61b78f4790116e60058326611aa2fc448aae2bd",
+        "implementationMatchesS6": true,
+        "workSha256": "840a9ea25477bcf1e40e4fc64df43cc805559ccdfd042a4ab14b3237600054b2",
+        "checkpointSha256": "840a9ea25477bcf1e40e4fc64df43cc805559ccdfd042a4ab14b3237600054b2",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": true
+      },
+      {
+        "path": "src/index.ts",
+        "expectedS6Sha256": "27a4337bc8091bc767d162149b1e6ffa0efed4d0f2873a01a7d69ff1a1aa4090",
+        "implementationActualSha256": "27a4337bc8091bc767d162149b1e6ffa0efed4d0f2873a01a7d69ff1a1aa4090",
+        "implementationMatchesS6": true,
+        "workSha256": "8914949bfaec02d048e8a556a8f157bc62a5dd23a14bfb7197aef181adf1a764",
+        "checkpointSha256": "2370a5278b4d7c7f5e9ecf49c974f29abfad6f7cd402a619ca02595309d950d8",
+        "workMatchesCheckpoint": false,
+        "workDiffersFromS6": true
+      },
+      {
+        "path": "src/llm-summary.ts",
+        "expectedS6Sha256": "bb341e62d6a0dd557f33029432e33a0b82d90429c226d4fe06dd20a40126bada",
+        "implementationActualSha256": "bb341e62d6a0dd557f33029432e33a0b82d90429c226d4fe06dd20a40126bada",
+        "implementationMatchesS6": true,
+        "workSha256": "bb341e62d6a0dd557f33029432e33a0b82d90429c226d4fe06dd20a40126bada",
+        "checkpointSha256": "bb341e62d6a0dd557f33029432e33a0b82d90429c226d4fe06dd20a40126bada",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": false
+      },
+      {
+        "path": "src/message-anchor.ts",
+        "expectedS6Sha256": "8210895dfaa582e92c6b246505a7945c50cf96c5ffbb3c51d5cf12cf66f61676",
+        "implementationActualSha256": "8210895dfaa582e92c6b246505a7945c50cf96c5ffbb3c51d5cf12cf66f61676",
+        "implementationMatchesS6": true,
+        "workSha256": "8210895dfaa582e92c6b246505a7945c50cf96c5ffbb3c51d5cf12cf66f61676",
+        "checkpointSha256": "8210895dfaa582e92c6b246505a7945c50cf96c5ffbb3c51d5cf12cf66f61676",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": false
+      },
+      {
+        "path": "src/native-zstd.ts",
+        "expectedS6Sha256": "5bd77e6819d5069ca6cdbd09a331a01b876940a5679a3cc0f6569ffd9d807680",
+        "implementationActualSha256": "5bd77e6819d5069ca6cdbd09a331a01b876940a5679a3cc0f6569ffd9d807680",
+        "implementationMatchesS6": true,
+        "workSha256": "4d8a6496536fd88e39db5b83a3f0a53f2155fae31a29aa6f84a6b5eee5176a3c",
+        "checkpointSha256": "4d8a6496536fd88e39db5b83a3f0a53f2155fae31a29aa6f84a6b5eee5176a3c",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": true
+      },
+      {
+        "path": "src/query-plan.ts",
+        "expectedS6Sha256": "96f48cea17c008750fbd169a4bbd5b57b8fde102f48cda33d19f7cf91f7b0ffd",
+        "implementationActualSha256": "96f48cea17c008750fbd169a4bbd5b57b8fde102f48cda33d19f7cf91f7b0ffd",
+        "implementationMatchesS6": true,
+        "workSha256": "96f48cea17c008750fbd169a4bbd5b57b8fde102f48cda33d19f7cf91f7b0ffd",
+        "checkpointSha256": "96f48cea17c008750fbd169a4bbd5b57b8fde102f48cda33d19f7cf91f7b0ffd",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": false
+      },
+      {
+        "path": "src/rank.ts",
+        "expectedS6Sha256": "f1d9d732983dba1a747df3c4921aa9e3896e8949e8978959b9e0d3211b13d213",
+        "implementationActualSha256": "f1d9d732983dba1a747df3c4921aa9e3896e8949e8978959b9e0d3211b13d213",
+        "implementationMatchesS6": true,
+        "workSha256": "f1d9d732983dba1a747df3c4921aa9e3896e8949e8978959b9e0d3211b13d213",
+        "checkpointSha256": "f1d9d732983dba1a747df3c4921aa9e3896e8949e8978959b9e0d3211b13d213",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": false
+      },
+      {
+        "path": "src/reverse-jsonl-scanner.ts",
+        "expectedS6Sha256": "7d3e2399f97845d7c526d514d6a60bbd364299f3597c5af0c8a3cd8a5dc6ce54",
+        "implementationActualSha256": "7d3e2399f97845d7c526d514d6a60bbd364299f3597c5af0c8a3cd8a5dc6ce54",
+        "implementationMatchesS6": true,
+        "workSha256": "7d3e2399f97845d7c526d514d6a60bbd364299f3597c5af0c8a3cd8a5dc6ce54",
+        "checkpointSha256": "7d3e2399f97845d7c526d514d6a60bbd364299f3597c5af0c8a3cd8a5dc6ce54",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": false
+      },
+      {
+        "path": "src/session-compat.ts",
+        "expectedS6Sha256": "f10a30ef5b61fc4de7a1f84ebf8290dc30b8ec8fad2cf76c0a238a4e0353b7a8",
+        "implementationActualSha256": "f10a30ef5b61fc4de7a1f84ebf8290dc30b8ec8fad2cf76c0a238a4e0353b7a8",
+        "implementationMatchesS6": true,
+        "workSha256": "4210b4595d0f7528d2e853f5b52913ac58a8ae04fa595626ef6aac5c5dac7592",
+        "checkpointSha256": "4210b4595d0f7528d2e853f5b52913ac58a8ae04fa595626ef6aac5c5dac7592",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": true
+      },
+      {
+        "path": "src/session-index-builder.ts",
+        "expectedS6Sha256": "970409bd9fe4bd9b13aef6943ee003501f4fd7325f7b9235c0e33a4f266ea9e3",
+        "implementationActualSha256": "970409bd9fe4bd9b13aef6943ee003501f4fd7325f7b9235c0e33a4f266ea9e3",
+        "implementationMatchesS6": true,
+        "workSha256": "4e5ed1e1470fa6898f2bd3c8aa72cef39270d968086c6509c81b47c29f0d45f8",
+        "checkpointSha256": "30181fcceb6f071174245bd7f9903b5828fa5b15dcb0d8d54220fde8553bcb7d",
+        "workMatchesCheckpoint": false,
+        "workDiffersFromS6": true
+      },
+      {
+        "path": "src/session-worker.ts",
+        "expectedS6Sha256": "f97a93ff1798fda5a282d1041ed0a02801cdd1237331ead52fc3cb4ebe3b9656",
+        "implementationActualSha256": "f97a93ff1798fda5a282d1041ed0a02801cdd1237331ead52fc3cb4ebe3b9656",
+        "implementationMatchesS6": true,
+        "workSha256": "5f921bb865f7d60982a89538a414901bdcfb69c5f6dde31a834cf01dd03692c6",
+        "checkpointSha256": "5f921bb865f7d60982a89538a414901bdcfb69c5f6dde31a834cf01dd03692c6",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": true
+      },
+      {
+        "path": "src/sidecar.ts",
+        "expectedS6Sha256": "117bb1ab664d48ceffea59045a02a6fd0e55e8f951f234c4ca5af4637278f70f",
+        "implementationActualSha256": "117bb1ab664d48ceffea59045a02a6fd0e55e8f951f234c4ca5af4637278f70f",
+        "implementationMatchesS6": true,
+        "workSha256": "117bb1ab664d48ceffea59045a02a6fd0e55e8f951f234c4ca5af4637278f70f",
+        "checkpointSha256": "117bb1ab664d48ceffea59045a02a6fd0e55e8f951f234c4ca5af4637278f70f",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": false
+      },
+      {
+        "path": "src/streaming-parser.ts",
+        "expectedS6Sha256": "d8025a2f2108aa174dff4f2e470f438fd4e7c189157771ddb326f60143b917fe",
+        "implementationActualSha256": "d8025a2f2108aa174dff4f2e470f438fd4e7c189157771ddb326f60143b917fe",
+        "implementationMatchesS6": true,
+        "workSha256": "5551871acd5ca9eb4bbc48e0323ef55e9a444b736b4aefb0339ca368be3b94ae",
+        "checkpointSha256": "5551871acd5ca9eb4bbc48e0323ef55e9a444b736b4aefb0339ca368be3b94ae",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": true
+      },
+      {
+        "path": "src/watcher.ts",
+        "expectedS6Sha256": "bf6ec3a2afaf4a0ec95ca891af2b9e6b88fa5ba6473b5d8f762c970105e63d7b",
+        "implementationActualSha256": "bf6ec3a2afaf4a0ec95ca891af2b9e6b88fa5ba6473b5d8f762c970105e63d7b",
+        "implementationMatchesS6": true,
+        "workSha256": "bf6ec3a2afaf4a0ec95ca891af2b9e6b88fa5ba6473b5d8f762c970105e63d7b",
+        "checkpointSha256": "bf6ec3a2afaf4a0ec95ca891af2b9e6b88fa5ba6473b5d8f762c970105e63d7b",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": false
+      },
+      {
+        "path": "src/worker-pool.ts",
+        "expectedS6Sha256": "df35c9f0b58d796fe274394fcddeba89f15960cff30d27eb8f5c2e73096bc0a9",
+        "implementationActualSha256": "df35c9f0b58d796fe274394fcddeba89f15960cff30d27eb8f5c2e73096bc0a9",
+        "implementationMatchesS6": true,
+        "workSha256": "34eaadde23e33b3be69951d319ccb5b0f84a702c26a165e08e13eca0b347ede0",
+        "checkpointSha256": "34eaadde23e33b3be69951d319ccb5b0f84a702c26a165e08e13eca0b347ede0",
+        "workMatchesCheckpoint": true,
+        "workDiffersFromS6": true
+      }
+    ]
+  },
+  "isolatedResume": {
+    "workPath": "runtime-fix-20261002/work",
+    "checkpointPath": "runtime-fix-20261002/checkpoints/PAUSED-2026-10-02T15-08-52-596Z",
+    "workCheckpointMatchesAtCurrentObservation": 20,
+    "currentWorkVsCheckpointDiffCount": 2,
+    "currentWorkVsCheckpointDiffs": [
+      {
+        "path": "src/index.ts",
+        "workSha256": "8914949bfaec02d048e8a556a8f157bc62a5dd23a14bfb7197aef181adf1a764",
+        "checkpointSha256": "2370a5278b4d7c7f5e9ecf49c974f29abfad6f7cd402a619ca02595309d950d8"
+      },
+      {
+        "path": "src/session-index-builder.ts",
+        "workSha256": "4e5ed1e1470fa6898f2bd3c8aa72cef39270d968086c6509c81b47c29f0d45f8",
+        "checkpointSha256": "30181fcceb6f071174245bd7f9903b5828fa5b15dcb0d8d54220fde8553bcb7d"
+      }
+    ],
+    "checkpointManifestSha256": "28d80d8e0515e325ab3ba01409b91454bc9e1788cb7766b49f15e66fc37b04c6",
+    "checkpointManifestEntryCount": 206,
+    "workPackageVersion": "0.0.3-rc.2",
+    "runtimeReleaseDirectoryExists": false,
+    "workSourceDiffCountFromS6": 11,
+    "workSourceDiffsFromS6": [
+      {
+        "path": "src/fts-client.ts",
+        "s6Sha256": "7433104aa1d1e817f0f79986f76f83d758f15b1d08cda3e41e44ef0596ec4b63",
+        "workSha256": "6f79688b256de399016fe9805ffaa6efb86384b6c3fdac6c9515fdd1b66cff6a"
+      },
+      {
+        "path": "src/fts-spool.ts",
+        "s6Sha256": "609226890c3729143556056c0588a9747ff96879884c823d64696edeb4cf99ce",
+        "workSha256": "180330188501736a17cb78d7204c397e73a8c4df498412af5a4188d942f29400"
+      },
+      {
+        "path": "src/fts-worker.ts",
+        "s6Sha256": "5ac022dc756c49ef2b27ba5d272500ecefd17b34e445b2bf77d4f51d3fc75aa1",
+        "workSha256": "9aa56bd6477711bd2ac9328dc5c09d265f2e9902e0c29f4da02c2762059fb980"
+      },
+      {
+        "path": "src/fts.ts",
+        "s6Sha256": "42c742d30682a70364cedbb5d61b78f4790116e60058326611aa2fc448aae2bd",
+        "workSha256": "840a9ea25477bcf1e40e4fc64df43cc805559ccdfd042a4ab14b3237600054b2"
+      },
+      {
+        "path": "src/index.ts",
+        "s6Sha256": "27a4337bc8091bc767d162149b1e6ffa0efed4d0f2873a01a7d69ff1a1aa4090",
+        "workSha256": "8914949bfaec02d048e8a556a8f157bc62a5dd23a14bfb7197aef181adf1a764"
+      },
+      {
+        "path": "src/native-zstd.ts",
+        "s6Sha256": "5bd77e6819d5069ca6cdbd09a331a01b876940a5679a3cc0f6569ffd9d807680",
+        "workSha256": "4d8a6496536fd88e39db5b83a3f0a53f2155fae31a29aa6f84a6b5eee5176a3c"
+      },
+      {
+        "path": "src/session-compat.ts",
+        "s6Sha256": "f10a30ef5b61fc4de7a1f84ebf8290dc30b8ec8fad2cf76c0a238a4e0353b7a8",
+        "workSha256": "4210b4595d0f7528d2e853f5b52913ac58a8ae04fa595626ef6aac5c5dac7592"
+      },
+      {
+        "path": "src/session-index-builder.ts",
+        "s6Sha256": "970409bd9fe4bd9b13aef6943ee003501f4fd7325f7b9235c0e33a4f266ea9e3",
+        "workSha256": "4e5ed1e1470fa6898f2bd3c8aa72cef39270d968086c6509c81b47c29f0d45f8"
+      },
+      {
+        "path": "src/session-worker.ts",
+        "s6Sha256": "f97a93ff1798fda5a282d1041ed0a02801cdd1237331ead52fc3cb4ebe3b9656",
+        "workSha256": "5f921bb865f7d60982a89538a414901bdcfb69c5f6dde31a834cf01dd03692c6"
+      },
+      {
+        "path": "src/streaming-parser.ts",
+        "s6Sha256": "d8025a2f2108aa174dff4f2e470f438fd4e7c189157771ddb326f60143b917fe",
+        "workSha256": "5551871acd5ca9eb4bbc48e0323ef55e9a444b736b4aefb0339ca368be3b94ae"
+      },
+      {
+        "path": "src/worker-pool.ts",
+        "s6Sha256": "df35c9f0b58d796fe274394fcddeba89f15960cff30d27eb8f5c2e73096bc0a9",
+        "workSha256": "34eaadde23e33b3be69951d319ccb5b0f84a702c26a165e08e13eca0b347ede0"
+      }
+    ],
+    "observationNote": "The two current work/checkpoint differences were attributed by the root agent to a delta publication race reproduction fix; checkpoint content remains unchanged."
+  },
+  "unverified": [
+    "No current production G/lib read/hash; historical 69-file deployment result is not a measurement in this record.",
+    "The checkpoint manifest digest and 22 SOURCE files were checked; other manifest entries were not rehashed.",
+    "No current source-to-lib correspondence test.",
+    "No build, performance workload, or session-body read."
+  ]
+}

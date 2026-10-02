@@ -14,21 +14,30 @@
  * - 取消：orCancel 语义 + worker 逐 chunk cooperative cancel；取消不提交最终快照。
  */
 import { join, dirname, basename } from 'node:path'
-import { statSync } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import { monitorEventLoopDelay } from 'node:perf_hooks'
+import { createHash } from 'node:crypto'
 import { RunMarker, atomicWriteJson, cleanupStaleTemps } from './atomic-write.js'
 import { WorkerPool } from './worker-pool.js'
 import type { WorkerTaskSpec, TaskResult } from './worker-pool.js'
 import type { HeadSummary, FullSummary } from './streaming-parser.js'
+import { generationOfVersion, sessionFailureOf, type CompatResumeState, type SessionFailureDiagnostic } from './session-compat.js'
 import { isCancelError, throwIfAborted } from './cancel.js'
-import { loadIndex, scanSessionFiles, invalidateIndexCache } from './core.js'
-import type { SessionMeta, SessionIndex, BuildReport, ScanFile } from './core.js'
+import { loadIndex, scanSessionFiles, invalidateIndexCache, isRetainedSession } from './core.js'
+import type { SessionMeta, SessionIndex, BuildReport, ScanFile, ScanSessionFilesOptions, ScanSessionFilesResult } from './core.js'
 import type { FtsMessageRow } from './fts.js'
 
 export const STALE_MARKER_MS = 15 * 60 * 1000
 export const STALE_TMP_MS = 24 * 60 * 60 * 1000
 export const MAX_SCAN_FILES = 10000
 const MAX_ERRORS = 50
+
+/** The exact stat observation consumed by a build; no source body reads. */
+export function sourceScanFingerprint(scan: ScanSessionFilesResult): string {
+  return JSON.stringify([scan.complete, scan.truncated, scan.failedSubtrees,
+    scan.files.map(file => [file.file, file.size, file.mtimeMs, file.ctimeMs])
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])))])
+}
 
 export interface BuildOptions {
   force?: boolean
@@ -37,12 +46,52 @@ export interface BuildOptions {
   /** P2 FTS：full 任务收集消息行（需配合 onSessionParsed 才有效） */
   collectMessages?: boolean
   /** P2 FTS：某会话成功解析（full/delta）后回调；append=是否 delta 追加 */
-  onSessionParsed?: (file: string, meta: SessionMeta, messages: FtsMessageRow[], append: boolean) => void
+  onSessionParsed?: (file: string, meta: SessionMeta, messages: FtsMessageRow[], append: boolean, previous?: SessionMeta) => void | Promise<unknown>
   /** P2 FTS：某会话被 prune 删除后回调 */
-  onSessionRemoved?: (file: string) => void
+  onSessionRemoved?: (file: string) => unknown | Promise<unknown>
+  /** Independent FTS commit state, never inferred from index.json progress. */
+  needsFtsSync?: (meta: SessionMeta) => boolean | Promise<boolean>
+  canAppendFts?: (meta: SessionMeta) => boolean | Promise<boolean>
+  flushFts?: () => Promise<void>
   /** P3 保留策略：>0 时 merge 阶段把 max(lastTime, mtimeMs) 超龄的文件仍在磁盘
    * 的条目从索引移除（照 Hermes maybe_auto_prune_and_vacuum；绝不碰会话文件）。 */
   retentionDays?: number
+  /** C9：增量（delta）开关，缺省 true。false → 所有 full 任务一律从 0 全量解析
+   * （故障/回归时的即时退路，无需改代码）。 */
+  deltaEnabled?: boolean
+  /** Bounded structured metrics; contains no paths, message bodies, or raw errors. */
+  onDeltaDiagnostic?: (event: DeltaDiagnostic) => void
+}
+
+export interface DeltaDiagnostic {
+  sourceId: string
+  phase: 'attempt' | 'fallback' | 'complete' | 'commit'
+  parsePhase: SessionFailureDiagnostic['phase']
+  reasonCode: SessionFailureDiagnostic['reasonCode']
+  mode: 'delta' | 'full'
+  previousBytes: number
+  currentBytes: number
+  scannedBytes: number
+  previousSeq: number | null
+  currentSeq: number | null
+  startOffset: number
+  attempt: number
+  readBytes: number
+  decodedBytes: number
+  validationDecodedBytes: number
+  deltaBytes: number
+  metricsExact: boolean
+  fallbackMs: number
+  totalMs: number
+  ok: boolean
+  finalConsistency: 'pending' | 'source_stable' | 'source_changed' | 'source_lagging' | 'parse_failed'
+  retainedPrevious: boolean
+  published: boolean
+  indexAccepted: boolean
+  observedAtMs: number
+  finalIndexedBytes: number | null
+  finalIndexedSeq: number | null
+  ftsSynced: boolean | null
 }
 
 export interface BuildProgress {
@@ -54,10 +103,18 @@ export interface BuildProgress {
 }
 
 interface PoolResult {
+  raced?: boolean
+  stats?: {readBytes?:number;decodedBytes?:number;deltaBytes?:number;validationDecodedBytes?:number}
   ok: boolean
   aborted: boolean
   data?: HeadSummary | FullSummary
   error?: string
+  diagnostic?: SessionFailureDiagnostic
+  attempts?: number
+  metricsExact?: boolean
+  acceptedMeta?: SessionMeta
+  retainedMeta?: SessionMeta
+  ftsSynced?: boolean
 }
 
 const emptyReport = (indexFile: string): BuildReport => ({
@@ -75,6 +132,8 @@ const emptyReport = (indexFile: string): BuildReport => ({
   pruned: 0,
   errors: [],
   scannedBytes: 0,
+  deltaParsed: 0,
+  deltaFallbacks: 0,
   indexFile,
   durationMs: 0,
   maxEventLoopDelayMs: 0,
@@ -83,6 +142,8 @@ const emptyReport = (indexFile: string): BuildReport => ({
 export interface BuilderTestHooks {
   /** 每个文件解析任务派发前调用（测试用：确定性模拟 raced） */
   onFileRead?: (file: string) => void
+  scanOptions?: Omit<ScanSessionFilesOptions, 'signal'>
+  onCommit?: (index: SessionIndex) => void
 }
 
 export class SessionIndexBuilder {
@@ -96,10 +157,15 @@ export class SessionIndexBuilder {
   private currentController: AbortController | null = null
   private currentProgress: BuildProgress | null = null
   private lastReport: BuildReport | null = null
+  private deltaEvents: DeltaDiagnostic[] = []
+  private sourceFingerprint: string | undefined
+  get lastDeltaDiagnostics(): readonly DeltaDiagnostic[] { return this.deltaEvents.slice() }
+  get lastSourceScanFingerprint(): string | undefined { return this.sourceFingerprint }
   /** 在飞构建是否为 force（决定后续 force 请求是复用还是排队补跑） */
   private activeForce = false
   /** force 请求撞上非 force 在飞构建时排队的补跑 Promise（单飞语义下的 force 兜底） */
   private queuedForcePromise: Promise<BuildReport> | null = null
+  private disposed = false
 
   constructor(options: {
     root: string
@@ -140,6 +206,7 @@ export class SessionIndexBuilder {
    * 并从单例注册表注销，保证热重载后新实例重建全新池。
    */
   dispose(): void {
+    this.disposed = true
     this.cancel()
     this.pool.terminate()
     const key = `${this.root}\u0000${this.indexFile}`
@@ -148,6 +215,7 @@ export class SessionIndexBuilder {
 
   /** 进程内 single-flight：active 存在时直接复用同一 Promise。 */
   build(options: BuildOptions = {}): Promise<BuildReport> {
+    if (this.disposed) return Promise.resolve({ ...emptyReport(this.indexFile), status: 'cancelled' })
     if (this.activePromise) {
       // force 请求不能被非 force 的增量构建吸收（用户 refresh=true / FTS 回填要求全量）：
       // 等当前构建结束后补跑一次 force；已排队则复用同一排队 Promise。
@@ -188,6 +256,8 @@ export class SessionIndexBuilder {
 
   private async doBuild(options: BuildOptions): Promise<BuildReport> {
     const t0 = Date.now()
+    this.deltaEvents = []
+    this.sourceFingerprint = undefined
     const report = emptyReport(this.indexFile)
     const signal = options.signal
     const delay =
@@ -196,18 +266,37 @@ export class SessionIndexBuilder {
         : null
     delay?.enable()
     const emitProgress = (phase: BuildProgress['phase'], processed: number, total: number) => {
+      // C11：delayMs 观测口径修正——旧实现直接读 delay.max（全程累积峰值，
+      // 进度里几乎不动、看不出当前卡顿）。改为每次进度事件取"本窗口峰值"
+      // 并 reset 直方图；全程峰值仍累计进 report.maxEventLoopDelayMs。
+      let windowMax = 0
+      if (delay) {
+        windowMax = Math.round(delay.max / 1e6)
+        if (windowMax > report.maxEventLoopDelayMs) report.maxEventLoopDelayMs = windowMax
+        delay.reset()
+      }
       this.currentProgress = {
         phase,
         processed,
         total,
         scannedBytes: report.scannedBytes,
-        delayMs: delay ? Math.round(delay.max / 1e6) : 0,
+        delayMs: windowMax,
       }
       options.onProgress?.(this.currentProgress)
     }
     let marker: RunMarker | null = null
     let quickCommitted = false
+    let retainedUnstableSource = false
     const parsedFiles = new Set<string>()
+    report.ftsSynced = 0
+    report.ftsFailed = 0
+    const removeFts = async (file: string) => {
+      try { await options.onSessionRemoved?.(file) }
+      catch (error) {
+        report.ftsFailed!++
+        report.errors.push(`fts remove ${file}: ${String(error).slice(0, 200)}`)
+      }
+    }
     try {
       throwIfAborted(signal)
 
@@ -225,8 +314,15 @@ export class SessionIndexBuilder {
 
       // 主线程扫描文件列表 + 指纹
       emitProgress('scan', 0, 0)
-      const { files, truncated } = await scanSessionFiles(this.root, { signal, cap: MAX_SCAN_FILES })
+      const scan = await scanSessionFiles(this.root, { cap: MAX_SCAN_FILES, ...this.testHooks?.scanOptions, signal })
+      this.sourceFingerprint = sourceScanFingerprint(scan)
+      const { files, truncated, complete } = scan
+      report.scanComplete = complete
+      report.scanTruncated = truncated
+      report.failedSubtrees = scan.failedSubtrees
+      report.errors.push(...scan.errors.slice(0, MAX_ERRORS))
       report.totalFiles = files.length
+      report.discoveredBytes=files.reduce((sum,file)=>sum+file.size,0)
       if (truncated) report.errors.push(`scan capped at ${MAX_SCAN_FILES} files`)
       emitProgress('scan', files.length, files.length)
 
@@ -250,10 +346,7 @@ export class SessionIndexBuilder {
         // head+full 重解析一遍、再被过滤掉——每个 watcher 触发的构建都白付
         // 一轮全量成本。merge 阶段过滤仍保留（处理旧索引里残留的超龄条目，
         // pruned 计数不变）。会话文件本身绝不触碰（红线）。
-        if (retentionCutoff > 0) {
-          const staleAt = Math.max(prev?.lastTime ?? 0, f.mtimeMs)
-          if (staleAt > 0 && staleAt < retentionCutoff) continue
-        }
+        if (!isRetainedSession(f, prev, retentionCutoff)) continue
         const same =
           prev !== undefined &&
           prev.ctimeMs !== undefined &&
@@ -261,7 +354,7 @@ export class SessionIndexBuilder {
           prev.mtimeMs === f.mtimeMs &&
           prev.ctimeMs === f.ctimeMs
         // detailMissing 的 quick 条目即使指纹未变也必须 full pass 补齐
-        if (same && !force && !prev?.detailMissing) {
+        if (same && !force && !prev?.detailMissing && !(await options.needsFtsSync?.(prev))) {
           report.skipped++
           continue
         }
@@ -298,24 +391,71 @@ export class SessionIndexBuilder {
       if (fullFiles.length > 0) {
         await this.runPoolTasks(
           fullFiles,
-          (f) => {
-            // A suffix cannot be treated as an independent session: a later
-            // surface replacement may shadow messages in an earlier frame.
-            // Full reparse is the safe compatibility boundary.
-            const delta = false
+          async (f) => {
+            // C9/C9b：增量（delta）重启用——活跃会话每 5s 被 watcher 触发重建时，
+            // 只解新增帧而不是整文件。安全边界：
+            //  - 窗口**不含 header**（DSH 只有第一帧写 header，实测 349 个真实文件
+            //    0 个例外）→ 必须用上一轮的 version/generation/header/lastSeq 播种
+            //    compat，否则窗口首行会被当成 header 解析并抛错（此前 delta 恒失败
+            //    的真正原因）；
+            //  - 窗口内出现 surface 替换（hadSurfaceReplace）→ 回退全量；
+            //  - 跨窗口 replace 另有结构性兜底：窗口 surface 数组不含被替换原帧，
+            //    foldSurface 找不到 start/end 直接抛错 → 走 !r.ok 全量回退；
+            //  - 文件被替换/截断（size < indexedBytes）、force、首次解析、
+            //    detailMissing、unindexable、旧索引缺 indexedSeq → 一律全量。
+            const deltaEnabled = options.deltaEnabled !== false
+            const prev = byFile.get(f.file)
+            const delta =
+              deltaEnabled &&
+              !force &&
+              !!prev &&
+              !prev.unindexable &&
+              !prev.detailMissing &&
+              prev.coverage?.complete !== false &&
+              (!options.collectMessages || !options.canAppendFts || await options.canAppendFts(prev)) &&
+              (prev.indexedBytes ?? 0) > 0 &&
+              prev.indexedSeq !== undefined &&
+              f.size > (prev.indexedBytes ?? 0)
             return {
               mode: 'full' as const,
               file: f.file,
-              startOffset: 0,
+              startOffset: delta ? (prev?.indexedBytes ?? 0) : 0,
               delta,
+              resume: delta ? resumeStateOf(prev!) : undefined,
               collectMessages: !!options.collectMessages,
+              maxMessages: delta && prev?.coverage ? Math.max(0,prev.coverage.maxMessages-prev.coverage.indexedMessages) : undefined,
+              maxIndexedTextBytes: delta && prev?.coverage ? Math.max(0,prev.coverage.maxTextBytes-prev.coverage.indexedTextBytes) : undefined,
             }
           },
           signal,
           (p, t) => emitProgress('full', p, t),
-          (f, r, fpBefore, spec) => {
+          async (f, r, fpBefore, spec) => {
             if (r.aborted) return // 取消：跳过失败记账（failed/errors 不被取消信号污染）
             if (!r.ok) {
+              for(const key of ['readBytes','decodedBytes','deltaBytes'] as const) report[key]=(report[key] ?? 0)+(r.stats?.[key] ?? 0)
+              const entry = byFile.get(f.file)
+              const retainedEntry = oldByFile.get(f.file) ?? entry
+              const transient = r.diagnostic?.retryable === true
+                && (r.diagnostic.reasonCode === 'partial_frame' || r.diagnostic.reasonCode === 'source_changed')
+              if (transient && retainedEntry && !retainedEntry.detailMissing && !retainedEntry.unindexable
+                && retainedEntry.coverage?.complete !== false && (retainedEntry.indexedBytes ?? 0) > 0 && retainedEntry.indexedSeq !== undefined) {
+                // An explicitly incomplete/unstable append is not evidence that
+                // the previously complete surface or its SQL checkpoint is bad.
+                // Keep that proven snapshot while the bounded auto-refresh path
+                // retries; unknown/compatibility failures retain their strict gate.
+                report.raced++
+                retainedUnstableSource = true
+                const retained = { ...retainedEntry, raced: true }
+                byFile.set(f.file, retained)
+                r.retainedMeta = retained
+                return
+              }
+              if(r.raced) {
+                report.raced++
+                const entry=byFile.get(f.file)
+                if(entry) byFile.set(f.file,{...entry,raced:true})
+                return
+              }
               // Retain only a diagnostic marker.  Required unknown events and
               // invalid surface history must never remain searchable from an
               // earlier snapshot.
@@ -323,13 +463,17 @@ export class SessionIndexBuilder {
               const err = (r.error ?? 'unknown error').slice(0, 160)
               report.errors.push(`${f.file}: ${err}`)
               if (report.errors.length > MAX_ERRORS) report.errors.length = MAX_ERRORS
-              const entry = byFile.get(f.file)
               if (entry) byFile.set(f.file, { ...entry, error: err.slice(0, 200), unindexable: true })
-              options.onSessionRemoved?.(f.file)
+              await removeFts(f.file)
               return
             }
-            // 发布前复检：解析期间指纹又变 → raced，保留旧值
-            const cur = currentFingerprint(f.file)
+            // Account all completed reads, including results rejected by the
+            // publication fingerprint check below.
+            const metrics = r.data as FullSummary
+            for (const key of ['readBytes','decodedBytes','deltaBytes'] as const) report[key]=(report[key] ?? 0)+(metrics[key] ?? 0)
+            // 发布前复检：解析期间指纹又变 → raced，保留旧值。
+            // C8：改异步 stat（fs.promises），避免主线程同步阻塞
+            const cur = await currentFingerprintAsync(f.file)
             if (
               !cur ||
               !fpBefore ||
@@ -342,7 +486,12 @@ export class SessionIndexBuilder {
               if (entry) byFile.set(f.file, { ...entry, raced: true })
               return
             }
+            if (metrics.coverage?.complete===false) report.incompleteSessions=(report.incompleteSessions ?? 0)+1
             report.fullParsed++
+            // C9b：增量生效性观测——真正走完窗口的记 deltaParsed，尝试后回退的记
+            // deltaFallbacks（此前无任何字段能回答"增量到底有没有生效"）。
+            if (spec.delta) report.deltaParsed = (report.deltaParsed ?? 0) + 1
+            else if (spec.deltaFellBack) report.deltaFallbacks = (report.deltaFallbacks ?? 0) + 1
             // scannedBytes 每个文件只计一次（head 已计过的跳过）
             if (!parsedFiles.has(f.file)) report.scannedBytes += f.size
             parsedFiles.add(f.file)
@@ -353,16 +502,24 @@ export class SessionIndexBuilder {
                 ? mergeDelta(prev, r.data as FullSummary, { ...f, ...fpBefore })
                 : fullMeta({ ...f, ...fpBefore }, r.data as FullSummary)
             byFile.set(f.file, meta)
+            r.acceptedMeta = meta
             // P2 FTS：成功解析后同步消息行（append = delta 追加）
             if (options.collectMessages && options.onSessionParsed) {
               try {
                 const d = r.data as FullSummary
-                options.onSessionParsed(f.file, meta, d.messages ?? [], !!spec.delta)
+                await options.onSessionParsed(f.file, meta, d.messages ?? [], !!spec.delta, prev)
+                meta.ftsDirty = undefined
+                report.ftsSynced!++
+                r.ftsSynced = true
               } catch (e) {
-                report.errors.push(`fts sync ${f.file}: ${String(e).slice(0, 120)}`)
+                meta.ftsDirty = true
+                report.ftsFailed!++
+                r.ftsSynced = false
+                report.errors.push(`fts sync ${f.file}: ${String(e).slice(0, 200)}`)
               }
             }
           },
+          options.onDeltaDiagnostic,
         )
       }
       throwIfAborted(signal)
@@ -371,10 +528,11 @@ export class SessionIndexBuilder {
       const seen = new Set(files.map((f) => f.file))
       const scanMtime = new Map(files.map((f) => [f.file, f.mtimeMs] as const))
       for (const [file, meta] of [...byFile]) {
+        if (!complete) continue // Missing observations never prove deletion or expiry.
         if (!seen.has(file)) {
           byFile.delete(file)
           report.removed++
-          options.onSessionRemoved?.(file)
+          await removeFts(file)
           continue
         }
         // P3：文件仍在磁盘，但 max(lastTime, 文件 mtimeMs) 超龄 → 只清索引/派生层
@@ -386,7 +544,7 @@ export class SessionIndexBuilder {
           if (staleAt > 0 && staleAt < retentionCutoff) {
             byFile.delete(file)
             report.pruned++
-            options.onSessionRemoved?.(file)
+            await removeFts(file)
           }
         }
       }
@@ -400,7 +558,16 @@ export class SessionIndexBuilder {
 
       // ── 最终原子提交 ──
       await this.commit(byFile)
-      report.status = 'completed'
+      for (const completed of this.deltaEvents.filter(event => event.phase === 'complete')) {
+        const observedAtMs = Date.now()
+        const committed: DeltaDiagnostic = { ...completed, phase: 'commit',
+          published: completed.indexAccepted,
+          totalMs: completed.totalMs + observedAtMs - completed.observedAtMs, observedAtMs }
+        this.deltaEvents.push(committed)
+        options.onDeltaDiagnostic?.(committed)
+      }
+      this.deltaEvents = this.deltaEvents.slice(-200)
+      report.status = complete && !report.ftsFailed && !report.incompleteSessions && !retainedUnstableSource ? 'completed' : 'degraded'
       return report
     } catch (e) {
       if (isCancelError(e) || signal?.aborted) report.status = 'cancelled'
@@ -410,9 +577,19 @@ export class SessionIndexBuilder {
       }
       return report
     } finally {
+      try { await options.flushFts?.() }
+      catch (error) {
+        if (!report.ftsFailed) report.ftsFailed = 1
+        report.errors.push(`fts flush: ${String(error).slice(0, 200)}`)
+        if (report.status === 'completed') report.status = 'degraded'
+      }
       if (marker) await marker.release()
       delay?.disable()
-      report.maxEventLoopDelayMs = delay ? Math.round(delay.max / 1e6) : 0
+      // C11：全程峰值已在 emitProgress 里累计（直方图被周期性 reset，此处不能再覆盖）
+      if (delay) {
+        const tail = Math.round(delay.max / 1e6)
+        if (tail > report.maxEventLoopDelayMs) report.maxEventLoopDelayMs = tail
+      }
       report.durationMs = Date.now() - t0
       report.partialCommitted = quickCommitted && report.status === 'cancelled'
       this.currentProgress = null
@@ -423,33 +600,116 @@ export class SessionIndexBuilder {
   /** worker 池批量执行（错误隔离：单文件失败不中断；取消则中止调度）。 */
   private async runPoolTasks(
     files: ScanFile[],
-    makeSpec: (f: ScanFile) => WorkerTaskSpec,
+    makeSpec: (f: ScanFile) => WorkerTaskSpec | Promise<WorkerTaskSpec>,
     signal: AbortSignal | undefined,
     onTick: (processed: number, total: number) => void,
-    onResult: (f: ScanFile, r: PoolResult, fpBefore: ScanFile | null, spec: WorkerTaskSpec) => void,
+    onResult: (f: ScanFile, r: PoolResult, fpBefore: ScanFile | null, spec: WorkerTaskSpec) => void | Promise<void>,
+    onDeltaDiagnostic?: BuildOptions['onDeltaDiagnostic'],
   ): Promise<void> {
     let done = 0
     onTick(0, files.length)
-    const tasks = files.map(async (f) => {
-      // 解析前指纹：用于发布前竞态复检（解析期间文件被改写 → raced）
-      const fpBefore = currentFingerprint(f.file)
+    let dispatched=0
+    const tasks = Array.from({length:Math.min(files.length,2)},async () => {
+      while(dispatched<files.length) {
+      if(signal?.aborted) return
+      const f=files[dispatched++]
+      // C8：直接复用 scan 阶段指纹（ScanFile 已含 size/mtimeMs/ctimeMs）——
+      // 旧实现此处对每个文件再 statSync 一次，10000 文件上限下主线程连续阻塞
+      // 数千次同步 stat（Phase A/B 各一轮），与 p95 < 23ms 目标冲突。
+      const fpBefore: ScanFile | null = f
       this.testHooks?.onFileRead?.(f.file)
-      let spec = makeSpec(f)
-      let r = await this.runWithRetry(spec, signal)
+      let spec = await makeSpec(f)
+      const initialSpec = spec
+      const startedAt = Date.now()
+      let priorTotals = { readBytes: 0, decodedBytes: 0, deltaBytes: 0, validationDecodedBytes: 0 }
+      let exact = true
+      let attemptCount = 0
+      let fallbackMs = 0
+      let fallbackReason: SessionFailureDiagnostic | undefined
+      const emit = (phase: DeltaDiagnostic['phase'], result: PoolResult, attempt: number,
+        finalConsistency: DeltaDiagnostic['finalConsistency'] = 'pending'): void => {
+        if (!initialSpec.delta) return
+        const stats = result.ok ? result.data as FullSummary : result.stats
+        const diagnostic: SessionFailureDiagnostic = finalConsistency === 'source_changed'
+          ? { reasonCode: 'source_changed', phase: 'publish', retryable: true }
+          : fallbackReason ?? result.diagnostic ?? { reasonCode: 'unknown', phase: 'delta_validate', retryable: false }
+        const event: DeltaDiagnostic = {
+          sourceId: createHash('sha256').update(f.file).digest('hex'), phase, parsePhase: diagnostic.phase,
+          reasonCode: diagnostic.reasonCode, mode: spec.delta ? 'delta' : 'full',
+          previousBytes: initialSpec.startOffset ?? 0,
+          currentBytes: result.ok ? (result.data as FullSummary).discoveredBytes ?? f.size : f.size,
+          scannedBytes: f.size,
+          previousSeq: initialSpec.resume ? initialSpec.resume.baseSeq - 1 : null,
+          currentSeq: result.ok ? (result.data as FullSummary).lastSeq ?? null : null,
+          startOffset: spec.startOffset ?? 0, attempt,
+          readBytes: priorTotals.readBytes + (stats?.readBytes ?? 0),
+          decodedBytes: priorTotals.decodedBytes + (stats?.decodedBytes ?? 0) + priorTotals.validationDecodedBytes + (stats?.validationDecodedBytes ?? 0),
+          validationDecodedBytes: priorTotals.validationDecodedBytes + (stats?.validationDecodedBytes ?? 0),
+          deltaBytes: priorTotals.deltaBytes + (stats?.deltaBytes ?? 0),
+          metricsExact: exact && result.metricsExact !== false,
+          fallbackMs, totalMs: Date.now() - startedAt, ok: result.ok, finalConsistency,
+          retainedPrevious: !!result.retainedMeta,
+          published: false, indexAccepted: !!result.acceptedMeta, observedAtMs: Date.now(),
+          finalIndexedBytes: phase === 'complete' ? result.acceptedMeta?.indexedBytes ?? result.retainedMeta?.indexedBytes ?? initialSpec.startOffset ?? null : null,
+          finalIndexedSeq: phase === 'complete' ? result.acceptedMeta?.indexedSeq ?? result.retainedMeta?.indexedSeq ?? (initialSpec.resume ? initialSpec.resume.baseSeq - 1 : null) : null,
+          ftsSynced: result.ftsSynced ?? null,
+        }
+        this.deltaEvents.push(event)
+        if (this.deltaEvents.length > 200) this.deltaEvents.shift()
+        onDeltaDiagnostic?.(event)
+      }
+      let r = await this.runWithRetry(spec, signal, (result, attempt) => {
+        attemptCount = attempt
+        emit('attempt', result, attempt)
+      })
       // P1 delta 回退：delta 解析失败（偏移失效/尾帧截断）→ 全量重解析一次，
       // 保证 indexedBytes 被外部改写/截断后能自愈，而不是永远失败。
-      if (!r.ok && !r.aborted && spec.delta) {
-        spec = { ...spec, startOffset: 0, delta: false }
-        r = await this.runWithRetry(spec, signal)
+      // C9 扩展：delta 成功但窗口内出现 surface 替换 → 结果不可信，同样全量重来
+      // （替换可能遮蔽窗口外旧帧，增量视图看不到被遮蔽内容）。
+      const deltaHitReplace =
+        !!spec.delta &&
+        r.ok &&
+        Boolean((r.data as FullSummary | undefined)?.hadSurfaceReplace || (r.data as FullSummary | undefined)?.coverage?.complete === false)
+      if (!r.aborted && spec.delta && (!r.ok || deltaHitReplace)) {
+        fallbackReason = r.ok
+          ? { reasonCode: (r.data as FullSummary).hadSurfaceReplace ? 'surface_replace' : 'coverage_incomplete', phase: 'delta_validate', retryable: false }
+          : r.diagnostic ?? { reasonCode: 'unknown', phase: 'decode', retryable: false }
+        emit('fallback', r, attemptCount)
+        // 回退全量：必须一并清掉 resume（否则全量解析会跳过 header 校验）
+        spec = { ...spec, startOffset: 0, delta: false, deltaFellBack: true, resume: undefined,maxMessages:undefined,maxIndexedTextBytes:undefined }
+        const previousStats=r.ok ? r.data as FullSummary : r.stats
+        priorTotals = { readBytes: previousStats?.readBytes ?? 0, decodedBytes: previousStats?.decodedBytes ?? 0, deltaBytes: previousStats?.deltaBytes ?? 0, validationDecodedBytes: previousStats?.validationDecodedBytes ?? 0 }
+        exact = r.metricsExact !== false
+        const fallbackStart = Date.now()
+        const deltaAttempts = attemptCount
+        r = await this.runWithRetry(spec, signal, (result, attempt) => {
+          attemptCount = deltaAttempts + attempt
+          fallbackMs = Date.now() - fallbackStart
+          emit('attempt', result, attemptCount)
+        })
+        fallbackMs = Date.now() - fallbackStart
+        const currentStats=r.ok ? r.data as FullSummary : r.stats
+        const combined={...currentStats}
+        for(const key of ['readBytes','decodedBytes','deltaBytes','validationDecodedBytes'] as const) combined[key]=(previousStats?.[key] ?? 0)+(currentStats?.[key] ?? 0)
+        if(r.ok) r.data=combined as FullSummary
+        else r.stats=combined
+        r.metricsExact = exact && r.metricsExact !== false
       }
-      onResult(f, r, fpBefore, spec)
+      await onResult(f, r, fpBefore, spec)
+      const after = initialSpec.delta && r.ok ? await currentFingerprintAsync(f.file) : null
+      const stable = !!after && after.size === f.size && after.mtimeMs === f.mtimeMs && after.ctimeMs === f.ctimeMs
+      priorTotals = { readBytes: 0, decodedBytes: 0, deltaBytes: 0, validationDecodedBytes: 0 }
+      emit('complete', r, attemptCount, !r.ok ? r.retainedMeta ? 'source_lagging' : 'parse_failed' : stable ? 'source_stable' : 'source_changed')
       done++
       if (done % 20 === 0) {
         onTick(done, files.length)
         await new Promise<void>((r) => setImmediate(r))
       }
+      }
     })
-    await Promise.all(tasks)
+    const settled = await Promise.allSettled(tasks)
+    const failed = settled.find(result => result.status === 'rejected') as PromiseRejectedResult | undefined
+    if (failed) throw failed.reason
     onTick(files.length, files.length)
   }
 
@@ -465,18 +725,35 @@ export class SessionIndexBuilder {
   private async runWithRetry(
     spec: WorkerTaskSpec,
     signal: AbortSignal | undefined,
+    onAttempt?: (result: PoolResult, attempt: number) => void,
   ): Promise<PoolResult> {
     let last: PoolResult = { ok: false, aborted: false, error: 'unknown error' }
+    const totals={readBytes:0,decodedBytes:0,deltaBytes:0,validationDecodedBytes:0}
+    let metricsExact = true
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const r = await this.pool.run(spec, signal)
-        last = { ok: r.ok, aborted: r.aborted, data: r.ok ? (r.data as HeadSummary | FullSummary) : undefined, error: r.ok ? undefined : r.error }
+        last = { ok: r.ok, aborted: r.aborted, data: r.ok ? (r.data as HeadSummary | FullSummary) : undefined, error: r.ok ? undefined : r.error,raced:r.ok ? false:r.raced,stats:r.ok ? undefined:r.stats, diagnostic:r.ok ? undefined:r.diagnostic }
       } catch (e) {
         last = isCancelError(e) || signal?.aborted
           ? { ok: false, aborted: true, error: String(e) }
-          : { ok: false, aborted: false, error: String(e) }
+          : { ok: false, aborted: false, error: String(e),raced:!!(e && typeof e==='object' && 'raced' in e && e.raced),stats:e && typeof e==='object' && 'stats' in e ? e.stats as PoolResult['stats']:undefined, diagnostic:sessionFailureOf(e) }
       }
+      const observed=last.ok ? last.data as FullSummary : last.stats
+      if (!last.ok && !last.stats && (last.aborted || last.diagnostic?.reasonCode === 'worker_failure')) metricsExact = false
+      for(const key of ['readBytes','decodedBytes','deltaBytes','validationDecodedBytes'] as const) totals[key]+=observed?.[key] ?? 0
+      if(last.ok) last.data={...last.data,...totals} as FullSummary
+      else last.stats={...totals}
+      last.metricsExact = metricsExact
+      last.attempts = attempt + 1
+      onAttempt?.(last, attempt + 1)
       if (last.ok || last.aborted) return last
+      // Explicit deterministic rejections go directly to full. Unknown failures
+      // retain the existing bounded retry; their redundancy is not proven.
+      const reason = last.diagnostic?.reasonCode ?? 'unknown'
+      const retry = last.diagnostic?.retryable === true
+        || reason === 'unknown'
+      if (!retry) return last
       if (attempt === 0) {
         throwIfAborted(signal)
         await new Promise<void>((r) => setTimeout(r, 150))
@@ -497,6 +774,7 @@ export class SessionIndexBuilder {
       updatedAt: Date.now(),
       sessions,
     }
+    this.testHooks?.onCommit?.(index)
     await atomicWriteJson(this.indexFile, index, {
       backup: true,
       validate: (text) => {
@@ -561,12 +839,16 @@ function fullMeta(f: ScanFile, d: FullSummary): SessionMeta {
     firstUserText: d.firstUserText,
     lastAssistantText: d.lastAssistantText,
     agentPreset: d.agentPreset,
+    generation:d.generation,
     compatibility: d.compatibility,
+    coverage: d.coverage,
     parentSession: d.parentSession,
     counts: d.counts,
     toolNames,
     toolCallCounts: d.toolCallCounts,
     indexedBytes: f.size,
+    // C9b：记录窗口终点，供下次 delta 播种 expectedSeq
+    indexedSeq: d.lastSeq,
   }
 }
 
@@ -597,18 +879,56 @@ function mergeDelta(prev: SessionMeta, d: FullSummary, f: ScanFile): SessionMeta
     firstUserText: prev.firstUserText || d.firstUserText,
     lastAssistantText: d.lastAssistantText || prev.lastAssistantText,
     agentPreset: prev.agentPreset || d.agentPreset,
+    generation:d.generation,
     compatibility: d.compatibility,
+    coverage: prev.coverage && d.coverage ? {...prev.coverage,
+      complete:prev.coverage.complete && d.coverage.complete,
+      reasons:[...new Set([...prev.coverage.reasons,...d.coverage.reasons])],
+      indexedMessages:prev.coverage.indexedMessages+d.coverage.indexedMessages,
+      indexedTextBytes:prev.coverage.indexedTextBytes+d.coverage.indexedTextBytes} : d.coverage,
     parentSession: prev.parentSession || d.parentSession,
     counts,
     toolNames: Object.keys(toolCallCounts).sort(),
     toolCallCounts,
     indexedBytes: f.size,
+    // C9b：窗口内无新事件时 lastSeq 回落到窗口起点-1（= prev.indexedSeq），
+    // 即索引终点不前移——语义正确（没有解析到新事件）。
+    indexedSeq: d.lastSeq ?? prev.indexedSeq,
+    // C9b 后续：清掉一次性标记——历史 raced/error/unindexable 经 `...prev`
+    // 展开会被 mergeDelta 永久携带，导致 merge 记账（`!meta.raced`）之后
+    // 每一轮 updated 都恒为 0。本次成功解析本身就是这些标记过期的证明。
+    raced: undefined,
+    error: undefined,
+    unindexable: undefined,
   }
 }
 
-function currentFingerprint(file: string): ScanFile | null {
+/**
+ * C9b：构造 delta 续读状态。窗口不含 header，compat 需按上一轮结果播种：
+ * version（compatibility）、generation（由 version 反推）、header 视图与
+ * expectedSeq（= indexedSeq + 1）。
+ *
+ * 仅在 `indexedSeq !== undefined` 时调用（旧索引无此字段 → 全量迁移一次）。
+ */
+function resumeStateOf(prev: SessionMeta): CompatResumeState {
+  return {
+    version: prev.compatibility ?? 'alpha3',
+    generation: prev.generation ?? generationOfVersion(prev.compatibility),
+    header: {
+      id: prev.id,
+      createdAt: prev.createdAt,
+      cwd: prev.workspace,
+      agentPreset: prev.agentPreset,
+      ...prev.parentSession !== undefined ? { parentSession: prev.parentSession } : {},
+    },
+    baseSeq: (prev.indexedSeq ?? -1) + 1,
+  }
+}
+
+/** 解析后复检指纹（C8：异步 stat，主线程不被同步 stat 阻塞）。 */
+async function currentFingerprintAsync(file: string): Promise<ScanFile | null> {
   try {
-    const st = statSync(file)
+    const st = await stat(file)
     return { file, size: st.size, mtimeMs: st.mtimeMs, ctimeMs: st.ctimeMs }
   } catch {
     return null

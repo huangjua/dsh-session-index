@@ -1,0 +1,10 @@
+✔ public apply retries a stable partial frame and catches up without a second watcher event (7030.5162ms)
+✔ persistent partial frame stops after three rounds; a later fingerprint change recovers without watcher delivery (21762.0797ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 29725.4833

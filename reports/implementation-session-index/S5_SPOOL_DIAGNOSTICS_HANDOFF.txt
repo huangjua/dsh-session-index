@@ -1,0 +1,41 @@
+S5 SQLite spool cleanup diagnostics — narrowly scoped resumed task
+Date: 2026-10-02
+Checkout: implementation-session-index/validation/stage-agents/sqlite
+
+Completed definition:
+- Own temporary-directory cleanup failures are observable by structured diagnostic history, counters, paths and onSpoolDiagnostic callback (console warning fallback).
+- Historical staging directories are inventoried read-only; no historical/orphan automatic deletion is implemented.
+- Owner states alive/dead/unknown include PID/metadata verification level, path and diagnostic errors. Permission denial and corrupt metadata produce unknown; a legacy live PID alone remains unknown.
+- Worker unlink succeeds before a stage is forgotten. Failed stages remain bounded and cleanupPending for abort/close/retry; stageBegin retries those retained stages.
+- COMMIT receipts stay successful if disposable-spool cleanup fails. SQL failure stays the primary error if rollback cleanup also fails. Separate cleanup records expose writeCommitted when proved by the receipt/failure boundary.
+- Client restart continues after its retired-directory cleanup warning. Close terminates workers and settles pending requests before surfacing an explicit cleanup failure. Close retries only exact directories this client created, including its own retired directories.
+
+Files to integrate (ONLY these files; engine/core/query-plan copies are not deliverables):
+  src/fts-client.ts (modified from prior S5 deliverable)
+  src/fts-worker.ts (modified from prior S5 deliverable)
+  src/fts-spool.ts (new helper; include in S5 export stage)
+  test/fts-spool.test.ts (new, 9 minimal synthetic cases)
+  test/spool-cleanup-worker.ts (new fault fixture confined to test worker)
+  test/fixtures/fts-orphan-process.ts (new actual hard-parent-death fixture)
+
+Validation:
+  node node_modules/typescript/bin/tsc -p tsconfig.test.json: exit 0.
+  Evidence TEST_RESULTS/spool-compile-final.txt and spool-compile-final.exitcode.txt.
+  node scripts/run-isolated-tests.mjs spool-cleanup-first fts-spool: 9/9 passed, exit 0.
+  Evidence TEST_RESULTS/spool-cleanup-first.txt and .json.
+  Original fts-client lifecycle cases filtered to restart/checkpoint, cancelled stage begin, hang restart, recovery callback, unload suppression, bounded close, drained close, unavailable/repeated-dispose: 8/8 passed, exit 0.
+  Evidence TEST_RESULTS/spool-lifecycle-regression.txt and .exitcode.txt.
+  git diff --check: no errors in the spool validation invocation.
+
+Specific hard-crash evidence:
+  Test child PID 29396 wrote a positive-size staged batch then terminated its own parent process with SIGKILL.
+  Read-only inventory diagnosed both its writer and reader directories dead with owner-metadata-and-pid verification.
+  Reopening the same synthetic database reported orphanSpoolCount >= 1. The orphan batch size was unchanged before and after new-client close.
+  Full paths and owner records are preserved in spool-cleanup-first.txt.
+  All fixtures live under isolated validation/temp. Fixture teardown deletes only its own freshly created test root; it never cleans actual historical directories.
+
+Scope and practical limits:
+  Inventory reads at most 4096 parent entries / 128 spool entries, metadata <=4096 bytes, and public client scan returns a timeout diagnostic after 500ms. All directory/metadata errors remain explicit.
+  PID liveness is reported evidence, not a proof of process start identity; verification labels make that limit visible. No deletion decisions use these owner diagnostics.
+  No schema/SQL, production data, install, deployment or full-repository validation changes in this task.
+  No benchmark/stress was started for this task. All compile/test processes completed; quiet window notified to root for final exclusive performance validation.

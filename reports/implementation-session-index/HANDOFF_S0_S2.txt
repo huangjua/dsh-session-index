@@ -1,0 +1,56 @@
+下一任务接续提示（仅 S0–S2 已完成）
+
+继续原 audit-20261002/EXECUTION_PLAN.txt 的 S3；本轮没有分配或实施 S3–S7。
+先读 IMPLEMENTATION_STATUS.txt 和本文，不重新做审查/隔离，不覆盖现有修复。
+
+工作树：E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index
+分支：review/session-index-hardening
+HEAD/基线：70800ed7be77b31527a955ea2f6cc6a750dafef8
+实现为未提交 diff；PATCHES/ 为审查备份。独立 node_modules 已就绪。
+直接 node node_modules/typescript/bin/tsc，禁止调用会改宿主链接的 build.sh。
+已关闭 #01/#02/#04/#07/#08；#10仅role部分。其余问题属于S3–S5，整个S0–S6尚未完成。
+候选未部署，没有重启、生产迁移或 push。本轮未创建本地提交。
+
+FTS接口：
+- FTS_PARSER_VERSION='session-index/1'。S3改变解析/身份时应评估升版并回填checkpoint。
+- checkpointOf(meta)返回file/sessionId/size/mtimeMs/ctimeMs/indexedBytes/indexedSeq?/complete。
+- syncSession({meta,sourceFingerprint,parserVersion,mode:'replace'|'append',expectedBase?,messages})返回Promise<{checkpoint,duplicate}>。
+- FtsCheckpoint增加parserVersion/messageCount。metadata/messages/checkpoint同事务；重复目标指纹幂等。
+- getCheckpoint/needsSync/listSessionFiles只读；needsSync检查JSON脏标记、来源指纹及消息数量。
+- upsertSession/syncMessages保留旧入口但改Promise，并使checkpoint失效；生产接线使用syncSession。
+- removeSession/markPruned/optimize/vacuum/maybeMaintenance/flush/close须await；不能吞写错误。
+- flush按调用边界报告并消费错误；search不消费写错误，返回最近已提交快照。
+- health增加lastWriteError/lastWriteErrorAt/pendingWrites/failedSessions/acceptingWrites；status增加dirtySessions及scan/fts构建字段。
+- busy默认1500ms，busy_timeout=0，用异步重试；事务SQL仍同步，S5再移worker。
+- 新增fts_checkpoints表；原state_meta schema_version仍为2，书签JSONL v1未变。
+
+Builder/扫描接口：
+- BuildOptions新增needsFtsSync/canAppendFts/flushFts；onSessionParsed第5参数previous?:SessionMeta。
+- await同步/删除回调，ftsDirty记录JSON领先的FTS失败，成功清除。delta必须从匹配的FTS基点追加，否则full。
+- BuildReport可返回degraded，透传scanComplete/scanTruncated/failedSubtrees/ftsSynced/ftsFailed。
+- flush后释放marker；dispose后拒绝build；Promise.allSettled保证派发任务settle。
+- testHooks.scanOptions/io与onCommit支持扫描/最终JSON提交故障注入。
+- scanSessionFiles返回files/complete/truncated/errors/failedSubtrees，最高代际先选再计预算。
+- 不完整扫描禁缺席删除与retention；部分已确认更新可提交，isRetainedSession为共同规则。
+- 启动/watch失败回退比较已扫描指纹，共用MAX_SCAN_FILES；同size改写走full。
+- watcher默认maxWait=5000ms，dispose取消timer/watch及迟到初始化。
+
+书签：
+- sidecar.withFileLock在canonicalFilePath上跨进程互斥，消除Windows大小写/junction别名。
+- owner目录完整fsync后rename发布，token释放、dead PID恢复；存活PID不能按TTL抢占。
+- 默认等待5000ms；明确ELOCKTIMEOUT/ELOCKCORRUPT/EBOOKMARKCORRUPT诊断。
+- 锁覆盖整个读改写，损坏文件保留并拒绝修改。尚未实现anchorId与旧书签迁移。
+- 旧版本实例不认识新锁，未来生产切换仍须按计划保护共享目录写入方。
+
+验证与接续：
+- 按S3实际diff选相关fts/bookmark/compat/parser/builder/rank/index用例，不无条件重跑本轮20文件。
+- scripts/run-isolated-tests.mjs显式设置validation下DSH_HOME/TEMP/TMP/dataDir/sessionsRoot，检查命名测试存在。
+- 测试为合成数据，LLM关闭或fake provider。不得使用真实默认目录。
+- 动态worker不在静态import图中，定向编译必须包含session-worker及测试worker；统一tsconfig.test已覆盖。
+- TEST_RESULTS/stages-S0-S2.txt首轮237/238；final-deltas.txt为41/41；final-partial-scan.txt为1/1；summary.json解释汇总。
+- 247个不同断言均有通过证据。旧worker时序假设改为确定性barrier，失败日志保留。
+- release-candidate/lib含types，是S0–S2中间候选，不能当作已完成S6发布。
+- PATCHES/按文件分组审查；共同FTS/index/builder接线在S2补丁，阶段补丁需组合使用。
+- G运行区68个src/lib文件哈希不变，HEAD/status不变；生产目录/链接/宿主未改动。
+
+保留当前diff。若执行后续任务，先核对当前状态，不能reset或从旧0.0.1/origin/main重新实施。

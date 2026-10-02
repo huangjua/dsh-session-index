@@ -1,0 +1,57 @@
+{
+  "startedAt": "2026-10-02T15:28:31.648Z",
+  "exitCode": 1,
+  "signal": null,
+  "elapsedMs": 66613,
+  "args": [
+    "--no-warnings",
+    "--test",
+    "--test-concurrency=1",
+    "--test-reporter=tap",
+    ".fts-continuation-build/test/fts-client.test.js",
+    ".fts-continuation-build/test/fts-recovery.test.js",
+    ".fts-continuation-build/test/fts-message-contract.test.js",
+    ".fts-continuation-build/test/runtime-sql-migration.test.js",
+    ".fts-continuation-build/test/runtime-transport.test.js",
+    ".fts-continuation-build/test/runtime-transport-errors.test.js",
+    ".fts-continuation-build/test/fts-filter-safety.test.js"
+  ],
+  "summary": {
+    "tests": 63,
+    "suites": 6,
+    "pass": 62,
+    "fail": 1,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "sourceDigests": {
+    "src/fts-client.ts": "6f79688b256de399016fe9805ffaa6efb86384b6c3fdac6c9515fdd1b66cff6a",
+    "src/fts-worker.ts": "9aa56bd6477711bd2ac9328dc5c09d265f2e9902e0c29f4da02c2762059fb980",
+    "src/fts.ts": "840a9ea25477bcf1e40e4fc64df43cc805559ccdfd042a4ab14b3237600054b2",
+    "test/fts-client.test.ts": "4eae0a692c9f8109072085d8e5747e30fe0b9e44497b527ba483ac05c9044e1b",
+    "test/fts-recovery.test.ts": "8e0fdaae462008629351ac9636ecf969b2b37dbeae35bd250b58573e6e616aa8",
+    "test/fts-message-contract.test.ts": "6bbc43d2fd714629f55489fa1bbef8581973c7dac921e2f73e072f83e4a2bc51",
+    "test/runtime-sql-migration.test.ts": "1a3c27249d59e67481442f652150f4c015c0e9aac8837ece5400f411d48ee1cf",
+    "test/runtime-transport.test.ts": "21c6322f57d6447b3ca06d5170ff511cc5e79817f4e34af5b91d4531c4adafbb",
+    "test/runtime-transport-errors.test.ts": "e04e87a8074f8b34026286ef470b8cfebaa646a7c0d98ee670cc99bcf2d809f8",
+    "test/fts-filter-safety.test.ts": "6cd0ea7425ef501b8731a6f3dae3cd15e9c516818b7994f0402a817d5f31d4a7"
+  },
+  "compile": "node node_modules/typescript/bin/tsc -p tsconfig.test.json --outDir .fts-continuation-build: exit0",
+  "environment": {
+    "ELECTRON_RUN_AS_NODE": "1",
+    "DSH_HOME": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\validation\\FTS_CONTINUATION_4f2e52be-fff1-4e65-a642-6d765d7a00d0\\dsh-home",
+    "TEMP": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\validation\\FTS_CONTINUATION_4f2e52be-fff1-4e65-a642-6d765d7a00d0\\temp",
+    "TMP": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\validation\\FTS_CONTINUATION_4f2e52be-fff1-4e65-a642-6d765d7a00d0\\temp",
+    "dataDir": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\validation\\FTS_CONTINUATION_4f2e52be-fff1-4e65-a642-6d765d7a00d0\\data",
+    "sessionsRoot": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\validation\\FTS_CONTINUATION_4f2e52be-fff1-4e65-a642-6d765d7a00d0\\sessions"
+  },
+  "boundary": {
+    "installedRuntime": true,
+    "testConcurrency": 1,
+    "performanceMeasurement": false,
+    "productionOpened": false,
+    "compiledOutput": ".fts-continuation-build",
+    "workLibModified": false
+  }
+}

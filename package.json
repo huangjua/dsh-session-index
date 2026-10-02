@@ -1,13 +1,14 @@
 {
   "name": "@dsh-external/dsh-session-index",
-  "version": "0.0.1",
+  "version": "0.0.3-rc.2",
   "description": "CJK-capable full-text session search, non-blocking indexing, and bookmarking for DSH session histories",
   "private": true,
   "type": "module",
   "main": "./lib/index.js",
   "types": "./lib/types/index.d.ts",
   "files": [
-    "lib"
+    "lib",
+    "cordis.patch.yml"
   ],
   "keywords": [
     "deepseek-harness",
@@ -19,18 +20,24 @@
     "fts5"
   ],
   "license": "BSD-3-Clause",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
   "peerDependencies": {
-    "@deepseek-ai/dsh-llm": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-tools": "0.1.5-rc.1",
-    "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/schemastery": "^3.18.2"
+    "@deepseek-ai/dsh-llm": ">=0.1.7-rc.1 <0.3.0",
+    "@deepseek-ai/dsh-tools": ">=0.1.7-rc.1 <0.3.0",
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/schemastery": "^3.18.4"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "4.0.2",
-    "@deepseek-ai/dsh-llm": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-tools": "0.1.5-rc.1",
-    "@deepseek-ai/schemastery": "3.18.2",
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.2",
+    "@deepseek-ai/schemastery": "3.18.4",
     "@types/node": "^24.13.3",
+    "semver": "^7.7.3",
     "typescript": "^5.9.0"
   },
   "scripts": {

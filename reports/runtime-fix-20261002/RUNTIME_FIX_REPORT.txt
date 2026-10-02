@@ -1,0 +1,41 @@
+定向运行修复候选验证完成（任务日期2026-10-02；完成日期2026-10-03，Asia/Hong_Kong）
+生成时间UTC：2026-10-02T16:02:03.366Z
+
+状态：隔离候选验证、正确性回归、性能、迁移故障与delta记录已完成；生产部署/宿主重启/生产数据变更尚未执行，待另行确认。
+候选：session-index-0.0.3-rc.2-RUNTIME-20261002
+目录：E:\Do Something\DSH备份\dsh-session-index work\runtime-fix-20261002\release\RUNTIME-20261002
+运行allowlist摘要：d1d8ee4da8245483e3f1ff2cdb930ed1ebe4d1da94607c86b2db93d529e3acd8
+SOURCE22项摘要：0d848e99e0f285d561842a610b39468e144b83557295552529b0ab63be4f8277
+完整SHA清单及其摘要以候选CANDIDATE.json与根CANDIDATE_READY.json为准。
+
+一、来源与证据保全
+原E实现22项源码仍与S6 SOURCE清单匹配，未提交新版保留；修复来自隔离work的新源码，未checkout旧HEAD替代。G/lib已部署新版而G/src旧：本轮未在G运行build、未部署、未重启宿主、未变更生产数据。旧S6 release、验收、超时日志、backup及PAUSED checkpoint原样保留。旧报告此次固化于reports-history\before-final-2026-10-02T16-02-03.366Z。
+
+二、R1查询根因、修复与实际结果
+已证明：SCROLL旧COALESCE顺序计划存在TEMP B-TREE；候选表达式顺序索引支持seek且无需临时排序。检索的GROUP/window/排序仅携带identity与rank，在LIMIT后才取正文；完整原消息复核、跨块、多词、过滤、会话聚合、准确total及锚点校验保留。schema5普通打开不再重复全部workspace写入。
+已证明：旧call超时会failWorker并连带终止reader与writer。候选独立SQLite子进程可实际取消正在执行的native SQL；reader超时/退出只恢复reader，writer提交/checkpoint保留。排队超时不重启健康通道，执行前须父进程permit。ready/recovery/admission/queue/execution共用10s query预算，有界角色恢复；长writer事务health返回带时间/忙状态快照。历史错误与恢复数不清零。
+历史76秒仍只是full+2SCROLL组合耗时，分项SQL与backend unknown；不把数据损坏、单条SQL或某个fallback猜成历史根因。
+最终安装Electron公开apply/tools五轮，schema5 331/47092/47870/331，冷search+2SCROLL ms：458.3, 100.3, 90.5, 105.2, 120.9。每轮30热搜索+30跳回，聚合search p50/p95/max=86.07/117.68/151.92ms，SCROLL=1.85/17.98/22.81ms。正常请求失败0/重启0/超时0，backend=fts，source读取0，过滤/身份/anchor/coverage通过。停止请求后有界idle drain确认pending/stream/queue排空，原即时pending误判轮仍保留，未改写原失败。
+冷只指独立进程/新连接；OS缓存未知，不清全机缓存。Windows CPU/磁盘指标留存。元数据扫描/构建在公开工具性能夹具中冻结且源解析禁止，不能称实际生产全源扫描或回填吞吐。回填/并发SQL/transport正确性由隔离事务故障与50k长写入测试覆盖。相同E位置、同规模FtsClient对比（每版5进程、每轮30+30热请求）：旧版冷查询序列=293.0, 134.5, 158.4, 103.7, 185.0ms，search热p95=237.52ms、SCROLL=6.10ms；候选对应序列=115.4, 65.1, 101.6, 130.5, 65.0ms，热p95=79.81/2.63ms。该API对比与最终公开工具计时分开列出，缓存和系统负载不受控，不承诺固定提升倍率。旧版暖缓存后也可达目标，不夸大性能改善或复现强度。
+最终公开工具性能副本在所有workers关闭后另做完整quick_check：49652.94ms、ok=true，作为该同规模数据集的完整性标志；不与迁移副本检查混用。分段指标与全部轮次见QUERY_LATENCY.json及其原始RESULTS引用。已升级且已有新索引的正常schema5副本五轮：启动+冷查询=3793.7, 716.5, 641.9, 631.0, 694.7ms；各冷操作与冷热目标均达到。首次兼容索引安装另列：ready=11040.3ms，查询=3330.4ms，合计=14370.7ms，包含首次初始化时未达到10秒目标。该慢轮与CPU/磁盘/迁移阶段完整保留，不将后续暖OS缓存轮替代首轮，不宣称所有首次安装条件都达标。新生产工具端到端结果仍待正常启动验收。
+
+首次初始化进一步分析见evidence/STARTUP_FIRST_INDEX_ANALYSIS_20261002.json：迁移receipt约7.320s，complete→writer ready约2.884s；后者仅能定位到startup health/stat/telemetry/IPC范围，SQL与传输分项unknown。必要表达式索引只安装一次。schema5首次兼容初始化尚有create/drop旧trigger的重复DDL，可能优化方案未量化收益，不声称这是历史76s或本轮慢初始化的主因、硬件I/O下限或已证明最小成本。
+
+三、R2自动迁移与故障验收
+旧schema2约331/47089经公开createFtsClient自动升级25.491s；第二启动598.944ms；1000行真实进度中断后仍schema2/旧行数，重新自动升级20.165s；双客户端30.092s仅一方处理47089行。新版默认公开apply/factory/status已通过，ready=15872.92ms，迁移中status有真实阶段/批次数而无需排到同步SQL后。
+默认factory真实迁移阶段=15399.26ms、writerReady=15573.30ms，均超过旧15秒；迁移中147次status p95=1.062ms/max=2.084ms，公开render中的role/state/phase/实际计数通过。握手15s、迁移total90s/lock60s/stall20s分离，依据副本实测设定。同步100行批次之间上报真实进度，固定lock-wait计数不会假装推进。公开client故障夹具以缩短的期限验证真实native SQL卡死/总期限/父进程退出和隔离恢复；生产默认期限另由上述全规模factory运行校准验证，未声称故障测试等待过完整20/60/90秒。无进展/总期限/崩溃/并发互斥有定向故障测试；整事务推进schema版本，终止回滚可重新自动恢复，普通schema5无重复回填/维护。
+完整quick_check仅隔离库，单独耗时6381.19ms，ok=true；不置于生产启动关键路径。旧322103ms quick_check与600s wrapper ETIMEDOUT历史失败均保持。旧schema2副本checkpoint=0，不冒充331已收敛；本轮query dataset另有真实331checkpoint。
+
+四、R3 delta原因与安全回退
+原因码从解析器/worker结构化对象传递；surface_replace、cross_window_reference、partial_frame、invalid_offset、sequence_mismatch、compatibility_reject、source_changed、coverage_incomplete、worker_failure及unknown保留，未从笼统文本猜类别。记录offset、prev/current字节/seq、attempt、真实读取/解压累积、fallback耗时与最终一致性；不可得统计明确metricsExact=false。确定性拒绝只尝试一次delta然后必要full；unknown/瞬时错误仍有界重试。
+控制样本验证纯append仅读尾段且与full等价；必须full的替换与跨窗口依赖、半帧、偏移/序号错误、worker失败均可追踪。静态半帧保留原meta/SQL checkpoint/rows/anchor，sourceLagging显式可见；同指纹最多3轮，10秒指纹轮询发现补齐。新发现并已修复publication竞态：失败后的重扫会吞补齐指纹，改为以实际解析扫描作基线；重复watch不续同一输入预算，实际FTS恢复可开新的恢复预算。
+历史18263B没有可信帧快照，根因仍unknown，没有伪造历史重放。三窗口真实新增19669B/实际读取117790B保留，不宣称回退归零或长期33%。详见DELTA_FALLBACK.json和新增控制样本日志。
+
+五、最小回归与候选
+按11个共享源码diff选择FTS/query/migration/transport/error、builder/index恢复、delta/native/worker/compat回归；未重新实施14项。旧失败日志保留，新通过以独立输出和exitCode为准，禁止把重复运行次数包装成新增用例数。FTS原63例中62例通过，1例progressing fixture失败保留；按实测274ms批次间隙修正测试夹具后仅该1例复测通过，生产超时未放宽。共享9文件93/93与半帧/竞态/实际FTS恢复4/4通过，不称重复运行增加覆盖。通过证据：evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/RESULTS.json; evidence/migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f/RESULTS.json; evidence/migration-public-status-7865ab32-e177-4dde-8881-7d9ee70be91f/INTEGRITY_PROCESS_VERIFIED.json; evidence/rollback-compat-2cd89e47-fd94-4150-8c5f-1740021a7df0/RESULTS.json; evidence/DELTA_FALLBACK_VERIFIED_CONTINUATION_2026-10-02T15-35-52-113Z.json; evidence/FTS_CONTINUATION_FINAL_20261002.json; evidence/DELTA_SHARED_VERIFIED_CONTINUATION_2026-10-02T15-33-47-652Z.json; evidence/RUNTIME_LAGGING_RETRY_CONTINUATION_2026-10-02T15-30-10-990Z.json。
+DEPLOYMENT_DIFF.json对批准S6保存件逐文件核对：69个运行文件，45个变化；新SOURCE22项中11项变化。该比较基线为保存的批准release，部署前仍须核对当前停写G目标并备份。源码/测试typecheck、隔离编译、独立源码重新编译与全部66个lib文件字节比对通过；最终候选与实测work/lib一致，SOURCE22项可核对。产物、源码、测试/脚本、脱敏证据独立打包；不包含生产库、原始会话正文、凭证或node_modules。
+新→旧S6→新公开FtsClient的search/SCROLL/checkpoint逻辑摘要与合成replace/append收据通过，schema5计数/身份/内容/checkpoint保持，可执行保留现有schema5的运行产物回滚。旧S6部分验证的是公开读API及schema5普通初始化，不宣称旧S6写入兼容已实测；生产回滚尚未执行。
+
+六、部署边界与待验证项
+部署与回滚步骤详见DEPLOYMENT_AND_ROLLBACK.txt，执行对象为具体RUNTIME_SHA256 allowlist，保留现有用户配置与依赖。部署前正常停写、全产物/配置/dataDir一致性备份并逐文件校验，禁止只copy活跃主db、禁止G盘build。
+候选准备完成后单独请求新版本部署及必要正常宿主重启授权；数据恢复另行确认。获准后通过当前正常界面/支持诊断获取新PID健康、每请求backend/分段/总耗时、身份/coverage及自然delta证据。没有安全认证入口时用用户正常工具/导出，不绕401、不提hostCookie、不注入ASAR/NODE_OPTIONS。生产验收待验证，旧PID15916结果不能代替。

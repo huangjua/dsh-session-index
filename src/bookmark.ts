@@ -29,18 +29,27 @@
  *
  * ── 红线 ──
  * - 零新依赖（仅 node: 内建）；零 LLM；纯存储层无 DSH/cordis 依赖；
- * - 书签是派生数据：只读写 %DSH_HOME%\session-index\bookmarks.jsonl，可随时
- *   删除重建；绝不写 index.json / fts.db / 官方库 / 会话文件。
+ * - 书签是用户数据：只读写 %DSH_HOME%\session-index\bookmarks.jsonl，不能
+ *   随派生数据库删除重建；绝不写 index.json / fts.db / 官方库 / 会话文件。
  */
 import { createHash } from 'node:crypto'
-import { open, readFile, rename, unlink, stat, mkdir } from 'node:fs/promises'
-import type { FileHandle } from 'node:fs/promises'
-import { join, dirname, basename } from 'node:path'
+import { join } from 'node:path'
+import { readFile, open } from 'node:fs/promises'
+// C10：与 llm-summary.ts 共享的旁车文件公共层（锁 / 追加 / 原子写 / 指纹缓存 / 校验守卫）
+import {
+  withFileLock,
+  canonicalFilePath,
+  atomicWriteText,
+  isRecord,
+  str,
+  num,
+  createFingerprintCache,
+} from './sidecar.js'
 
 /** 书签 sidecar 文件名（codex SESSION_INDEX_FILE 惯例；与 fts.db 同级） */
 export const BOOKMARK_FILE_NAME = 'bookmarks.jsonl'
 /** 行结构版本（version 前置供未来迁移；读取只接受 v===1） */
-export const BOOKMARK_VERSION = 1
+export const BOOKMARK_VERSION = 2
 /** label 缺省截断长度（任务执行细节：meta.title 或 firstUserText 前 80 字符） */
 export const DEFAULT_LABEL_MAX = 80
 /** list limit 上限（任务执行细节：默认 20，≤100） */
@@ -56,6 +65,11 @@ export interface Bookmark {
   sessionFile: string
   /** 消息锚点（SCROLL 用）；缺省 = null（会话级书签） */
   messageId: number | null
+  anchorId?: string
+  anchorStatus?: 'resolved' | 'session' | 'unresolved'
+  unresolvedReason?: string
+  legacyEvidence?: { identityEvidence: string; anchorId?: string }
+  [key: string]: unknown
   label: string
   note: string | null
   title: string
@@ -69,6 +83,7 @@ export interface BookmarkInput {
   sessionId: string
   sessionFile: string
   messageId?: number | null
+  anchorId?: string
   label: string
   note?: string | null
   title: string
@@ -84,8 +99,8 @@ export function defaultBookmarkFile(dshHome: string): string {
  * 锚点键：(sessionId, messageId) 归一化。messageId 缺省 = null（会话级书签）。
  * 同锚点重复 add = 替换更新（aider 幂等思想）。
  */
-export function anchorKey(sessionId: string, messageId: number | null | undefined): string {
-  return `${sessionId}\u0000${messageId ?? ''}`
+export function anchorKey(sessionId: string, messageId: number | null | undefined, anchorId?: string): string {
+  return `${sessionId}\u0000${anchorId ? `anchor:${anchorId}` : messageId ?? ''}`
 }
 
 /**
@@ -98,8 +113,8 @@ export function anchorKey(sessionId: string, messageId: number | null | undefine
  *   有效行"的幂等约束。
  * node:crypto 内建，零新依赖。
  */
-export function bookmarkIdFor(sessionId: string, messageId: number | null | undefined): string {
-  return createHash('sha1').update(anchorKey(sessionId, messageId)).digest('hex')
+export function bookmarkIdFor(sessionId: string, messageId: number | null | undefined, anchorId?: string): string {
+  return createHash('sha1').update(anchorKey(sessionId, messageId, anchorId)).digest('hex')
 }
 
 /**
@@ -110,49 +125,22 @@ export function defaultLabel(title: string, firstUserText: string): string {
   return (title || firstUserText || '').slice(0, DEFAULT_LABEL_MAX)
 }
 
-/* ── 进程内 per-path 互斥（对齐 codex SESSION_INDEX_LOCK 的进程内语义）────── */
+/* ── 指纹缓存（C10：改用 sidecar 的通用指纹缓存，解析逻辑注入）───────────── */
 
-const pathLocks = new Map<string, Promise<unknown>>()
-
-function withPathLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
-  const prev = pathLocks.get(path) ?? Promise.resolve()
-  const next = prev.then(fn)
-  // 链上保留（即使本次失败也不阻塞后续）；调用方仍收到本次的 rejection
-  pathLocks.set(path, next.catch(() => undefined))
-  return next
-}
-
-/* ── 指纹缓存（照 core.ts loadIndex 的 mtimeMs+size 缓存模式）─────────────── */
-
-interface BookmarkCacheEntry {
-  mtimeMs: number
-  size: number
-  bookmarks: Bookmark[]
-  skippedBad: number
-}
-const bookmarkCache = new Map<string, BookmarkCacheEntry>()
+const bookmarkCache = createFingerprintCache<{ bookmarks: Bookmark[]; skippedBad: number }>({ strictErrors: true })
 
 /** 显式失效（add/remove 后调用），防同 ms 同 size 撞车。 */
 export function invalidateBookmarkCache(path: string): void {
-  bookmarkCache.delete(path)
+  bookmarkCache.invalidate(path)
 }
 
 /* ── 读取：整读 + 逐行容错 + 同锚点最新行胜出 ─────────────────────────────── */
 
-function isRecord(x: unknown): x is Record<string, unknown> {
-  return !!x && typeof x === 'object'
-}
-function str(v: unknown): string | null {
-  return typeof v === 'string' ? v : null
-}
-function num(v: unknown): number | null {
-  return typeof v === 'number' && Number.isFinite(v) ? v : null
-}
-
 /** 校验并归一化一行书签；形状不符（含 v!==1，未来迁移前奏）→ null（计坏行）。 */
 export function normalizeBookmark(obj: unknown): Bookmark | null {
   if (!isRecord(obj)) return null
-  if (obj.v !== BOOKMARK_VERSION) return null
+  if (obj.v !== 1 && obj.v !== BOOKMARK_VERSION) return null
+  if (obj.anchorId !== undefined && (typeof obj.anchorId !== 'string' || !obj.anchorId)) return null
   const id = str(obj.id)
   const sessionId = str(obj.sessionId)
   const sessionFile = str(obj.sessionFile)
@@ -177,7 +165,10 @@ export function normalizeBookmark(obj: unknown): Bookmark | null {
   const createdAt = num(obj.createdAt)
   const updatedAt = num(obj.updatedAt)
   if (createdAt === null || updatedAt === null) return null
-  return { v: BOOKMARK_VERSION, id, sessionId, sessionFile, messageId, label, note, title, workspace, createdAt, updatedAt }
+  return { ...obj, v: Number(obj.v), id, sessionId, sessionFile, messageId, label, note, title, workspace, createdAt, updatedAt,
+    anchorId: typeof obj.anchorId === 'string' ? obj.anchorId : undefined,
+    anchorStatus: typeof obj.anchorId === 'string' ? 'resolved' : messageId === null ? 'session' : 'unresolved',
+    unresolvedReason: typeof obj.anchorId === 'string' || messageId === null ? undefined : String(obj.unresolvedReason ?? 'legacy-rowid-without-proof') } as Bookmark
 }
 
 /**
@@ -202,66 +193,43 @@ export function parseBookmarkLines(text: string): { bookmarks: Bookmark[]; skipp
       skippedBad++
       continue
     }
-    byAnchor.set(anchorKey(b.sessionId, b.messageId), b) // 后写覆盖先写 → 最新胜出
+    byAnchor.set(anchorKey(b.sessionId, b.messageId, b.anchorId), b) // 后写覆盖先写 → 最新胜出
   }
   return { bookmarks: Array.from(byAnchor.values()), skippedBad }
 }
 
 /**
  * 整读 + 容错 + 最新胜出；mtimeMs+size 指纹缓存（照 core.ts loadIndex 模式），
- * 每次工具调用只读一次。文件缺失/读失败 → 空列表（codex NotFound → 空）。
+ * 每次工具调用只读一次。仅文件缺失 → 空列表；其它读取错误传播给调用方。
  */
 export async function readBookmarks(path: string): Promise<{ bookmarks: Bookmark[]; skippedBad: number }> {
-  let st
-  try {
-    st = await stat(path)
-  } catch {
-    invalidateBookmarkCache(path)
-    return { bookmarks: [], skippedBad: 0 }
-  }
-  const cached = bookmarkCache.get(path)
-  if (cached && cached.mtimeMs === st.mtimeMs && cached.size === st.size) {
-    return { bookmarks: cached.bookmarks, skippedBad: cached.skippedBad }
-  }
+  // C10：指纹缓存 + 整读容错全部下沉到 sidecar（与 llm-summary 同一实现）
+  return bookmarkCache.read(path, parseBookmarkLines, () => ({ bookmarks: [], skippedBad: 0 }))
+}
+
+/** 写入必须在锁内重新读磁盘，不能依赖另一个进程更新前的缓存。 */
+async function readForWrite(path: string): Promise<{ text: string; bookmarks: Bookmark[] }> {
   let text: string
-  try {
-    text = await readFile(path, 'utf8')
-  } catch {
-    invalidateBookmarkCache(path)
-    return { bookmarks: [], skippedBad: 0 }
+  try { text = await readFile(path, 'utf8') }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    text = ''
   }
-  const parsed = parseBookmarkLines(text)
-  bookmarkCache.set(path, { mtimeMs: st.mtimeMs, size: st.size, bookmarks: parsed.bookmarks, skippedBad: parsed.skippedBad })
-  return parsed
+  const { bookmarks, skippedBad } = parseBookmarkLines(text)
+  if (skippedBad) {
+    throw Object.assign(new Error(`Cannot modify bookmarks: ${skippedBad} invalid JSONL line(s) in ${path}`),
+      { code: 'EBOOKMARKCORRUPT', path, skippedBad })
+  }
+  return { text, bookmarks }
 }
 
-/* ── 写入：追加 + flush（codex append + flush 语义，per-path 互斥）─────────── */
-
-async function appendLine(path: string, line: string): Promise<void> {
-  await mkdir(dirname(path), { recursive: true })
-  let fh: FileHandle | null = null
-  try {
-    fh = await open(path, 'a')
-    await fh.writeFile(line + '\n', 'utf8')
-    await fh.sync() // flush（对齐 codex file.flush()）
-    await fh.close()
-    fh = null
-  } finally {
-    if (fh) {
-      try {
-        await fh.close()
-      } catch {
-        /* 忽略 */
-      }
-    }
-  }
-}
+/* ── 写入：保留 JSONL 历史，跨进程锁内 fsync + 原子替换 ─────────────────── */
 
 /**
  * 追加一条书签（幂等 upsert）：
  * - 同锚点已存在 → replaced=true；新行继承原 createdAt、刷新 updatedAt/label/note
  *  （aider 替换更新思想）；
- * - 追加用 open('a') + write + sync（flush）；per-path 互斥（codex 写入加锁）；
+ * - 保留已有 JSONL 行，新行与原文件一起 fsync + rename；跨进程互斥覆盖整个写入；
  * - 返回本次写入的最新行。
  */
 export async function addBookmark(
@@ -269,16 +237,20 @@ export async function addBookmark(
   input: BookmarkInput,
   now = Date.now(),
 ): Promise<{ bookmark: Bookmark; replaced: boolean }> {
-  return withPathLock(path, async () => {
-    const { bookmarks } = await readBookmarks(path)
-    const key = anchorKey(input.sessionId, input.messageId)
-    const existing = bookmarks.find((b) => anchorKey(b.sessionId, b.messageId) === key)
+  return withFileLock(path, async (actualPath) => {
+    const { text, bookmarks } = await readForWrite(actualPath)
+    const key = anchorKey(input.sessionId, input.messageId, input.anchorId)
+    const existing = bookmarks.find((b) => anchorKey(b.sessionId, b.messageId, b.anchorId) === key)
     const bookmark: Bookmark = {
+      ...existing,
       v: BOOKMARK_VERSION,
-      id: existing?.id ?? bookmarkIdFor(input.sessionId, input.messageId),
+      id: existing?.id ?? bookmarkIdFor(input.sessionId, input.messageId, input.anchorId),
       sessionId: input.sessionId,
       sessionFile: input.sessionFile,
       messageId: input.messageId ?? null,
+      anchorId: input.anchorId,
+      anchorStatus: input.anchorId ? 'resolved' : input.messageId == null ? 'session' : 'unresolved',
+      unresolvedReason: input.anchorId || input.messageId == null ? undefined : 'legacy-rowid-without-proof',
       label: input.label,
       note: input.note ?? null,
       title: input.title,
@@ -286,7 +258,9 @@ export async function addBookmark(
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     }
-    await appendLine(path, JSON.stringify(bookmark))
+    // 同一个锁覆盖读→决策→fsync/rename→失效；有效 EOF 无换行也不会粘连新行。
+    await atomicWriteText(actualPath, text + (text && !text.endsWith('\n') ? '\n' : '') + JSON.stringify(bookmark) + '\n')
+    invalidateBookmarkCache(actualPath)
     invalidateBookmarkCache(path)
     return { bookmark, replaced: !!existing }
   })
@@ -301,43 +275,13 @@ export interface RemoveBookmarksOptions {
   sessionId?: string
 }
 
-let tmpSeq = 0
-
-async function atomicWriteText(path: string, text: string): Promise<void> {
-  await mkdir(dirname(path), { recursive: true })
-  const tmp = join(dirname(path), `${basename(path)}.tmp.${process.pid}.${tmpSeq++}`)
-  let fh: FileHandle | null = null
-  try {
-    fh = await open(tmp, 'wx')
-    await fh.writeFile(text, 'utf8')
-    await fh.sync()
-    await fh.close()
-    fh = null
-    await rename(tmp, path) // Windows: MoveFileEx(REPLACE_EXISTING)
-  } catch (e) {
-    if (fh) {
-      try {
-        await fh.close()
-      } catch {
-        /* 忽略 */
-      }
-    }
-    try {
-      await unlink(tmp)
-    } catch {
-      /* 忽略 */
-    }
-    throw e
-  }
-}
-
 /**
  * 删除书签（codex remove_thread_name_entries 语义）。**绝不删除会话文件**。
  * 返回删除行数；无匹配则不动文件返回 0；文件缺失返回 0（codex NotFound → Ok）。
  */
 export async function removeBookmarks(path: string, opts: RemoveBookmarksOptions): Promise<number> {
-  return withPathLock(path, async () => {
-    const { bookmarks } = await readBookmarks(path)
+  return withFileLock(path, async (actualPath) => {
+    const { bookmarks } = await readForWrite(actualPath)
     const id = opts.id?.trim()
     const sessionId = opts.sessionId?.trim()
     const match = (b: Bookmark): boolean =>
@@ -347,7 +291,8 @@ export async function removeBookmarks(path: string, opts: RemoveBookmarksOptions
     const removed = bookmarks.length - remaining.length
     if (removed === 0) return 0
     const text = remaining.map((b) => JSON.stringify(b)).join('\n') + (remaining.length ? '\n' : '')
-    await atomicWriteText(path, text)
+    await atomicWriteText(actualPath, text)
+    invalidateBookmarkCache(actualPath)
     invalidateBookmarkCache(path)
     return removed
   })
@@ -381,4 +326,68 @@ export function sortBookmarks(bookmarks: Bookmark[]): Bookmark[] {
       return A.idx - B.idx
     })
     .map((x) => x.b)
+}
+
+
+export interface LegacyBookmarkResolution {
+  status: 'resolved' | 'unresolved' | 'ambiguous' | 'session-missing' | 'anchor-replaced'
+  anchorId?: string
+  evidence?: string
+}
+export type BookmarkResolver = (bookmark: Bookmark) => Promise<LegacyBookmarkResolution>
+
+/** Explicit dry run / migration. Search and list never write migrated data. */
+export async function migrateBookmarks(path: string, resolver: BookmarkResolver,
+  options: { dryRun?: boolean; backupPath?: string } = {}) {
+  const run = async (actualPath: string) => {
+    let original = ''
+    try { original = await readFile(actualPath,'utf8') }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
+    const lines = original.split('\n')
+    const counts = { resolved:0,unresolved:0,ambiguous:0,'session-missing':0,'anchor-replaced':0,session:0,alreadyMigrated:0 }
+    const entries: {line:number;id:string;sessionId:string;status:string;reason?:string}[] = []
+    let changed = false
+    for (let index=0;index<lines.length;index++) {
+      if (!lines[index].trim()) continue
+      let obj: unknown
+      try { obj=JSON.parse(lines[index]) } catch { throw new Error(`EBOOKMARKCORRUPT: line ${index+1}`) }
+      const bookmark=normalizeBookmark(obj)
+      if (!bookmark) throw new Error(`EBOOKMARKCORRUPT: line ${index+1}`)
+      if (bookmark.v===2) { counts.alreadyMigrated++;continue }
+      let status: keyof typeof counts, reason: string | undefined, anchorId: string | undefined
+      if (bookmark.messageId===null) status='session'
+      else {
+        const result=await resolver(bookmark)
+        status=result.status
+        if (status==='resolved') {
+          // Historical rowid/array position alone is never migration evidence.
+          if (!result.anchorId || !result.evidence || bookmark.legacyEvidence?.identityEvidence !== result.evidence ||
+            bookmark.legacyEvidence.anchorId !== result.anchorId) {
+            status='unresolved';reason='legacy-rowid-without-proof'
+          } else anchorId=result.anchorId
+        } else reason=status
+      }
+      counts[status]++
+      entries.push({line:index+1,id:bookmark.id,sessionId:bookmark.sessionId,status,reason})
+      // Preserve every physical record, including duplicates, original numeric identity and custom fields.
+      lines[index]=JSON.stringify({...obj as object,v:2,anchorId,anchorStatus:status==='session' ? 'session' : anchorId ? 'resolved' : 'unresolved',unresolvedReason:reason})
+      changed=true
+    }
+    const report={version:2,dryRun:options.dryRun!==false,records:Object.values(counts).reduce((a,b)=>a+b,0),counts,entries,
+      sourceHash:createHash('sha256').update(original).digest('hex')}
+    if (!report.dryRun && changed) {
+      if (!options.backupPath) throw new Error('Explicit backupPath required before migration')
+      if(await canonicalFilePath(options.backupPath)===await canonicalFilePath(actualPath)) throw new Error('Backup must be a separate file')
+      try {
+        const backup=await open(options.backupPath,'wx')
+        try { await backup.writeFile(original,'utf8');await backup.sync() } finally { await backup.close() }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST' || await readFile(options.backupPath,'utf8') !== original) throw error
+      }
+      await atomicWriteText(actualPath,lines.join('\n'))
+      invalidateBookmarkCache(actualPath);invalidateBookmarkCache(path)
+    }
+    return report
+  }
+  return options.dryRun===false ? withFileLock(path,run) : run(path)
 }

@@ -1,0 +1,21 @@
+{
+  "label": "QUERY_API_FINAL",
+  "args": [
+    "--no-warnings",
+    "--test",
+    "--test-concurrency=1",
+    "--test-timeout=60000",
+    ".test-build/test/fts-client.test.js",
+    ".test-build/test/runtime-index.test.js",
+    ".test-build/test/stage-search-integration.test.js",
+    ".test-build/test/search-source-limits.test.js"
+  ],
+  "exitCode": 0,
+  "scope": "explicit minimal tests selected from runtime diff",
+  "runtime": "installed Electron Node24.18.1/SQLite3.53.1",
+  "environment": {
+    "temp": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\validation\\temp",
+    "isolatedData": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\validation\\data",
+    "isolatedSources": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\validation\\sessions"
+  }
+}

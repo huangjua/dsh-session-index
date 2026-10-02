@@ -1,0 +1,446 @@
+TAP version 13
+# Subtest: FTS worker RPC and bounded transport
+    # Subtest: all reads, checkpoints, short-word search, metadata and maintenance work through RPC
+    ok 1 - all reads, checkpoints, short-word search, metadata and maintenance work through RPC
+      ---
+      duration_ms: 786.9309
+      type: 'test'
+      ...
+    # Subtest: failed multi-batch replace preserves old complete snapshot and checkpoint, and flush reports it
+    ok 2 - failed multi-batch replace preserves old complete snapshot and checkpoint, and flush reports it
+      ---
+      duration_ms: 1386.3042
+      type: 'test'
+      ...
+    # Subtest: concurrent flush calls both observe their accepted write failure boundary
+    ok 3 - concurrent flush calls both observe their accepted write failure boundary
+      ---
+      duration_ms: 743.9035
+      type: 'test'
+      ...
+# FTS source memory evidence {"maxActiveSourceBytes":2942886,"maxActiveBodyBytes":2391898,"maxQueueBytes":1049020,"maxBatchBytes":524288,"maxInFlightBatches":2}
+    # Subtest: two producers obey the shared two-batch, 512 KiB and 8 MiB limits, including Unicode slice boundaries
+    ok 4 - two producers obey the shared two-batch, 512 KiB and 8 MiB limits, including Unicode slice boundaries
+      ---
+      duration_ms: 1694.0163
+      type: 'test'
+      ...
+    # Subtest: queries can observe the old complete snapshot while disk staging is still in progress
+    ok 5 - queries can observe the old complete snapshot while disk staging is still in progress
+      ---
+      duration_ms: 3912.7777
+      type: 'test'
+      ...
+    # Subtest: restart releases pending operations and retains committed checkpoints
+    ok 6 - restart releases pending operations and retains committed checkpoints
+      ---
+      duration_ms: 1094.4141
+      type: 'test'
+      ...
+    # Subtest: waiting producers retain a bounded input queue and all admitted sessions settle
+    ok 7 - waiting producers retain a bounded input queue and all admitted sessions settle
+      ---
+      duration_ms: 909.0116
+      type: 'test'
+      ...
+    # Subtest: cancelling before staging acknowledgement cleans the known client staging token
+    ok 8 - cancelling before staging acknowledgement cleans the known client staging token
+      ---
+      duration_ms: 593.8067
+      type: 'test'
+      ...
+    # Subtest: cancelled queries settle promptly and do not retain queue bytes
+    ok 9 - cancelled queries settle promptly and do not retain queue bytes
+      ---
+      duration_ms: 374.9806
+      type: 'test'
+      ...
+    # Subtest: hang timeout rejects pending reader requests; readiness waits for isolated recovery before a fresh short request
+    ok 10 - hang timeout rejects pending reader requests; readiness waits for isolated recovery before a fresh short request
+      ---
+      duration_ms: 434.1052
+      type: 'test'
+      ...
+    # Subtest: worker exit rejects pending requests and bounded request admission returns a structured error
+    ok 11 - worker exit rejects pending requests and bounded request admission returns a structured error
+      ---
+      duration_ms: 680.5969
+      type: 'test'
+      ...
+    # Subtest: reconnection runs its recovery callback exactly once, and callback errors keep the transport usable
+    ok 12 - reconnection runs its recovery callback exactly once, and callback errors keep the transport usable
+      ---
+      duration_ms: 374.7256
+      type: 'test'
+      ...
+    # Subtest: unload suppresses a recovery callback during a pending restart
+    ok 13 - unload suppresses a recovery callback during a pending restart
+      ---
+      duration_ms: 221.2199
+      type: 'test'
+      ...
+# [session-index] FTS spool cleanup warning {"code":"EFTSSPOOLPATH","message":"Refusing cleanup of a staging directory not created by this client","id":"0ae84686-7d40-403a-900e-609083f6fbe2","path":"E:\\\\Do Something\\\\DSH备份\\\\dsh-session-index work\\\\runtime-fix-20261002\\\\validation\\\\FTS_CONTINUATION_4f2e52be-fff1-4e65-a642-6d765d7a00d0\\\\temp\\\\dsh-fts-client-IWbXiw\\\\.fts-staging-40780-b3a98699-9892-44ba-8423-50ecc026df90-reader","phase":"restart","at":1790954926176}
+    # Subtest: repeated crashes stop automatic restart loops and can be recovered explicitly
+    ok 14 - repeated crashes stop automatic restart loops and can be recovered explicitly
+      ---
+      duration_ms: 845.7862
+      type: 'test'
+      ...
+    # Subtest: oversized query DTO limits fail explicitly
+    ok 15 - oversized query DTO limits fail explicitly
+      ---
+      duration_ms: 261.6111
+      type: 'test'
+      ...
+    # Subtest: legacy search and searchPage truncate message DTOs explicitly, retaining tail-match snippets
+    ok 16 - legacy search and searchPage truncate message DTOs explicitly, retaining tail-match snippets
+      ---
+      duration_ms: 624.0659
+      type: 'test'
+      ...
+    # Subtest: a session body exceeding 64 MiB fails before transport and preserves its checkpoint
+    ok 17 - a session body exceeding 64 MiB fails before transport and preserves its checkpoint
+      ---
+      duration_ms: 618.7083
+      type: 'test'
+      ...
+    # Subtest: a response beyond 8 MiB fails explicitly and leaves the worker usable
+    ok 18 - a response beyond 8 MiB fails explicitly and leaves the worker usable
+      ---
+      duration_ms: 869.1217
+      type: 'test'
+      ...
+    # Subtest: close has a bounded drain even when its worker is unresponsive
+    ok 19 - close has a bounded drain even when its worker is unresponsive
+      ---
+      duration_ms: 375.9254
+      type: 'test'
+      ...
+    # Subtest: close drains accepted staged writes, refuses new work and terminates every transport
+    ok 20 - close drains accepted staged writes, refuses new work and terminates every transport
+      ---
+      duration_ms: 1909.2635
+      type: 'test'
+      ...
+    # Subtest: FTS unavailable returns null, and repeated apply/dispose removes staging resources
+    ok 21 - FTS unavailable returns null, and repeated apply/dispose removes staging resources
+      ---
+      duration_ms: 2032.5855
+      type: 'test'
+      ...
+    1..21
+ok 1 - FTS worker RPC and bounded transport
+  ---
+  duration_ms: 20747.6261
+  type: 'suite'
+  ...
+# Subtest: S1 \#01: LIKE two/three term OR respects each filter and combinations with literal wildcard characters
+ok 2 - S1 \#01: LIKE two/three term OR respects each filter and combinations with literal wildcard characters
+  ---
+  duration_ms: 313.9196
+  type: 'test'
+  ...
+# Subtest: SCROLL neighbors use session source order despite A/B/A writes; force and new database keep stable anchor
+ok 3 - SCROLL neighbors use session source order despite A/B/A writes; force and new database keep stable anchor
+  ---
+  duration_ms: 530.8397
+  type: 'test'
+  ...
+# Subtest: full original text verifies head/middle/tail, distributed AND, Unicode and longer-than-overlap queries
+ok 4 - full original text verifies head/middle/tail, distributed AND, Unicode and longer-than-overlap queries
+  ---
+  duration_ms: 274.5762
+  type: 'test'
+  ...
+# Subtest: 40/500 repeated messages cannot starve another session; independent-session total and cap are explicit
+ok 5 - 40/500 repeated messages cannot starve another session; independent-session total and cap are explicit
+  ---
+  duration_ms: 321.8921
+  type: 'test'
+  ...
+# Subtest: schema v2 adds identity columns without interpreting rowid as eventSeq and retains numeric compatibility only for legacy rows
+ok 6 - schema v2 adds identity columns without interpreting rowid as eventSeq and retains numeric compatibility only for legacy rows
+  ---
+  duration_ms: 561.5216
+  type: 'test'
+  ...
+# Subtest: S2 FTS 原子提交与恢复
+    # Subtest: after-delete 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛
+    ok 1 - after-delete 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛
+      ---
+      duration_ms: 344.8474
+      type: 'test'
+      ...
+    # Subtest: first-insert 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛
+    ok 2 - first-insert 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛
+      ---
+      duration_ms: 269.7101
+      type: 'test'
+      ...
+    # Subtest: middle-insert 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛
+    ok 3 - middle-insert 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛
+      ---
+      duration_ms: 937.1282
+      type: 'test'
+      ...
+    # Subtest: commit 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛
+    ok 4 - commit 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛
+      ---
+      duration_ms: 266.0323
+      type: 'test'
+      ...
+    # Subtest: FTS 已提交而 JSON 尚旧：重启重投 delta 幂等；错误基点不能追加
+    ok 5 - FTS 已提交而 JSON 尚旧：重启重投 delta 幂等；错误基点不能追加
+      ---
+      duration_ms: 262.0065
+      type: 'test'
+      ...
+    # Subtest: FTS 删除失败保留孤儿标记，重启可发现并重试清理
+    ok 6 - FTS 删除失败保留孤儿标记，重启可发现并重试清理
+      ---
+      duration_ms: 367.6771
+      type: 'test'
+      ...
+    # Subtest: append rejects parser-version mismatch and regressing committed progress without changing the snapshot
+    ok 7 - append rejects parser-version mismatch and regressing committed progress without changing the snapshot
+      ---
+      duration_ms: 255.4181
+      type: 'test'
+      ...
+    # Subtest: 会话数量相等但正文缺失需要回填；已提交空会话及坏会话不反复回填
+    ok 8 - 会话数量相等但正文缺失需要回填；已提交空会话及坏会话不反复回填
+      ---
+      duration_ms: 313.5037
+      type: 'test'
+      ...
+    # Subtest: close 停止接单并排空已接受写入；所有 Promise settle 后可重开数据库
+    ok 9 - close 停止接单并排空已接受写入；所有 Promise settle 后可重开数据库
+      ---
+      duration_ms: 585.5053
+      type: 'test'
+      ...
+    # Subtest: flush 仅报告调用边界前的写失败，后续失败仍由后续 flush 报告
+    ok 10 - flush 仅报告调用边界前的写失败，后续失败仍由后续 flush 报告
+      ---
+      duration_ms: 248.0336
+      type: 'test'
+      ...
+    # Subtest: 同一写边界的并发 flush 都报告失败，后续 flush 可在消费后成功
+    ok 11 - 同一写边界的并发 flush 都报告失败，后续 flush 可在消费后成功
+      ---
+      duration_ms: 366.2661
+      type: 'test'
+      ...
+    1..11
+ok 7 - S2 FTS 原子提交与恢复
+  ---
+  duration_ms: 4220.5139
+  type: 'suite'
+  ...
+# Subtest: S2 SQLite 独立进程锁竞争
+    # Subtest: 持锁子进程释放后，等待的写入成功提交且未阻塞计时器
+    ok 1 - 持锁子进程释放后，等待的写入成功提交且未阻塞计时器
+      ---
+      duration_ms: 666.0007
+      type: 'test'
+      ...
+    # Subtest: 持锁超过等待上限明确失败，旧快照保留；释放后重试成功
+    ok 2 - 持锁超过等待上限明确失败，旧快照保留；释放后重试成功
+      ---
+      duration_ms: 952.6673
+      type: 'test'
+      ...
+    1..2
+ok 8 - S2 SQLite 独立进程锁竞争
+  ---
+  duration_ms: 1619.4147
+  type: 'suite'
+  ...
+# Subtest: schema2 reports completed real batches; schema5 reopen changes no rows and performs no migration
+ok 9 - schema2 reports completed real batches; schema5 reopen changes no rows and performs no migration
+  ---
+  duration_ms: 956.1256
+  type: 'test'
+  ...
+# Subtest: migration interruption rolls back schema/chunks/version together; public factory can then safely retry
+ok 10 - migration interruption rolls back schema/chunks/version together; public factory can then safely retry
+  ---
+  duration_ms: 879.0016
+  type: 'test'
+  ...
+# Subtest: migration lock wait is real contention with unchanged work counts and a bounded deadline
+ok 11 - migration lock wait is real contention with unchanged work counts and a bounded deadline
+  ---
+  duration_ms: 1536.3048
+  type: 'test'
+  ...
+# Subtest: unsupported future schema fails explicitly without downgrading its version or data
+ok 12 - unsupported future schema fails explicitly without downgrading its version or data
+  ---
+  duration_ms: 706.0683
+  type: 'test'
+  ...
+# Subtest: SCROLL expression seek preserves mixed legacy/source order and tie identity without a temp sort
+ok 13 - SCROLL expression seek preserves mixed legacy/source order and tie identity without a temp sort
+  ---
+  duration_ms: 453.1034
+  type: 'test'
+  ...
+# Subtest: query timings separate SQLite from processing for search/page/scroll/health
+ok 14 - query timings separate SQLite from processing for search/page/scroll/health
+  ---
+  duration_ms: 529.4193
+  type: 'test'
+  ...
+# Subtest: public startup errors retain actual SQLite numeric codes
+    # Subtest: a non-SQLite file fails publicly with the actual SQLITE_NOTADB code
+    ok 1 - a non-SQLite file fails publicly with the actual SQLITE_NOTADB code
+      ---
+      duration_ms: 184.3846
+      type: 'test'
+      ...
+    # Subtest: an actual SQLite schema btree fault fails publicly with SQLITE_CORRUPT
+    ok 2 - an actual SQLite schema btree fault fails publicly with SQLITE_CORRUPT
+      ---
+      duration_ms: 1168.5509
+      type: 'test'
+      ...
+    # Subtest: unsupported SQLite is an actual disabled-runtime module failure, without a fabricated SQLite code
+    ok 3 - unsupported SQLite is an actual disabled-runtime module failure, without a fabricated SQLite code
+      ---
+      duration_ms: 271.742
+      type: 'test'
+      ...
+    # Subtest: progressing migration remains migrating, separate from failed/corrupt/unsupported states
+    ok 4 - progressing migration remains migrating, separate from failed/corrupt/unsupported states
+      ---
+      duration_ms: 2443.9061
+      type: 'test'
+      ...
+    # Subtest: FtsRpcError preserves the transferred numeric metadata without interpreting message text
+    ok 5 - FtsRpcError preserves the transferred numeric metadata without interpreting message text
+      ---
+      duration_ms: 0.3571
+      type: 'test'
+      ...
+    1..5
+ok 15 - public startup errors retain actual SQLite numeric codes
+  ---
+  duration_ms: 4070.4319
+  type: 'suite'
+  ...
+# Subtest: runtime reader isolation and request deadline
+    # Subtest: production worker cannot execute a write without the parent start permit
+    ok 1 - production worker cannot execute a write without the parent start permit
+      ---
+      duration_ms: 567.6311
+      type: 'test'
+      ...
+    # Subtest: terminates real synchronous SQLite read only; concurrent writer receipt and checkpoint survive
+    ok 2 - terminates real synchronous SQLite read only; concurrent writer receipt and checkpoint survive
+      ---
+      duration_ms: 959.5373
+      type: 'test'
+      ...
+    # Subtest: queued request expiry does not replace the running healthy reader; health uses writer
+    ok 3 - queued request expiry does not replace the running healthy reader; health uses writer
+      ---
+      duration_ms: 1065.7806
+      type: 'test'
+      ...
+    # Subtest: recovery wait spends the same query deadline and retains historical failures
+    ok 4 - recovery wait spends the same query deadline and retains historical failures
+      ---
+      duration_ms: 1062.1927
+      type: 'test'
+      ...
+    # Subtest: public ready waits for reader replacement rather than returning the retired actor readiness
+    ok 5 - public ready waits for reader replacement rather than returning the retired actor readiness
+      ---
+      duration_ms: 1074.0625
+      type: 'test'
+      ...
+    # Subtest: active read abort replaces only reader and leaves no pending cancellation
+    ok 6 - active read abort replaces only reader and leaves no pending cancellation
+      ---
+      duration_ms: 939.7402
+      type: 'test'
+      ...
+    1..6
+ok 16 - runtime reader isolation and request deadline
+  ---
+  duration_ms: 5671.0165
+  type: 'suite'
+  ...
+# Subtest: runtime migration state and bounded initialization
+    # Subtest: forced parent exit cannot leave a synchronous migrating SQLite process alive
+    ok 1 - forced parent exit cannot leave a synchronous migrating SQLite process alive
+      ---
+      duration_ms: 1302.2275
+      type: 'test'
+      ...
+    # Subtest: ready deadline does not kill progressing migration; status returns parent progress
+    not ok 2 - ready deadline does not kill progressing migration; status returns parent progress
+      ---
+      duration_ms: 535.484
+      type: 'test'
+      location: 'E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\.fts-continuation-build\\test\\runtime-transport.test.js:252:5'
+      failureType: 'testCodeFailure'
+      error: 'FTS writer migration made no progress within its bound'
+      code: 'EFTSMIGRATIONSTALL'
+      name: 'FtsRpcError'
+      stack: |-
+        rpcError (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.fts-continuation-build/src/fts-client.js:78:12)
+        Timeout.<anonymous> (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.fts-continuation-build/src/fts-client.js:275:59)
+        listOnTimeout (node:internal/timers:605:17)
+        process.processTimers (node:internal/timers:541:7)
+      ...
+    # Subtest: migration-stall fails within its own bound and factory preserves error/progress
+    ok 3 - migration-stall fails within its own bound and factory preserves error/progress
+      ---
+      duration_ms: 389.5818
+      type: 'test'
+      ...
+    # Subtest: migration-total fails within its own bound and factory preserves error/progress
+    ok 4 - migration-total fails within its own bound and factory preserves error/progress
+      ---
+      duration_ms: 445.5054
+      type: 'test'
+      ...
+    # Subtest: opening-stall fails within its own bound and factory preserves error/progress
+    ok 5 - opening-stall fails within its own bound and factory preserves error/progress
+      ---
+      duration_ms: 620.6954
+      type: 'test'
+      ...
+    # Subtest: public factory allows actual SQLite batches beyond original 15 seconds
+    ok 6 - public factory allows actual SQLite batches beyond original 15 seconds
+      ---
+      duration_ms: 17522.0688
+      type: 'test'
+      ...
+    # Subtest: native SQLite migration stall exits its process, rolls back, and releases the writer lock before factory returns
+    ok 7 - native SQLite migration stall exits its process, rolls back, and releases the writer lock before factory returns
+      ---
+      duration_ms: 558.4598
+      type: 'test'
+      ...
+    1..7
+not ok 17 - runtime migration state and bounded initialization
+  ---
+  duration_ms: 21374.9286
+  type: 'suite'
+  location: 'E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\.fts-continuation-build\\test\\runtime-transport.test.js:201:1'
+  failureType: 'subtestsFailed'
+  error: '1 subtest failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+1..17
+# tests 63
+# suites 6
+# pass 62
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 66238.934

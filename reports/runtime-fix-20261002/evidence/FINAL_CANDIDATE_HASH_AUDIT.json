@@ -1,0 +1,81 @@
+{
+  "auditAt": "2026-10-02T16:08:41.6567128Z",
+  "candidatePath": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\release\\RUNTIME-20261002",
+  "declaredFullManifestSha256": "624359c1eb06c5b73e1a65b1d9e87075bd25e504a487586081f0e537d037d72b",
+  "measuredFullManifestSha256": "624359c1eb06c5b73e1a65b1d9e87075bd25e504a487586081f0e537d037d72b",
+  "fullManifestHashMatches": true,
+  "fullManifestEntries": 466,
+  "candidateFilesActual": 468,
+  "manifestFileSetExact": true,
+  "manifestHashMismatches": [],
+  "unsafeManifestPaths": [],
+  "extraFiles": [],
+  "missingManifestFiles": [],
+  "reparsePoints": [],
+  "source": {
+    "count": 22,
+    "sourceManifestSha256": "0d848e99e0f285d561842a610b39468e144b83557295552529b0ab63be4f8277",
+    "mismatches": [],
+    "matchesWorkSrc": true
+  },
+  "runtime": {
+    "matchesWork": true,
+    "forbiddenAllowlistEntries": [],
+    "count": 69,
+    "libCount": 66,
+    "runtimeManifestSha256": "d1d8ee4da8245483e3f1ff2cdb930ed1ebe4d1da94607c86b2db93d529e3acd8",
+    "mismatches": []
+  },
+  "tests": {
+    "candidateFileCount": 64,
+    "mismatches": [],
+    "syntheticFixtureFiles": 7,
+    "contentMatches": true,
+    "fileSetMatches": true,
+    "workFileCount": 64,
+    "compressedFixtureReferenceCount": 8,
+    "compressedFixtureReferencesResolved": true,
+    "compressedFixtureReferences": [
+      "test/fixtures/sample-session.jsonl",
+      "test/fixtures/sample-session.jsonl.zstd",
+      "test/fixtures/corrupt-session.jsonl.zstd",
+      "test/fixtures/v3-session.jsonl.zstd",
+      "test/fixtures/header-frame-session.jsonl.zstd",
+      "test/fixtures/old-frame-session.jsonl.zstd",
+      "test/fixtures/straddle-session.jsonl.zstd",
+      "test/fixtures/big-session.jsonl.zstd"
+    ],
+    "missingCompressedFixtures": []
+  },
+  "originalImplementationS6": {
+    "mismatches": [],
+    "implementationMatchesS6": true,
+    "s6SourceCount": 22
+  },
+  "contentExclusions": {
+    "externalOrReparsePaths": [],
+    "sourceSessionLikeFiles": [],
+    "nodeModules": [],
+    "databaseFiles": [],
+    "evidenceJsonlLogs": [
+      "evidence/baseline-queries-with-load/WINDOWS_LOAD.jsonl",
+      "evidence/candidate-queries-with-load/WINDOWS_LOAD.jsonl",
+      "evidence/candidate-tool-queries-normal-upgraded-final-c0ae6e50/WINDOWS_LOAD.jsonl",
+      "evidence/candidate-tool-queries-verified-continuation-cd94f5fd/WINDOWS_LOAD.jsonl",
+      "evidence/candidate-tool-queries-with-load-f7d5648f/WINDOWS_LOAD.jsonl",
+      "evidence/migration-interrupt-final/INTERRUPTED.json.progress.jsonl",
+      "evidence/migration-interrupt-final/SECOND_START.json.progress.jsonl",
+      "evidence/migration-interrupt-final/UPGRADE.json.progress.jsonl",
+      "evidence/migration-interrupt-final/WINDOWS_LOAD.jsonl",
+      "evidence/migration-normal-final/SECOND_START.json.progress.jsonl",
+      "evidence/migration-normal-final/UPGRADE.json.progress.jsonl",
+      "evidence/migration-normal-final/WINDOWS_LOAD.jsonl"
+    ]
+  },
+  "candidateReady": {
+    "mismatches": [],
+    "fieldsMatch": true,
+    "metadataSha256": "bb19f3145d7e88fe07c586e47e948aac13cdf27cfc814a9b2467e226679e3ac1"
+  },
+  "issueFlags": []
+}

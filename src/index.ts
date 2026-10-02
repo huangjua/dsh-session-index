@@ -11,9 +11,11 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { join, basename, dirname } from 'node:path'
+import { join, basename, dirname, resolve, isAbsolute } from 'node:path'
 import { homedir } from 'node:os'
-import { statSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import { performance } from 'node:perf_hooks'
+import { statSync, mkdirSync } from 'node:fs'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import {
@@ -26,13 +28,17 @@ import {
   formatCursor,
   cursorStartIndex,
   scanSessionFiles,
+  isRetainedSession,
 } from './core.js'
-import type { SessionIndex, SessionMeta, SearchHit } from './core.js'
-import { getBuilder } from './session-index-builder.js'
+import type { SessionIndex, SessionMeta, SearchHit, ScanSessionFilesResult } from './core.js'
+import { getBuilder, MAX_SCAN_FILES, sourceScanFingerprint } from './session-index-builder.js'
 import type { BuildProgress, BuildOptions } from './session-index-builder.js'
 import { createSessionWatcher } from './watcher.js'
-import { createSessionFts } from './fts.js'
+import { checkpointOf, FTS_PARSER_VERSION } from './fts.js'
+import { createFtsClient } from './fts-client.js'
+import type { FtsClient, FtsStartupDiagnostic } from './fts-client.js'
 import type { SessionFts, FtsHit, SearchFilter } from './fts.js'
+import type { FullSummary } from './streaming-parser.js'
 import { MATCH_OPEN, MATCH_CLOSE, normalizeReservedMarkers, queryUsesLikePath } from './fts.js'
 // STAGE-1 Part A：会话级相关性排序（fzy 打分 + atuin 档位 + mcfly 特征 + tiebreak）
 import { sortSessions } from './rank.js'
@@ -44,7 +50,7 @@ import {
   bookmarkMatches,
   sortBookmarks,
   defaultLabel,
-  defaultBookmarkFile,
+  BOOKMARK_FILE_NAME,
   BOOKMARK_LIST_LIMIT_DEFAULT,
   BOOKMARK_LIST_LIMIT_MAX,
 } from './bookmark.js'
@@ -52,15 +58,24 @@ import {
 import {
   createHostLlmProvider,
   createLlmSummaryService,
-  defaultSummaryCacheFile,
+  SUMMARY_CACHE_FILE_NAME,
 } from './llm-summary.js'
 
 export const name = '@dsh-external/dsh-session-index'
 export const inject = ['tools']
 
+export const DEFAULT_SEARCH_LINE_BYTES = 4 * 1024 * 1024
+export const MAX_SEARCH_LINE_BYTES = 32 * 1024 * 1024
+export const MAX_SEARCH_DECOMPRESSED_BYTES = 256 * 1024 * 1024
+const MAX_SEARCH_DIAGNOSTICS = 20
+
 export interface Config {
   sessionsRoot: string
   indexFile: string
+  /** 派生数据的落盘目录（index.json / fts.db / bookmarks.jsonl / llm-summary.jsonl）。
+   * 缺省空 → `$DSH_HOME/session-index`；设为绝对路径可把整份索引搬到别的盘
+   * （例如 C 盘吃紧时指向大容量盘），目录不存在会自动创建。 */
+  dataDir?: string
   maxHits: number
   maxSnippetsPerSession: number
   /** P2.1：FTS 总开关（默认开）。false 时完全跳过 createSessionFts（不 import
@@ -75,16 +90,22 @@ export interface Config {
    * 成本护栏（maxTokens=64/10s 超时/失败不重试/只在 session_summary 路径）。
    * false → 完全零执行（不读/写缓存、不触碰 ctx.llm）。 */
   llmSummaryEnabled: boolean
+  /** C9：增量（delta）索引开关（默认开）。活跃会话每 5s 被 watcher 重建时只解
+   * 新增帧；窗口内出现 surface 替换会自动回退全量（正确性优先）。
+   * false → 一律全量重解析（回归排查/故障时的即时退路）。 */
+  deltaEnabled?: boolean
 }
 
 export const Config: Schemastery<any, any> = z.object({
   sessionsRoot: z.string().default(''),
   indexFile: z.string().default(''),
+  dataDir: z.string().default(''),
   maxHits: z.number().min(1).max(500).default(50),
   maxSnippetsPerSession: z.number().min(1).max(20).default(3),
   ftsEnabled: z.boolean().default(true),
   retentionDays: z.number().min(0).default(90),
   llmSummaryEnabled: z.boolean().default(true),
+  deltaEnabled: z.boolean().default(true),
 })
 
 const text = (s: string): ContentBlock[] => [{ type: 'text', text: s }]
@@ -104,25 +125,9 @@ const markMatches = (raw: string, q: string): string => {
 const sessionIdFromFile = (file: string): string => basename(dirname(file))
 
 /**
- * STAGE-1 Part A：FTS 先行入库但 index.json 尚未刷新（或索引已 prune）时的兜底
- * meta，仅够排序与输出用（lastTime=0 → 时间衰减落到 RECENCY_UNKNOWN 温和下限）。
+ * C11：删除无引用的 synthMeta——FTS 命中若缺少索引条目，搜索路径直接
+ * `if (!meta) continue` 丢弃，从不合成兜底 meta（函数建成后从未被接线）。
  */
-const synthMeta = (h: FtsHit): SessionMeta => ({
-  id: h.sessionId || sessionIdFromFile(h.sessionFile),
-  file: h.sessionFile,
-  workspace: h.workspace,
-  title: h.title,
-  size: 0,
-  mtimeMs: 0,
-  createdAt: 0,
-  lastTime: 0,
-  firstUserText: '',
-  lastAssistantText: '',
-  agentPreset: '',
-  counts: {},
-  toolNames: [],
-  toolCallCounts: {},
-})
 
 /** session_list 扫描上限（Codex MAX_SCAN_FILES=10000；DSH 暂定 2000） */
 const MAX_LIST_SCAN = 2000
@@ -180,10 +185,64 @@ const metaRolePass = (s: SessionMeta, role: SearchFilter['role'] | undefined): b
   return true
 }
 
-export function apply(ctx: Context, config: Config): void {
+/** 默认使用真实资源；故障回归可注入可控的扫描/监听/初始化。 */
+export interface PluginDependencies {
+  scanSessionFiles?: typeof scanSessionFiles
+  createSessionWatcher?: typeof createSessionWatcher
+  createSessionFts?: (path: string) => Promise<SessionFts | FtsClient | null>
+  /** Structured timings and reason codes only; never query/body/bookmark text. */
+  onRuntimeDiagnostic?: (event: Record<string, unknown>) => void
+}
+
+/** 用 scanner 已取得的指纹对账，不重复 stat；不完整扫描不判缺席删除。 */
+export function indexNeedsReconcile(
+  idx: SessionIndex,
+  root: string,
+  scan: ScanSessionFilesResult,
+  retentionDays: number,
+  now = Date.now(),
+): boolean {
+  if (resolve(idx.root) !== resolve(root)) return true
+  const cutoff = retentionDays > 0 ? now - retentionDays * 86400e3 : 0
+  const previous = new Map(idx.sessions.map((s) => [s.file, s]))
+  const retainedFiles = scan.files.filter((f) => isRetainedSession(f, previous.get(f.file), cutoff))
+  const seen = new Set(retainedFiles.map((f) => f.file))
+  for (const f of retainedFiles) {
+    const old = previous.get(f.file)
+    if (!old || old.detailMissing || old.size !== f.size || old.mtimeMs !== f.mtimeMs || old.ctimeMs !== f.ctimeMs) return true
+  }
+  return scan.complete && idx.sessions.some((s) => !seen.has(s.file))
+}
+
+export function apply(ctx: Context, config: Config, dependencies: PluginDependencies = {}): void {
+  const scanFiles = dependencies.scanSessionFiles ?? scanSessionFiles
+  const makeWatcher = dependencies.createSessionWatcher ?? createSessionWatcher
+  const runtimeDiagnostics: Record<string, unknown>[] = []
+  let ftsStartup: unknown = null
+  const recordRuntime = (event: Record<string, unknown>) => {
+    runtimeDiagnostics.push(event)
+    if (runtimeDiagnostics.length > 100) runtimeDiagnostics.shift()
+    try { void Promise.resolve(dependencies.onRuntimeDiagnostic?.(event)).catch(()=>{}) } catch { /* diagnostics cannot change a committed result */ }
+  }
+  const makeFts = dependencies.createSessionFts ?? ((path:string)=>createFtsClient(path,{
+    onRecovered:()=>{if(!abortController.signal.aborted) triggerAutoRefresh('fts-worker-recovered')},
+    onRequestDiagnostic:event=>recordRuntime({kind:'fts-request',...event}),
+    onStartupProgress:event=>{ftsStartup=event;recordRuntime({kind:'fts-startup',...event})},
+    onStartupFailure:event=>{ftsStartup=event;recordRuntime({kind:'fts-startup-failure',...event})},
+  }))
   const dshHome = process.env.DSH_HOME || join(homedir(), '.dsh')
+  // 派生数据目录：默认 $DSH_HOME/session-index；dataDir 可把整份索引移出系统盘。
+  const dataDir = config.dataDir
+    ? (isAbsolute(config.dataDir) ? resolve(config.dataDir) : resolve(process.cwd(), config.dataDir))
+    : join(dshHome, 'session-index')
+  try {
+    mkdirSync(dataDir, { recursive: true })
+  } catch (error) {
+    // 目录建不出来不阻断装载：后续写入会各自报错，这里只留一条诊断。
+    console.warn(`[session-index] cannot create dataDir ${dataDir}: ${String(error)}`)
+  }
   const sessionsRoot = resolveRoot(config.sessionsRoot)
-  const indexFile = config.indexFile || join(dshHome, 'session-index', 'index.json')
+  const indexFile = config.indexFile || join(dataDir, 'index.json')
 
   /* ── STAGE-4：可选 LLM 一句话摘要（红线 3 修订的唯一例外路径）────────────
    * 服务只挂 session_summary 工具路径与 status 健康快照；构建/扫描路径零调用。
@@ -217,7 +276,7 @@ export function apply(ctx: Context, config: Config): void {
   const llmSummary = createLlmSummaryService({
     enabled: llmSummaryEnabled,
     provider: resolveLlmProvider,
-    cacheFile: defaultSummaryCacheFile(dshHome),
+    cacheFile: join(dataDir, SUMMARY_CACHE_FILE_NAME),
   })
 
   let log: (msg: string) => void
@@ -230,10 +289,48 @@ export function apply(ctx: Context, config: Config): void {
 
   const builder = getBuilder(sessionsRoot, indexFile)
   const abortController = new AbortController()
+  const startupWaits = new Set<() => void>()
+  function waitForStartupRetry(ms: number): Promise<void> {
+    if (abortController.signal.aborted) return Promise.resolve()
+    return new Promise((resolveWait) => {
+      const finish = () => {
+        clearTimeout(timer)
+        abortController.signal.removeEventListener('abort', finish)
+        startupWaits.delete(finish)
+        resolveWait()
+      }
+      const timer = setTimeout(finish, ms)
+      startupWaits.add(finish)
+      abortController.signal.addEventListener('abort', finish, { once: true })
+    })
+  }
 
   /* ── P2：SQLite + FTS5 全文索引（异步启用，失败静默降级）────────────── */
-  let fts: SessionFts | null = null
-  const ftsDbPath = join(dshHome, 'session-index', 'fts.db')
+  let fts: SessionFts | FtsClient | null = null
+  const ftsDbPath = join(dataDir, 'fts.db')
+  let dirtyObserved:{key:string;count:number;at:number}|null=null
+  let dirtyCheck:{key:string;promise:Promise<number>}|null=null
+  const dirtyKey=(metas:SessionMeta[],store:SessionFts|FtsClient|null)=>JSON.stringify([
+    store && 'diagnostics' in store ? store.diagnostics().writerGeneration : 0,
+    metas.map(meta=>[meta.file,meta.size,meta.mtimeMs,meta.ctimeMs,meta.indexedBytes,meta.indexedSeq,meta.ftsDirty,meta.coverage?.complete]),
+  ])
+  async function countDirty(metas:SessionMeta[],store=fts):Promise<number> {
+    if(!store?.ok) return 0
+    const key=dirtyKey(metas,store)
+    if(dirtyObserved?.key===key && dirtyObserved.count===0 && Date.now()-dirtyObserved.at<1000) return 0
+    if(dirtyCheck?.key===key) return dirtyCheck.promise
+    const promise=(async()=>{
+      let count=0
+      for(let start=0;start<metas.length;start+=32) {
+        count+=(await Promise.all(metas.slice(start,start+32).map(meta=>store.needsSync(meta)))).filter(Boolean).length
+      }
+      if(store===fts) dirtyObserved={key,count,at:Date.now()}
+      return count
+    })().finally(()=>{if(dirtyCheck?.promise===promise)dirtyCheck=null})
+    dirtyCheck={key,promise}
+    return promise
+  }
+
   /** 统一 build 选项：任何构建都带上 FTS 钩子（collectMessages + 解析/删除回调）
  * 与 P3 保留过滤（retentionDays 进底座：任何顺序的构建（watcher 事件/对账/
  * 回填/保留专用）都按策略过滤超龄条目——实测竞态：若只有保留专用构建带
@@ -242,22 +339,28 @@ export function apply(ctx: Context, config: Config): void {
  * 结果一致，watermark 只门控启动日的 VACUUM 专用通道。 */
   const ftsBuildOptions = (extra: { force?: boolean; signal?: AbortSignal; retentionDays?: number } = {}): BuildOptions => ({
     ...extra,
+    signal: extra.signal ?? abortController.signal,
     onProgress,
     retentionDays: extra.retentionDays ?? config.retentionDays ?? 90,
+    deltaEnabled: config.deltaEnabled !== false,
+    onDeltaDiagnostic:event=>recordRuntime({kind:'delta',...event}),
     collectMessages: fts?.ok ?? false,
-    onSessionParsed: (file, meta, messages, append) => {
-      if (!fts?.ok) return
-      fts.upsertSession({
-        file: meta.file,
-        id: meta.id,
-        workspace: meta.workspace,
-        title: meta.title,
-        agentPreset: meta.agentPreset,
-        createdAt: meta.createdAt,
-        lastTime: meta.lastTime,
-        parentSession: meta.parentSession,
+    needsFtsSync: async (meta) => await fts?.needsSync(meta) ?? false,
+    canAppendFts: async (meta) => !!fts && !(await fts.needsSync(meta)),
+    flushFts: () => fts?.flush() ?? Promise.resolve(),
+    onSessionParsed: async (file, meta, messages, append, previous) => {
+      if (!fts?.ok) throw new Error('FTS unavailable during parsed-session commit; retry from checkpoint')
+      if (append && (!previous || await fts.needsSync(previous))) {
+        throw new Error('FTS delta base changed during parsing; full retry required')
+      }
+      return fts.syncSession({
+        meta,
+        sourceFingerprint: checkpointOf(meta),
+        parserVersion: FTS_PARSER_VERSION,
+        mode: append ? 'append' : 'replace',
+        expectedBase: append && previous ? await fts.getCheckpoint(previous.file) ?? undefined : undefined,
+        messages,
       })
-      fts.syncMessages(file, messages, append)
     },
     onSessionRemoved: (file) => fts?.removeSession(file),
   })
@@ -282,6 +385,7 @@ export function apply(ctx: Context, config: Config): void {
    * DSH 部署重启频繁，索引实际大部分时间保持策略约束内。
    */
   async function maybeRetentionPrune(): Promise<void> {
+    if (abortController.signal.aborted) return
     const days = config.retentionDays ?? 90
     if (!(days > 0)) {
       log('[session-index] retention disabled (retentionDays=0)')
@@ -292,12 +396,13 @@ export function apply(ctx: Context, config: Config): void {
       return
     }
     try {
-      const last = fts.lastPruneAt()
+      const last = await fts.lastPruneAt()
       if (last > 0 && Date.now() - last < 24 * 3600 * 1000) {
         log(`[session-index] retention skipped: last prune <24h ago (${new Date(last).toISOString()})`)
         return
       }
       const report = await builder.build(ftsBuildOptions({ retentionDays: days }))
+      if (abortController.signal.aborted) return
       // 注意：即便本调用被在飞构建单飞吸收，底座也已统一携带 retentionDays——任一
       // 构建都会过滤超龄条目，pruned 计数来自实际执行的构建，语义一致。
       // ⚠️ 只有 completed 才算一次成功的保留尝试：skipped/failed（如 reload 期间
@@ -307,11 +412,12 @@ export function apply(ctx: Context, config: Config): void {
         log(`[session-index] retention attempt ${report.status}; watermark 未写入（下次启动重试）`)
         return
       }
-      fts.markPruned(report.pruned)
+      await fts.markPruned(report.pruned)
       if (report.pruned > 0) {
         // 等 onSessionRemoved（removeSession）写链落盘，再 VACUUM（内部先 optimize）
         await fts.flush()
-        fts.vacuum()
+        if (abortController.signal.aborted) return
+        await fts.vacuum()
       }
       log(
         `[session-index] retention day=${days}d pruned=${report.pruned} status=${report.status} vacuum=${report.pruned > 0} (会话文件未动)`,
@@ -321,37 +427,51 @@ export function apply(ctx: Context, config: Config): void {
     }
   }
 
-  void (config.ftsEnabled !== false
-    ? createSessionFts(ftsDbPath).then(async (f) => {
+  const ftsInitialization = (config.ftsEnabled !== false
+    ? makeFts(ftsDbPath).then(async (f) => {
+        if (abortController.signal.aborted) {
+          await f?.close()
+          return
+        }
         fts = f
         if (f?.ok) {
-          f.maybeMaintenance()
+          // Full FTS optimization belongs to explicit maintenance/retention,
+          // outside the startup and normal query path.
+          if (abortController.signal.aborted) return
           log(`[session-index] FTS enabled: ${ftsDbPath}`)
           try {
-            // 回填：DB 会话数 < 索引会话数（FTS 首次启用 / 索引已领先）→ 后台 force 一次。
-            // builder.build 的 force 兜底（非 force 在飞时不吸收）+ 这里的事后复检：
-            // 任何一步被打断都不会让 FTS 永久缺会话。
-            const idx = loadIndex(indexFile)
-            if (idx && f.sessionCount() < idx.sessions.length) {
-              log(`[session-index] FTS backfill (db=${f.sessionCount()} index=${idx.sessions.length})`)
-              const backfill = async (attempt: number): Promise<void> => {
-                try {
-                  const r = await builder.build(ftsBuildOptions({ force: true }))
-                  if (r.status === 'completed') log(`[session-index] FTS backfill done: ${r.durationMs}ms`)
-                } catch (e) {
-                  log(`[session-index] FTS backfill failed: ${String(e)}`)
-                }
-                const nowIdx = loadIndex(indexFile)
-                if (nowIdx && f.sessionCount() < nowIdx.sessions.length && attempt < 3) {
-                  log(`[session-index] FTS still behind (db=${f.sessionCount()} index=${nowIdx.sessions.length}); retry ${attempt + 1}/3`)
-                  await new Promise((r) => setTimeout(r, 1000))
-                  await backfill(attempt + 1)
+            // Per-session committed checkpoints recover JSON-ahead and legacy
+            // metadata-only databases; counts are never synchronization evidence.
+            const pending = () => countDirty(loadIndex(indexFile)?.sessions ?? [],f)
+            for (let attempt = 0; attempt < 4 && !abortController.signal.aborted; attempt++) {
+              const behind = await pending()
+              if (attempt > 0 && behind === 0) break
+              log(`[session-index] FTS reconcile pending=${behind} attempt=${attempt + 1}`)
+              const report = await builder.build(ftsBuildOptions({ force: behind > 0 && builder.active }))
+              if (abortController.signal.aborted) return
+              if (await pending() === 0 && report.status !== 'skipped') break
+              if (attempt < 3) await waitForStartupRetry(1000)
+            }
+            if (abortController.signal.aborted) return
+            // An absent JSON entry may be a previously failed FTS deletion. Only
+            // a complete scan proves absence/expiry. New on-disk files are kept
+            // for the builder to reconcile, rather than deleted as orphans.
+            const currentIndex = loadIndex(indexFile)
+            if (currentIndex && currentIndex.root === sessionsRoot) {
+              const scan = await scanFiles(sessionsRoot, { signal: abortController.signal, cap: MAX_SCAN_FILES })
+              if (abortController.signal.aborted) return
+              const byFile = new Map(currentIndex.sessions.map(meta => [meta.file, meta]))
+              const cutoff = (config.retentionDays ?? 90) > 0 ? Date.now() - (config.retentionDays ?? 90) * 86400e3 : 0
+              const retainedDisk = new Set(scan.files.filter(file => isRetainedSession(file, byFile.get(file.file), cutoff)).map(file => file.file))
+              for (const file of await f.listSessionFiles()) {
+                const meta = byFile.get(file)
+                if (meta?.unindexable || (scan.complete && !meta && !retainedDisk.has(file))) {
+                  try { await f.removeSession(file) }
+                  catch (error) { log(`[session-index] FTS orphan removal failed ${file}: ${String(error)}`) }
                 }
               }
-              // ⚠️ 先等回填完成再执行保留清理：回填（force 全量）会按事实源重拾
-              // 磁盘上的超龄条目，保留清理必须排在启动序列的最后一次构建，否则
-              // prune 结果会被回填即时覆盖。
-              await backfill(0)
+              try { await f.flush() }
+              catch (error) { log(`[session-index] FTS reconcile writes failed: ${String(error)}`) }
             }
             await maybeRetentionPrune()
           } catch (e) {
@@ -360,6 +480,8 @@ export function apply(ctx: Context, config: Config): void {
         } else {
           log('[session-index] FTS unavailable; mode=full falls back to streaming search')
         }
+      }).catch((e) => {
+        if (!abortController.signal.aborted) log(`[session-index] FTS initialization failed: ${String(e)}`)
       })
     : (() => {
         // P2.1：配置关闭 → 不 import node:sqlite、不建库；回退路径与 SCROLL 错误对象已存在。
@@ -377,13 +499,14 @@ export function apply(ctx: Context, config: Config): void {
   }
 
   async function ensureIndex(refresh: boolean, signal?: AbortSignal): Promise<SessionIndex> {
+    if (abortController.signal.aborted) throw new Error('会话索引已卸载')
     if (!refresh) {
       const existing = loadIndex(indexFile)
       if (existing) {
         // 自愈（P0-2 改造）：detailMissing 条目 → 后台增量补齐；磁盘对账交给
         // watcher（变更驱动），不再每次调用全目录 stat。watcher 不可用时走
         // 10s 节流 stat 回退。single-flight 保证不并发重复构建。
-        maybeAutoRefresh(existing)
+        void maybeAutoRefresh(existing).catch(error=>log(`[session-index] auto reconcile check failed: ${String(error)}`))
         return existing
       }
     }
@@ -402,8 +525,14 @@ export function apply(ctx: Context, config: Config): void {
   const MIN_AUTO_BUILD_INTERVAL_MS = 5000
   let autoRefreshRunning = false
   let autoRefreshDirty = false
+  let unstableRefreshAttempts = 0
+  let sourceLagging = false
   let lastAutoBuildAt = 0
   let deferTimer: NodeJS.Timeout | null = null
+  let fallbackTimer: NodeJS.Timeout | null = null
+  let laggingTimer: NodeJS.Timeout | null = null
+  let laggingFingerprint: string | undefined
+  let laggingPollRunning = false
   let watcherOk = false
 
   function clearDeferTimer(): void {
@@ -413,33 +542,45 @@ export function apply(ctx: Context, config: Config): void {
     }
   }
 
-  /**
-   * P3：磁盘对账可比计数——保留策略启用时两侧都做同样的保留调整，对账才自洽：
-   * - 磁盘侧：扣除 mtime 超龄文件（扫描无 lastTime，用文件 mtime 近似）；
-   * - 索引侧：扣除 max(lastTime, mtimeMs) 超龄条目（与 builder merge 判定同构）。
-   *
-   * 实测竞态（2026-08，两轮）：①仅磁盘侧调整时，索引里若残留上一轮重拾的
-   * 超龄条目（318 vs 319），对账会误判"漏索引"提前触发 auto-refresh，其构建
-   * （无 retentionDays）把 maybeRetentionPrune 的 prune build 单飞吸收 → pruned=0；
-   * ②不做调整时，prune 提交后对账（319 vs 318）又把超龄条目重拾回索引。
-   * 两侧对称调整后：prune 前后对账都看到 318=318，既不误触发也不回卷。
-   */
-  function comparableDiskCount(files: { mtimeMs: number }[]): number {
-    const days = config.retentionDays ?? 90
-    const cutoff = days > 0 ? Date.now() - days * 86400e3 : 0
-    if (cutoff <= 0) return files.length
-    return files.filter((f) => f.mtimeMs >= cutoff).length
+  async function rememberLaggingSource(): Promise<void> {
+    // Remember the snapshot actually parsed. A fresh scan after rejection can
+    // already contain a completed frame and would swallow its final write.
+    laggingFingerprint = builder.lastSourceScanFingerprint ?? laggingFingerprint
   }
 
-  function comparableIndexCount(idx: SessionIndex): number {
-    const days = config.retentionDays ?? 90
-    const cutoff = days > 0 ? Date.now() - days * 86400e3 : 0
-    if (cutoff <= 0) return idx.sessions.length
-    return idx.sessions.filter((s) => Math.max(s.lastTime ?? 0, s.mtimeMs ?? 0) >= cutoff).length
+  function clearLaggingPolling(): void {
+    if(laggingTimer)clearInterval(laggingTimer)
+    laggingTimer=null
+    laggingFingerprint=undefined
+  }
+
+  function startLaggingPolling(): void {
+    if(laggingTimer || abortController.signal.aborted)return
+    // After three failed parses, only stat fingerprints. An unchanged partial
+    // frame must not cause infinite full parses; a later write still heals if
+    // its final watcher event was lost.
+    laggingTimer=setInterval(()=>{
+      if(!sourceLagging || autoRefreshRunning || laggingPollRunning || abortController.signal.aborted)return
+      laggingPollRunning=true
+      void scanFiles(sessionsRoot,{cap:MAX_SCAN_FILES,signal:abortController.signal}).then(scan=>{
+        const fingerprint=sourceScanFingerprint(scan)
+        if(fingerprint!==laggingFingerprint) {
+          laggingFingerprint=fingerprint
+          triggerAutoRefresh('lagging-fingerprint-changed')
+        }
+      }).catch(()=>{}).finally(()=>{laggingPollRunning=false})
+    },10_000)
+    laggingTimer.unref()
   }
 
   function triggerAutoRefresh(reason: string): void {
     if (abortController.signal.aborted) return
+    if (sourceLagging && unstableRefreshAttempts >= 3 && reason !== 'lagging-fingerprint-changed'
+      && reason !== 'fts-worker-recovered') {
+      void reconcileDisk(reason, true)
+      return
+    }
+    if(reason!=='dirty-while-running' && reason!=='deferred') unstableRefreshAttempts=0
     if (autoRefreshRunning) {
       autoRefreshDirty = true
       return
@@ -465,12 +606,28 @@ export function apply(ctx: Context, config: Config): void {
     log(`[session-index] auto refresh (${reason})`)
     builder
       .build(ftsBuildOptions({ force: false, signal: abortController.signal }))
-      .then((r) => {
+      .then(async (r) => {
+        sourceLagging=r.status==='failed' || r.scanComplete===false || (r.raced ?? 0)>0 || (r.failed ?? 0)>0 || (r.ftsFailed ?? 0)>0 ||
+          builder.lastDeltaDiagnostics.some(event=>(event.phase==='commit' || event.phase==='complete') && event.finalConsistency==='source_changed')
+        if(sourceLagging) {
+          await rememberLaggingSource()
+          startLaggingPolling()
+          if(++unstableRefreshAttempts<3)autoRefreshDirty=true
+        } else {
+          unstableRefreshAttempts=0
+          clearLaggingPolling()
+        }
         if (r.status === 'completed') {
           log(`[session-index] auto refresh done: added=${r.added} updated=${r.updated} removed=${r.removed}`)
         }
       })
-      .catch((e) => log(`[session-index] auto refresh failed: ${String(e)}`))
+      .catch(async (e) => {
+        sourceLagging=true
+        await rememberLaggingSource()
+        startLaggingPolling()
+        if(++unstableRefreshAttempts<3)autoRefreshDirty=true
+        log(`[session-index] auto refresh failed: ${String(e)}`)
+      })
       .finally(() => {
         autoRefreshRunning = false
         if (autoRefreshDirty && !abortController.signal.aborted) {
@@ -483,38 +640,60 @@ export function apply(ctx: Context, config: Config): void {
   /**
    * 工具调用时的自愈检查（轻量，绝不 stat 目录）：
    * - detailMissing 条目 → 后台增量补齐；
-   * - watcher 不可用 → 回退 10s 节流 disk-count 对账。
+   * - watcher 不可用 → 回退 10s 节流指纹对账。
    */
   let lastFallbackScanAt = 0
-  function maybeAutoRefresh(idx: SessionIndex): void {
-    if (idx.sessions.some((s) => s.detailMissing)) {
-      triggerAutoRefresh('detailMissing')
+  let fallbackScanRunning = false
+  async function reconcileDisk(reason: string, force = false): Promise<void> {
+    if (abortController.signal.aborted || fallbackScanRunning) return
+    const now = Date.now()
+    if (!force && now - lastFallbackScanAt < 10_000) return
+    lastFallbackScanAt = now
+    fallbackScanRunning = true
+    try {
+      const scan = await scanFiles(sessionsRoot, { cap: MAX_SCAN_FILES, signal: abortController.signal })
+      if (abortController.signal.aborted) return
+      if(sourceLagging && sourceScanFingerprint(scan)===laggingFingerprint)return
+      const current = loadIndex(indexFile)
+      if (current && indexNeedsReconcile(current, sessionsRoot, scan, config.retentionDays ?? 90)) {
+        triggerAutoRefresh(sourceLagging ? 'lagging-fingerprint-changed' : reason)
+      }
+      if (!scan.complete) log(`[session-index] reconcile incomplete: ${scan.errors.join('; ') || 'scan cap reached'}`)
+    } catch (e) {
+      if (!abortController.signal.aborted) log(`[session-index] reconcile failed: ${String(e)}`)
+    } finally {
+      fallbackScanRunning = false
+    }
+  }
+
+  function startFallbackPolling(): void {
+    if (fallbackTimer || abortController.signal.aborted) return
+    fallbackTimer = setInterval(() => { void reconcileDisk('watcher-fallback') }, 10_000)
+    fallbackTimer.unref()
+  }
+
+  async function maybeAutoRefresh(idx: SessionIndex): Promise<void> {
+    if (abortController.signal.aborted) return
+    if (idx.sessions.some(s=>s.detailMissing) || await countDirty(idx.sessions)>0) {
+      triggerAutoRefresh('detailMissing-or-fts-dirty')
       return
     }
     if (watcherOk) return // watcher 已覆盖磁盘对账
-    const now = Date.now()
-    if (now - lastFallbackScanAt < 10_000) return
-    lastFallbackScanAt = now
-    void scanSessionFiles(sessionsRoot, { cap: 2000 })
-      .then(({ files }) => {
-        const current = loadIndex(indexFile)
-        if (current && comparableDiskCount(files) !== comparableIndexCount(current)) {
-          triggerAutoRefresh(`disk=${files.length} index=${current.sessions.length}`)
-        }
-      })
-      .catch(() => { /* 扫描失败静默（下次再试） */ })
+    void reconcileDisk('tool-fallback')
   }
 
   // watcher：变更驱动自动增量（P0-2）。失败回退到上面的 10s 节流 stat。
-  const watcher = createSessionWatcher(
+  const watcher = makeWatcher(
     sessionsRoot,
     500,
-    () => triggerAutoRefresh('watch'),
+    () => { if (sourceLagging) void reconcileDisk('watch', true); else triggerAutoRefresh('watch') },
     () => {
       if (watcherOk) {
         watcherOk = false
         log('[session-index] watcher lost; fall back to throttled scan')
       }
+      startFallbackPolling()
+      void reconcileDisk('watcher-lost', true)
     },
   )
   watcherOk = watcher.ok
@@ -522,31 +701,21 @@ export function apply(ctx: Context, config: Config): void {
     log(`[session-index] watcher active on ${sessionsRoot}`)
   } else {
     log(`[session-index] watcher unavailable; fall back to throttled scan`)
+    startFallbackPolling()
   }
 
   // 启动一次性对账：插件加载前可能已新增/删除会话（watcher 只覆盖加载后）。
-  // P3：两侧保留调整后的可比计数（磁盘侧扣超龄 mtime、索引侧扣超龄条目，
-  // 与 merge 判定同构）——否则对账会把保留清理成果即时重拾，或提前误触发
-  // auto-refresh 吸收 prune build（实测两轮竞态，见 comparableDiskCount 注释）。
-  void (async () => {
-    try {
-      const { files } = await scanSessionFiles(sessionsRoot, { cap: 2000 })
-      const idx = loadIndex(indexFile)
-      if (
-        idx &&
-        (comparableDiskCount(files) !== comparableIndexCount(idx) || idx.sessions.some((s) => s.detailMissing))
-      ) {
-        triggerAutoRefresh(`reconcile disk=${files.length} index=${idx.sessions.length}`)
-      }
-    } catch { /* 静默 */ }
-  })()
+  void reconcileDisk('startup-reconcile', true)
 
   async function statusSnapshot(): Promise<Record<string, unknown>> {
     const idx = loadIndex(indexFile)
     const progress = builder.progress
     const last = builder.lastBuildReport
     // P2.2：FTS 健康数据只取一次（3 个 SQL + 1 stat）
-    const ftsHealthData = fts?.ok ? fts.health() : null
+    const ftsHealthData = fts?.ok ? await fts.health() : null
+    const ftsSessions = Number((ftsHealthData as {sessions?:number}|null)?.sessions ?? (fts?.ok ? await fts.sessionCount() : 0))
+    const sameObserved=dirtyObserved?.key===dirtyKey(idx?.sessions ?? [],fts)
+    const dirtySessions = sameObserved ? dirtyObserved!.count : idx?.sessions.filter(meta=>meta.ftsDirty).length ?? 0
     const out: Record<string, unknown> = {
       root: sessionsRoot,
       indexFile,
@@ -554,9 +723,12 @@ export function apply(ctx: Context, config: Config): void {
       files: idx?.sessions.length ?? 0,
       updatedAt: idx?.updatedAt ?? 0,
       active: builder.active,
+      sourceLagging,
+      unstableRefreshAttempts,
+      laggingFingerprintPolling:laggingTimer!==null,
       // P2：FTS 全文索引状态（平铺字段，v1 兼容，保持原键名与原类型）
       fts: fts?.ok ?? false,
-      ftsSessions: fts?.ok ? fts.sessionCount() : 0,
+      ftsSessions: ftsSessions,
       // P2.2：FTS 健康快照。注意 fts 平铺是 boolean（v1 兼容），嵌套健康组另用
       // ftsHealth 键避免冲突：enabled=配置开关 / ok=运行状态 / sessions=会话行 /
       // messages=消息行 / dbSizeBytes=库字节（stat 失败 0）/ lastOptimizeAt=水印 /
@@ -565,13 +737,26 @@ export function apply(ctx: Context, config: Config): void {
       ftsHealth: {
         enabled: config.ftsEnabled !== false,
         ok: fts?.ok ?? false,
-        sessions: fts?.ok ? fts.sessionCount() : 0,
+        sessions: ftsSessions,
         messages: ftsHealthData?.messages ?? 0,
         dbSizeBytes: ftsHealthData?.dbSizeBytes ?? 0,
         lastOptimizeAt: ftsHealthData?.lastOptimizeAt ?? 0,
         schemaVersion: ftsHealthData?.schemaVersion ?? '',
         lastPruneAt: ftsHealthData?.lastPruneAt ?? 0,
         lastPruneCount: ftsHealthData?.lastPruneCount ?? 0,
+        lastWriteError: ftsHealthData?.lastWriteError ?? '',
+        lastWriteErrorAt: ftsHealthData?.lastWriteErrorAt ?? 0,
+        pendingWrites: ftsHealthData?.pendingWrites ?? 0,
+        failedSessions: ftsHealthData?.failedSessions ?? 0,
+        dirtySessions: dirtySessions,
+        dirtySessionsExact: false,
+        dirtySessionsObservedAt: sameObserved ? dirtyObserved?.at ?? 0 : 0,
+        acceptingWrites: ftsHealthData?.acceptingWrites ?? false,
+        worker: fts && 'diagnostics' in fts ? fts.diagnostics() : null,
+        startup: ftsStartup,
+        recentRuntimeDiagnostics: runtimeDiagnostics.slice(-30),
+        recentDeltaDiagnostics: builder.lastDeltaDiagnostics,
+        incompleteSessions:idx?.sessions.filter(meta => meta.coverage?.complete===false).length ?? 0,
       },
       // P3：保留策略配置（可观测；0=关闭）
       retentionDays: config.retentionDays ?? 90,
@@ -607,7 +792,21 @@ export function apply(ctx: Context, config: Config): void {
         removed: last.removed,
         raced: last.raced,
         failed: last.failed,
+        scanComplete: last.scanComplete,
+        scanTruncated: last.scanTruncated,
+        failedSubtrees: last.failedSubtrees,
+        ftsSynced: last.ftsSynced,
+        ftsFailed: last.ftsFailed,
         scannedBytes: last.scannedBytes,
+        // C9b 后续：观测管道修复——漏拷这两个字段导致 status 渲染行恒显
+        // deltaParsed=0/deltaFallbacks=0（builder 计数正确，只是没送达渲染层）。
+        discoveredBytes:last.discoveredBytes,
+        readBytes:last.readBytes,
+        decodedBytes:last.decodedBytes,
+        deltaBytes:last.deltaBytes,
+        incompleteSessions:last.incompleteSessions,
+        deltaParsed: last.deltaParsed,
+        deltaFallbacks: last.deltaFallbacks,
         durationMs: last.durationMs,
         maxEventLoopDelayMs: last.maxEventLoopDelayMs,
         partialCommitted: last.partialCommitted ?? false,
@@ -694,10 +893,22 @@ export function apply(ctx: Context, config: Config): void {
           schemaVersion?: string
           lastPruneAt?: number
           lastPruneCount?: number
+          dirtySessions?: number
+          pendingWrites?: number
+          failedSessions?: number
+          lastWriteError?: string
+          startup?: FtsStartupDiagnostic | null
         } | undefined
         if (fh) {
           const opt = fh.lastOptimizeAt && fh.lastOptimizeAt > 0 ? new Date(fh.lastOptimizeAt).toISOString() : '-'
           lines.push(`fts: ${fh.enabled ? 'on' : 'off'} ${fh.ok ? 'ok' : 'unavailable'} sessions=${fh.sessions ?? 0} messages=${fh.messages ?? 0} db=${((fh.dbSizeBytes ?? 0) / 1048576).toFixed(2)}MB lastOptimize=${opt} schema=${fh.schemaVersion ?? ''}`)
+          lines.push(`ftsSync: dirty=${fh.dirtySessions ?? 0} pending=${fh.pendingWrites ?? 0} failed=${fh.failedSessions ?? 0}${fh.lastWriteError ? ` lastError=${fh.lastWriteError}` : ''}`)
+          if (fh.startup) {
+            const startup = fh.startup, progress = startup.progress
+            const token = (value: unknown): string => typeof value === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : '-'
+            const count = (value: number | undefined): number | string => typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : '-'
+            lines.push(`ftsStartup: role=${token(startup.role)} state=${token(startup.state)} phase=${token(progress?.phase)} completed=${progress ? count(progress.completed) : '-'} total=${progress ? count(progress.total) : '-'} elapsedMs=${count(startup.elapsedMs)} code=${token(startup.error?.code)}`)
+          }
         }
         // P3：保留策略摘要（retentionDays + 最近一次 prune 时间/数量）
         const lp = fh?.lastPruneAt && fh.lastPruneAt > 0 ? new Date(fh.lastPruneAt).toISOString() : '-'
@@ -726,12 +937,19 @@ export function apply(ctx: Context, config: Config): void {
           raced?: number
           failed?: number
           scannedBytes?: number
+          deltaParsed?: number
+          deltaFallbacks?: number
           durationMs?: number
           partialCommitted?: boolean
           errors?: string[]
+          scanComplete?: boolean
+          scanTruncated?: boolean
+          ftsSynced?: number
+          ftsFailed?: number
         } | null
         if (last) {
-          lines.push(`lastBuild: status=${last.status} added=${last.added ?? 0} updated=${last.updated ?? 0} skipped=${last.skipped ?? 0} removed=${last.removed ?? 0} raced=${last.raced ?? 0} failed=${last.failed ?? 0} scannedBytes=${last.scannedBytes ?? 0} durationMs=${last.durationMs ?? 0}${last.partialCommitted ? ' partialCommitted' : ''}`)
+          lines.push(`scan: complete=${last.scanComplete ?? 'unknown'} truncated=${last.scanTruncated ?? false} ftsSynced=${last.ftsSynced ?? 0} ftsFailed=${last.ftsFailed ?? 0}`)
+          lines.push(`lastBuild: status=${last.status} added=${last.added ?? 0} updated=${last.updated ?? 0} skipped=${last.skipped ?? 0} removed=${last.removed ?? 0} raced=${last.raced ?? 0} failed=${last.failed ?? 0} scannedBytes=${last.scannedBytes ?? 0} deltaParsed=${last.deltaParsed ?? 0} deltaFallbacks=${last.deltaFallbacks ?? 0} durationMs=${last.durationMs ?? 0}${last.partialCommitted ? ' partialCommitted' : ''}`)
           if (last.errors?.length) lines.push(`errors=${last.errors.length}`)
         }
         if (v.detailMissing) lines.push(`detailMissing=${v.detailMissing}（自动补扫中）`)
@@ -903,7 +1121,7 @@ export function apply(ctx: Context, config: Config): void {
   /* ── 工具 3：会话搜索（mode=full 走 FTS/worker；SCROLL 模式看上下文窗口） ── */
   const toolSearch = defineTool({
     name: 'session_index_search',
-    description: '搜索 DSH 历史会话：meta=元数据，full=正文（FTS trigram，零解压）。SCROLL：session_id+message_id 取锚点上下文窗口。',
+    description: '搜索 DSH 历史会话：meta=元数据，full=正文（FTS 与有界原文补查）。SCROLL 优先用 session_id+anchor_id；message_id 仅兼容旧版锚点。',
     parameters: {
       // P1 修复：query 不再是 required——SCROLL 模式（session_id+message_id）不需要
       // 查询词，此前必须传占位词才能过校验。meta/full 模式缺 query 时 execute 仍会
@@ -914,8 +1132,13 @@ export function apply(ctx: Context, config: Config): void {
       mode: { type: 'string', enum: ['meta', 'full'], description: 'meta=元数据；full=正文（默认 meta）' },
       limit: { type: 'integer', description: '返回上限' },
       refresh: { type: 'boolean', description: '先刷新索引' },
+      maxLineBytes: {
+        type: 'integer',
+        description: 'full 原文补查的单条 JSONL 字节上限；默认 4194304（4MiB），可显式提高至 33554432（32MiB）。总解压仍限 256MiB；失败/略过见 coverage.diagnostics',
+      },
       session_id: { type: 'string', description: 'SCROLL 会话 id' },
-      message_id: { type: 'integer', description: 'SCROLL 锚点 messageId' },
+      message_id: { type: 'integer', description: '旧版 SCROLL rowid，过期时明确失败' },
+      anchor_id: { type:'string',description:'SCROLL 稳定消息 anchorId（优先）' },
       window: { type: 'integer', description: 'SCROLL 窗口半径 1..20（默认 5）' },
       // STAGE-1 Part B：消息级筛选。meta 模式仅 role='tool' 可近似（toolCallCounts>0
       // 会话级），user/assistant 无消息粒度不过滤；时间范围因消息行无时间列降级为
@@ -954,6 +1177,7 @@ export function apply(ctx: Context, config: Config): void {
                 type: { type: 'string' },
                 snippet: { type: 'string' },
                 messageId: { type: 'integer' },
+                anchorId: { type: 'string' },
               },
             },
           },
@@ -964,6 +1188,7 @@ export function apply(ctx: Context, config: Config): void {
               additionalProperties: true,
               properties: {
                 id: { type: 'integer' },
+                anchorId: { type: 'string' },
                 role: { type: 'string' },
                 text: { type: 'string' },
                 toolName: { type: 'string' },
@@ -971,25 +1196,29 @@ export function apply(ctx: Context, config: Config): void {
             },
           },
           bookends: { type: 'object', additionalProperties: true },
+          coverage: { type: 'object', additionalProperties: true },
         },
       },
       render: (args, v) => {
         if (v.mode === 'scroll') {
-          const lines: string[] = [`[session-scroll] ${v.session_id} 锚点 ${v.message_id} (window=${v.window})`]
+          const anchorLabel = v.anchor_id ? `anchor_id=${v.anchor_id}` : `message_id=${v.message_id}`
+          const lines: string[] = [`[session-scroll] ${v.session_id} ${anchorLabel} (window=${v.window})`]
           // P1 修复：SCROLL 失败（FTS 不可用/会话不存在/锚点无消息）必须显式展示
           // 错误行，而不是渲染成"空窗口"误导模型以为只是没有消息。
           if (v.ok === false) {
             lines.push(`（SCROLL 失败：${(v as { error?: string }).error ?? '未知原因'}）`)
             return text(lines.join('\n'))
           }
-          for (const m of (v.messages ?? []) as { id: number; role: string; text: string; toolName?: string }[]) {
-            lines.push(` ${m.id === v.message_id ? '▶' : ' '} ${m.role}${m.toolName ? `[${m.toolName}]` : ''}: ${(m.text || '').slice(0, 160)}`)
+          for (const m of (v.messages ?? []) as { id: number; anchorId?: string; role: string; text: string; toolName?: string }[]) {
+            const center = v.anchor_id ? m.anchorId === v.anchor_id : m.id === v.message_id
+            const destination = m.anchorId ? `anchor_id=${m.anchorId}` : `message_id=${m.id}`
+            lines.push(` ${center ? '▶' : ' '} ${m.role}${m.toolName ? `[${m.toolName}]` : ''} ${destination}: ${(m.text || '').slice(0, 160)}`)
           }
           const b = v.bookends as { start?: { role: string; text: string }[]; end?: { role: string; text: string }[] } | undefined
           if (b?.start?.length) lines.push(`— 开头: ${b.start.map((m) => `${m.role}:${(m.text || '').slice(0, 40)}`).join(' | ')}`)
           if (b?.end?.length) lines.push(`— 结尾: ${b.end.map((m) => `${m.role}:${(m.text || '').slice(0, 40)}`).join(' | ')}`)
           // P1.2 翻页提示（静态，无 LLM）：以窗口内消息 id 为新锚点继续滚
-          lines.push('（翻页：把目标消息的 id 作为 message_id 与新 session_id 再滚，window 可调 1..20）')
+          lines.push('（翻页：把目标消息的 anchorId 作为 anchor_id，配合同一 session_id 再滚；旧消息无 anchorId 时才用 message_id。window 可调 1..20）')
           return text(lines.join('\n'))
         }
         const lines: string[] = [`[session-search] "${v.query}" mode=${v.mode} → ${v.total} hits, 输出 ${v.returned}${v.truncated ? ' (truncated)' : ''}`]
@@ -1006,9 +1235,19 @@ export function apply(ctx: Context, config: Config): void {
         for (const h of v.hits ?? []) {
           lines.push(` ${h.kind === 'meta' ? 'META' : h.type} | ${h.sessionId} | ${h.workspace}`)
           lines.push(`   ${h.snippet}`)
+          if (h.anchorId) lines.push(`   跳回：session_id=${h.sessionId} anchor_id=${h.anchorId}`)
+          else if (h.messageId !== undefined) lines.push(`   旧版跳回：session_id=${h.sessionId} message_id=${h.messageId}`)
         }
-        // P1.2 零命中提示（静态，无 LLM）：FTS 语法放宽只在零命中这一刻出现
-        if (v.total === 0) lines.push('（零命中提示：多词用 OR 连接、引号试精确短语、或换更短关键词）')
+        const coverage = v.coverage as { complete?: boolean; sourceLimits?: { maxLineBytes: number; hardMaxLineBytes: number }; diagnostics?: { sessionId: string; reason: string; error: string; maxLineBytes: number }[]; diagnosticsTruncated?: boolean } | undefined
+        if (coverage?.complete === false) {
+          lines.push(`原文覆盖不完整：maxLineBytes=${coverage.sourceLimits?.maxLineBytes ?? DEFAULT_SEARCH_LINE_BYTES}，totalExact=false；大行可提高 maxLineBytes 至 ${MAX_SEARCH_LINE_BYTES} 补查。`)
+          for (const diagnostic of coverage.diagnostics ?? []) {
+            lines.push(` 略过/失败 ${diagnostic.sessionId}: ${diagnostic.reason}, maxLineBytes=${diagnostic.maxLineBytes}; ${diagnostic.error}`)
+          }
+          if (coverage.diagnosticsTruncated) lines.push(`（诊断仅显示前 ${MAX_SEARCH_DIAGNOSTICS} 项）`)
+        }
+        // 全文使用固定的全局 AND→OR 策略；不暗示引号或布尔符号能改变查询模式。
+        if (v.total === 0) lines.push('（零命中提示：换更短关键词，或按 coverage 诊断补查受限来源。）')
         // STAGE-5：短词慢路径提示（静态，无 LLM）——full 模式 + 含 <3 字词 → 已走/将走
         // LIKE 兜底（全表扫描较慢），提醒模型下次用 ≥3 字查询走 trigram 快速路径。
         if (args.mode === 'full' && typeof args.query === 'string' && queryUsesLikePath(args.query)) {
@@ -1019,39 +1258,67 @@ export function apply(ctx: Context, config: Config): void {
     },
     execute: async (args) => {
       // SCROLL 模式：session_id + message_id → 锚点上下文窗口（照 hermes scroll 形状）
-      if (typeof args.session_id === 'string' && args.session_id && args.message_id != null) {
+      const started=performance.now()
+      const requestId=randomUUID()
+      const deadlineAt=Date.now()+10000
+      const querySignal=AbortSignal.any([abortController.signal,AbortSignal.timeout(10000)])
+      const isScroll=typeof args.session_id==='string' && !!args.session_id && !!(args.anchor_id || args.message_id!=null)
+      const timings={sourceMs:0,ftsMs:0,fallbackMs:0}
+      let backend='meta'
+      const finish=(result:Record<string,unknown>)=>{
+        const runtime={requestId,op:result.mode==='scroll' ? 'around' : 'search',backend,...timings,totalMs:performance.now()-started}
+        recordRuntime({kind:'tool-query',...runtime,outcome:result.ok===false ? 'rejected' : 'success',returned:result.returned ?? 0,coverageComplete:(result.coverage as {complete?:boolean}|undefined)?.complete})
+        return {...result,runtime}
+      }
+      try {
+      if (isScroll) {
+        backend='fts'
         if (!fts?.ok) {
-          return {
+          backend='unavailable'
+          return finish({
             mode: 'scroll',
             session_id: args.session_id,
-            message_id: args.message_id,
+            ...(args.message_id !== undefined ? { message_id: args.message_id } : {}),
+            ...(args.anchor_id ? { anchor_id: args.anchor_id } : {}),
             window: args.window ?? 5,
             ok: false,
             error: 'FTS 不可用，无法 SCROLL（检查 node:sqlite，或用 mode=full 搜索后再滚）',
-          } as any
+          } as any)
         }
-        const sc = await fts.around(args.session_id, args.message_id, args.window ?? 5)
+        const scrollStarted=performance.now()
+        let sc:Awaited<ReturnType<SessionFts['around']>>
+        try {sc='diagnostics' in fts
+          ? await fts.around(args.session_id!,args.anchor_id || args.message_id!,args.window ?? 5,{deadlineAt,parentRequestId:requestId,signal:querySignal})
+          : await fts.around(args.session_id!,args.anchor_id || args.message_id!,args.window ?? 5)}
+        finally {timings.ftsMs=performance.now()-scrollStarted}
         if (sc.ok) {
-          return {
+          return finish({
             mode: 'scroll',
             session_id: args.session_id,
-            message_id: args.message_id,
+            ...(args.message_id !== undefined ? { message_id: args.message_id } : {}),
+            ...(args.anchor_id ? { anchor_id: args.anchor_id } : {}),
             window: args.window ?? 5,
             returned: sc.messages.length,
             messages: sc.messages,
             bookends: sc.bookends,
-          } as any
+          } as any)
         }
-        return {
+        return finish({
           mode: 'scroll',
           session_id: args.session_id,
-          message_id: args.message_id,
+          ...(args.message_id !== undefined ? { message_id: args.message_id } : {}),
+          ...(args.anchor_id ? { anchor_id: args.anchor_id } : {}),
           window: args.window ?? 5,
           ok: false,
-          error: `会话 ${args.session_id} 未找到或无锚点消息（messageId=${args.message_id}）`,
-        } as any
+          error: `锚点不可用: ${sc.reason ?? 'anchor-expired'}`,
+          reason:sc.reason,
+        } as any)
       }
-      const idx = await ensureIndex(!!args.refresh)
+      const maxLineBytes = args.maxLineBytes ?? DEFAULT_SEARCH_LINE_BYTES
+      if (!Number.isSafeInteger(maxLineBytes) || maxLineBytes < DEFAULT_SEARCH_LINE_BYTES || maxLineBytes > MAX_SEARCH_LINE_BYTES) {
+        throw new RangeError(`maxLineBytes 必须是 ${DEFAULT_SEARCH_LINE_BYTES}..${MAX_SEARCH_LINE_BYTES} 的整数字节数`)
+      }
+      const idx = await ensureIndex(!!args.refresh,querySignal)
       const q = (args.query || '').trim()
       if (!q) throw new Error('query 不能为空')
       const mode = args.mode || 'meta'
@@ -1066,127 +1333,184 @@ export function apply(ctx: Context, config: Config): void {
       // FTS MATCH）之后才装候选，上限 3×limit 且 ≤500；排序永远发生在过滤之后、
       // 截断之前（"先过滤 → 聚合 → sortSessions → 截断"，严禁为排序扩全集）。
       const collectCap = Math.min(Math.max(limit, config.maxHits) * 3, 500)
-
-      const candidates = idx.sessions.filter((s) => !s.unindexable && (!ws || s.workspace.toLowerCase().includes(ws)))
-      const scanned = candidates.slice(0, MAX_LIST_SCAN)
-      let truncated = candidates.length > MAX_LIST_SCAN
-
-      // 会话级聚合池：key = lineageRoot||id（延续 P3 dedup-by-lineage 语义，meta
-      // 路径无 parentSession 时即会话 id）。同一 key 保留一条"代表行"（正文优先），
-      // 多条正文行按 best-rank 聚合（规则与 rank.aggregateBm25Rows 完全一致）。
-      interface AggEntry {
-        meta: SessionMeta
-        hitRows: number
-        bestBm25?: number
-        content?: { type: string; snippet: string; messageId: number }
-      }
-      const agg = new Map<string, AggEntry>()
-      const byFile = new Map(idx.sessions.filter((s) => !s.unindexable).map((s) => [s.file, s]))
-      let total = 0
-      const addMeta = (s: SessionMeta): void => {
-        const key = s.parentSession || s.id
-        if (agg.has(key)) return // 同族已有条目（正文优先）→ 不重复计数
-        if (agg.size >= collectCap) return
-        agg.set(key, { meta: s, hitRows: 0 })
-      }
-      const addContent = (
-        key: string,
-        meta: SessionMeta,
-        hit: { type: string; snippet: string; messageId: number },
-        bm25?: number,
-      ): void => {
-        const prev = agg.get(key)
-        if (!prev) {
-          if (agg.size >= collectCap) return
-          agg.set(key, {
-            meta,
-            hitRows: 1,
-            bestBm25: bm25,
-            content: { type: hit.type, snippet: hit.snippet, messageId: hit.messageId },
-          })
-          return
-        }
-        prev.hitRows += 1
-        // best-rank：最小 bm25 的行作为代表（更相关的正文 snippet 上位）
-        if (typeof bm25 === 'number' && (prev.bestBm25 === undefined || bm25 < prev.bestBm25)) {
-          prev.bestBm25 = bm25
-          prev.content = { type: hit.type, snippet: hit.snippet, messageId: hit.messageId }
-        } else if (!prev.content) {
-          prev.content = { type: hit.type, snippet: hit.snippet, messageId: hit.messageId }
-        }
-      }
-
-      // 1) meta 快速路径（meta/full 模式都先跑；过滤 = metaMatch + filter，命中即会话级条目）
-      // STAGE-1 Part B：
-      //  - 时间范围对所有模式生效（会话级降级口径）；
-      //  - role='tool'：meta 路径用 toolCallCounts>0 近似（schema 注明会话级）；
-      //  - role='user'/'assistant'：meta 路径无消息粒度判定不了 → 纯 meta 模式
-      //    不过滤（恒真）；full 模式下 meta 补充贡献跳过（避免元数据-only 命中
-      //    冒充消息命中，消息级语义由 FTS/worker 内容路径裁决）。
-      const metaSkipInFull = mode === 'full' && filter !== undefined && filter.role !== 'any' && filter.role !== 'tool'
-      for (const s of scanned) {
-        if (!timePass(s, filter)) continue
-        if (!metaMatch(s, q)) continue
-        if (metaSkipInFull) continue
-        if (!metaRolePass(s, filter?.role)) continue
-        total++
-        addMeta(s)
-      }
-
-      // 2) full 路径：SQLite FTS（零解压、BM25 排序、CJK trigram）；FTS 不可用 →
-      //    worker 池流式解压回退。FTS 行级 over-fetch 到 collectCap，再在 JS 侧
-      //    做会话级聚合（先过滤后排序；聚合绝不改变 snippet 生成逻辑）。
+      const sourceCandidates = new Map(idx.sessions.map(meta => [meta.file, meta]))
+      const needsRawSources = new Set<string>()
+      const probeFailures: { meta: SessionMeta; error: string }[] = []
+      let sourceScan: ScanSessionFilesResult | undefined
+      let sourceProbedSessions = 0
+      const sourceStarted=performance.now()
       if (mode === 'full') {
-        if (fts?.ok) {
-          const fhits = await fts.search(q, args.workspace ?? '', collectCap, filter)
-          for (const h of fhits) {
-            const key = h.lineageRoot || h.sessionId || sessionIdFromFile(h.sessionFile)
-            // Never revive a stale FTS row when its source session is marked
-            // unindexable by the compatibility gate.
-            const meta = byFile.get(h.sessionFile)
-            if (!meta) continue
-            if (!agg.has(key)) total++
-            addContent(key, meta, { type: h.role, snippet: h.snippet, messageId: h.messageId }, h.bm25)
-          }
-        } else {
-          // 分波调度（P3-11）：每次只派一波（poolSize×2 在飞），收满 collectCap 个
-          // 会话或扫完才停派（"命中即停"升级为"收满窗口才停"，保证排序候选完整；
-          // 命中稀缺时扫描范围与改动前一致）。
-          const wave = Math.max(1, builder.pool.sizeLimit * 2)
-          // STAGE-1 Part B：时间范围在派发前按会话级 lastTime 过滤（先过滤后排序，
-          // 严禁扩集合）；role 在命中行上 JS 侧过滤（消息级，与 FTS SQL 同语义）。
-          const scanPool = scanned.filter((s) => timePass(s, filter))
-          let dispatched = 0
-          while (dispatched < scanPool.length && agg.size < collectCap) {
-            const batch: Promise<{ s: SessionMeta; r: Awaited<ReturnType<typeof builder.pool.run>> | null }>[] = []
-            for (let n = 0; n < wave && dispatched < scanPool.length; n++) {
-              const s = scanPool[dispatched++]
-              batch.push(
-                builder.pool
-                  .run({ mode: 'search', file: s.file, query: q, maxSnippets: maxPer }, abortController.signal)
-                  .then((r) => ({ s, r }))
-                  .catch(() => ({ s, r: null })),
-              )
+        // Default parsing can reject a middle oversized row before even producing
+        // an index entry. Discover and validate these sources under the same budget.
+        try { sourceScan = await scanFiles(sessionsRoot, { cap: MAX_SCAN_FILES, signal: querySignal }) }
+        catch (error) { sourceScan = { files: [], complete: false, truncated: false, errors: [String(error)], failedSubtrees: [sessionsRoot] } }
+        const cutoff = config.retentionDays > 0 ? Date.now() - config.retentionDays * 86400e3 : 0
+        const toProbe = sourceScan.files.filter(file => {
+          const previous = sourceCandidates.get(file.file)
+          return (!previous || previous.unindexable) && isRetainedSession(file, previous, cutoff)
+        })
+        const wave = Math.max(1, builder.pool.sizeLimit * 2)
+        for (let start = 0; start < toProbe.length; start += wave) {
+          const probed = await Promise.all(toProbe.slice(start, start + wave).map(async file => {
+            const previous = sourceCandidates.get(file.file)
+            const fallback: SessionMeta = previous ?? {
+              id: basename(dirname(file.file)), file: file.file, workspace: dirname(file.file),
+              size: file.size, mtimeMs: file.mtimeMs, ctimeMs: file.ctimeMs,
+              createdAt: 0, lastTime: file.mtimeMs, title: '', firstUserText: '', lastAssistantText: '',
+              agentPreset: '', counts: {}, toolNames: [], toolCallCounts: {}, unindexable: true,
             }
-            const settled = await Promise.all(batch)
-            for (const { s, r } of settled) {
-              if (!r?.ok || !Array.isArray(r.data)) continue
-              const key = s.parentSession || s.id
-              for (const hit of r.data as { type: string; snippet: string; role?: string; toolName?: string }[]) {
-                // STAGE-1 Part B：按行 role 过滤（parseSearch 已带 role；兜底映射
-                // type→role 以防旧编译产物/内置回退缺字段）
-                if (filter && filter.role !== 'any') {
-                  const hr = hit.role ?? (hit.type === 'user/message' ? 'user' : hit.type === 'assistant/message' ? 'assistant' : hit.type === 'tool/call' ? 'tool' : undefined)
-                  if (hr !== filter.role) continue
-                }
-                if (!agg.has(key)) total++
-                addContent(key, s, { type: hit.type, snippet: hit.snippet, messageId: 0 })
+            sourceProbedSessions++
+            try {
+              const parsed = await builder.pool.run<FullSummary>({ mode: 'full', file: file.file, collectMessages: false, maxLineBytes, maxDecompressedBytes: MAX_SEARCH_DECOMPRESSED_BYTES }, querySignal)
+              if (!parsed.ok) return { meta: fallback, error: (parsed.stats?.oversized ?? 0) > 0 ? `oversized JSONL lines at maxLineBytes=${maxLineBytes}; ${parsed.error}` : parsed.error }
+              const data = parsed.data
+              const meta: SessionMeta = {
+                ...fallback, id: data.id, workspace: data.cwd || dirname(file.file),
+                size: file.size, mtimeMs: file.mtimeMs, ctimeMs: file.ctimeMs,
+                createdAt: data.createdAt, lastTime: data.lastTime, title: data.title || data.firstUserText.slice(0, 80),
+                firstUserText: data.firstUserText, lastAssistantText: data.lastAssistantText,
+                agentPreset: data.agentPreset, counts: data.counts, toolNames: Object.keys(data.toolCallCounts).sort(),
+                toolCallCounts: data.toolCallCounts, parentSession: data.parentSession,
+                generation: data.generation, compatibility: data.compatibility, unindexable: undefined, error: undefined,
               }
-            }
+              return { meta }
+            } catch (error) { return { meta: fallback, error: String(error) } }
+          }))
+          for (const result of probed) {
+            if ('error' in result && result.error !== undefined) probeFailures.push({ meta: result.meta, error: result.error })
+            else { sourceCandidates.set(result.meta.file, result.meta); needsRawSources.add(result.meta.file) }
           }
         }
       }
-
+      const candidates = [...sourceCandidates.values()].filter(s => (mode === 'full' || !s.unindexable) && (!ws || s.workspace.toLowerCase().includes(ws)) && timePass(s,filter))
+      const scanned=candidates.slice(0,MAX_LIST_SCAN)
+      let truncated=candidates.length>MAX_LIST_SCAN, totalExact=!truncated
+      interface Content {type:string;snippet:string;messageId?:number;anchorId?:string}
+      interface AggEntry {meta:SessionMeta;hitRows:number;bestBm25?:number;content?:Content;lineageRoot:string}
+      const agg=new Map<string,AggEntry>()
+      const frequencies=new Map<string,{anchors:Set<string>;count:number}>()
+      const byFile=new Map(idx.sessions.filter(s=>!s.unindexable).map(s=>[s.file,s]))
+      const byId=new Map([...sourceCandidates.values()].map(s=>[s.id,s]))
+      const lineageOf=(s:SessionMeta):string=>{
+        const seen=new Set<string>(), chain:string[]=[]
+        let current=s
+        while(current.parentSession) {
+          if(seen.has(current.id)) return [...chain].sort()[0] || s.id
+          seen.add(current.id);chain.push(current.id)
+          const parent=byId.get(current.parentSession)
+          if(!parent) return current.parentSession
+          current=parent
+        }
+        return current.id
+      }
+      const addContent=(meta:SessionMeta,content:Content,bm25?:number,matchCount?:number)=>{
+        const key=lineageOf(meta),prev=agg.get(key)
+        const identity=`${meta.id}\u0000${content.anchorId ?? content.messageId ?? content.snippet}`
+        const frequency=frequencies.get(meta.file) ?? {anchors:new Set<string>(),count:0}
+        const before=frequency.count
+        frequency.anchors.add(identity)
+        frequency.count=Math.max(before,Math.min(maxPer,matchCount ?? frequency.anchors.size))
+        frequencies.set(meta.file,frequency)
+        if(!prev) {agg.set(key,{meta,content,bestBm25:bm25,hitRows:frequency.count,lineageRoot:key});return}
+        prev.hitRows+=frequency.count-before
+        if(!prev.content || (bm25!==undefined && (prev.bestBm25===undefined || bm25<prev.bestBm25))) {
+          // Representative identity, file, workspace, snippet and rank change together.
+          prev.meta=meta;prev.content=content;prev.bestBm25=bm25
+        }
+      }
+      const skipMeta=mode==='full' && !!filter?.role && filter.role!=='any'
+      for(const meta of scanned) {
+        if(meta.unindexable || skipMeta || !metaMatch(meta,q) || !metaRolePass(meta,filter?.role)) continue
+        const key=lineageOf(meta)
+        if(!agg.has(key)) agg.set(key,{meta,hitRows:0,lineageRoot:key})
+      }
+      let coverageIncomplete=false
+      const coverageReasons = new Set<string>()
+      const searchedSources = new Set<string>()
+      const sourceFailures = new Map<string, { sessionId: string; file: string; reason: string; error: string; skipped: boolean; maxLineBytes: number }>()
+      const sourceFailure = (meta: SessionMeta, error: string): void => {
+        coverageIncomplete = true
+        totalExact = false
+        const reason = /oversized JSONL|oversized-jsonl-lines/.test(error) ? 'oversized-jsonl-lines' : meta.unindexable ? 'source-parse-failed' : 'raw-search-failed'
+        coverageReasons.add(reason)
+        if (sourceFailures.size < MAX_SEARCH_DIAGNOSTICS || sourceFailures.has(meta.file)) {
+          sourceFailures.set(meta.file, { sessionId: meta.id, file: meta.file, reason, error: error.replace(/\s+/g, ' ').slice(0, 240), skipped: true, maxLineBytes })
+        }
+      }
+      const failedSourceFiles = new Set<string>()
+      for (const failure of probeFailures) { failedSourceFiles.add(failure.meta.file); sourceFailure(failure.meta, failure.error) }
+      if (sourceScan && !sourceScan.complete) {
+        coverageIncomplete = true
+        totalExact = false
+        coverageReasons.add('source-scan-incomplete')
+        truncated ||= sourceScan.truncated
+        if (sourceFailures.size < MAX_SEARCH_DIAGNOSTICS) sourceFailures.set(sessionsRoot, {
+          sessionId: '(source-scan)', file: sessionsRoot, reason: 'source-scan-incomplete',
+          error: sourceScan.errors.join('; ').replace(/\s+/g, ' ').slice(0, 240) || 'source scan did not confirm every file', skipped: true, maxLineBytes,
+        })
+      }
+      if(mode==='full') {
+        const wave=Math.max(1,builder.pool.sizeLimit*2)
+        type RawHit={type:string;snippet:string;role?:string;anchorId?:string}
+        const rawSearch=async(pool:SessionMeta[],queryMode:'and'|'or')=>{
+          const results:{meta:SessionMeta;hit:RawHit}[]=[]
+          for(let start=0;start<pool.length;start+=wave) {
+            if(querySignal.aborted){coverageIncomplete=true;coverageReasons.add('request-deadline');break}
+            const batch=await Promise.all(pool.slice(start,start+wave).map(async meta=>{
+              searchedSources.add(meta.file)
+              try {return {meta,result:await builder.pool.run({mode:'search',file:meta.file,query:q,maxSnippets:maxPer,role:filter?.role,queryMode,maxLineBytes,maxDecompressedBytes:MAX_SEARCH_DECOMPRESSED_BYTES},querySignal)}}
+              catch(error) {return {meta,result:null,error:String(error)}}
+            }))
+            for(const item of batch) {
+              const {meta,result} = item
+              if(!result?.ok || !Array.isArray(result.data)) {
+                failedSourceFiles.add(meta.file)
+                const error = result && !result.ok ? (result.stats?.oversized ?? 0) > 0 ? `oversized JSONL lines at maxLineBytes=${maxLineBytes}; ${result.error}` : result.error : 'error' in item ? item.error ?? 'raw-search failed' : 'invalid raw-search response'
+                sourceFailure(meta,error)
+                continue
+              }
+              for(const hit of result.data as RawHit[]) results.push({meta,hit})
+            }
+          }
+          return results
+        }
+        timings.sourceMs=performance.now()-sourceStarted
+        let rawPool=(fts?.ok ? scanned.filter(meta=>meta.coverage?.complete!==true || meta.ftsDirty || meta.detailMissing || meta.unindexable || needsRawSources.has(meta.file)) : scanned).filter(meta=>!failedSourceFiles.has(meta.file))
+        backend=fts?.ok ? (rawPool.length ? 'fts+source' : 'fts') : 'source'
+        let page: Awaited<ReturnType<SessionFts['searchPage']>>={hits:[],total:0,totalExact:true,hasMore:false}
+        const readPage=(queryMode:'and'|'or')=>fts && 'diagnostics' in fts
+          ? fts.searchPage(q,args.workspace ?? '',collectCap,{...filter,queryMode},{deadlineAt,parentRequestId:requestId,signal:querySignal})
+          : fts!.searchPage(q,args.workspace ?? '',collectCap,{...filter,queryMode})
+        if(fts?.ok) {
+          const ftsStarted=performance.now()
+          try {page=await readPage('and')}
+          catch(error) {rawPool=scanned;backend='source';coverageReasons.add('fts-search-failed');recordRuntime({kind:'fts-fallback',requestId,reason:'fts-search-failed',errorCode:(error as {code?:string})?.code ?? 'unknown'})}
+          finally {timings.ftsMs+=performance.now()-ftsStarted}
+        }
+        let fallbackStarted=performance.now()
+        let raw=await rawSearch(rawPool,'and')
+        timings.fallbackMs+=performance.now()-fallbackStarted
+        if(!page.hits.length && !raw.length) {
+          if(fts?.ok && rawPool!==scanned) {
+            const ftsStarted=performance.now()
+            try {page=await readPage('or')}
+            catch(error) {rawPool=scanned;backend='source';coverageReasons.add('fts-search-failed');recordRuntime({kind:'fts-fallback',requestId,reason:'fts-search-failed',errorCode:(error as {code?:string})?.code ?? 'unknown'})}
+            finally {timings.ftsMs+=performance.now()-ftsStarted}
+          }
+          fallbackStarted=performance.now()
+          raw=await rawSearch(rawPool,'or')
+          timings.fallbackMs+=performance.now()-fallbackStarted
+        }
+        if(page.hasMore) {truncated=true;totalExact=false}
+        if(!page.totalExact)totalExact=false
+        for(const hit of page.hits) {
+          const meta=byFile.get(hit.sessionFile)
+          if(!meta || meta.id!==hit.sessionId) continue
+          addContent(meta,{type:hit.role,snippet:hit.snippet,anchorId:hit.anchorId,messageId:hit.anchorId ? undefined:hit.messageId},hit.bm25,hit.matchCount)
+        }
+        for(const {meta,hit} of raw) addContent(meta,{type:hit.type,snippet:hit.snippet,anchorId:hit.anchorId})
+      }
+      const total=agg.size
       // 3) 统一会话级相关性排序（rank.ts 纯函数、确定性；三路径口径一致）
       const ranked = sortSessions([...agg.values()], q, { queryWorkspace: args.workspace || '' })
 
@@ -1201,7 +1525,9 @@ export function apply(ctx: Context, config: Config): void {
               kind: 'content',
               type: e.content.type,
               snippet: e.content.snippet,
-              messageId: e.content.messageId,
+              ...(e.content.messageId!==undefined ? {messageId:e.content.messageId} : {}),
+              ...(e.content.anchorId ? {anchorId:e.content.anchorId} : {}),
+              lineageRoot:e.lineageRoot,
             }
           : {
               sessionId: e.meta.id,
@@ -1211,17 +1537,26 @@ export function apply(ctx: Context, config: Config): void {
               type: 'meta',
               // P1.4：meta snippet 同样带 >>> <<< 命中标记（静态）
               snippet: markMatches((e.meta.title ? `标题: ${e.meta.title} | ` : '') + (e.meta.firstUserText || '').slice(0, 200), q),
-              messageId: 0,
+              lineageRoot:e.lineageRoot,
             },
       )
-      return {
+      return finish({
         query: q,
         mode,
         total,
         returned: kept.length,
-        truncated: truncated || total > limit,
+        truncated: truncated || total > limit || coverageIncomplete,
+        totalExact,
+        hasMore:truncated || total>limit || coverageIncomplete,
+        coverage:{complete:!coverageIncomplete,reasons:[...coverageReasons],
+          sourceLimits:{maxLineBytes,hardMaxLineBytes:MAX_SEARCH_LINE_BYTES,maxDecompressedBytes:MAX_SEARCH_DECOMPRESSED_BYTES,discoveredSessions:sourceScan?.files.length ?? 0,scannedSessions:scanned.length,sourceProbedSessions,rawSearchedSessions:searchedSources.size,failedSessions:failedSourceFiles.size},
+          diagnostics:[...sourceFailures.values()],diagnosticsTruncated:failedSourceFiles.size+(sourceScan && !sourceScan.complete ? 1 : 0)>MAX_SEARCH_DIAGNOSTICS},
         hits,
-      } as any
+      } as any)
+      } catch(error) {
+        recordRuntime({kind:'tool-query',requestId,op:isScroll ? 'around' : 'search',backend,...timings,totalMs:performance.now()-started,outcome:'error',errorCode:(error as {code?:string})?.code ?? 'unknown'})
+        throw error
+      }
     },
   })
 
@@ -1316,11 +1651,11 @@ export function apply(ctx: Context, config: Config): void {
   })
 
   /* ── 工具 5：书签（STAGE-2 Part A：B3 书签导航 + C4 aider 幂等去重）──────── */
-  const bookmarkFile = defaultBookmarkFile(dshHome)
+  const bookmarkFile = join(dataDir, BOOKMARK_FILE_NAME)
   const toolBookmark = defineTool({
     name: 'session_index_bookmark',
     description:
-      '给重要会话点落书签（锚点=sessionId+messageId）并找回。add 同锚点重复写=替换更新（幂等，aider 思想）；list 对会话已不在索引的书签标 stale（不自动删）。跳回链：拿 sessionId（+messageId）后调 session_summary（无 messageId）或 session_index_search 的 SCROLL（session_id+message_id）完成跳回。',
+      '给重要会话点落书签（稳定锚点=sessionId+anchorId）并找回。add 同锚点重复写=替换更新；list 对会话已不在索引的书签标 stale。跳回用 session_summary id=<sessionId>，或 session_index_search SCROLL 的 session_id+anchor_id；messageId 仅兼容旧版书签。',
     parameters: {
       action: {
         type: 'string',
@@ -1331,7 +1666,8 @@ export function apply(ctx: Context, config: Config): void {
       // add / remove 共用：会话 id 或文件路径子串（add 经索引解析，解析失败返回明确错误）
       sessionId: { type: 'string', description: '会话 id 或文件路径子串（add 必填；remove 与 id 二选一）' },
       // add
-      messageId: { type: 'integer', description: '消息锚点 messageId（SCROLL 用；缺省=会话级书签）' },
+      messageId: { type: 'integer', description: '旧版 rowid（无法证明定位时标 unresolved）' },
+      anchorId:{type:'string',description:'稳定消息 anchorId（来自正文搜索）'},
       label: { type: 'string', description: '书签标签；缺省=标题或首条用户消息前 80 字符（确定性，无 LLM）' },
       note: { type: 'string', description: '备注（可选）' },
       // list
@@ -1390,20 +1726,20 @@ export function apply(ctx: Context, config: Config): void {
       render: (_args, v) => {
         const lines: string[] = []
         if (v.action === 'add') {
-          const b = v.bookmark as { id: string; sessionId: string; messageId?: number | null; label: string; note?: string | null }
+          const b = v.bookmark as { id: string; sessionId: string; anchorId?: string; messageId?: number | null; label: string; note?: string | null }
           lines.push(
-            `[bookmark-add] ${v.replaced ? '更新(幂等)' : '新增'} id=${b.id} session=${b.sessionId}${b.messageId != null ? ` message=${b.messageId}` : ''}`,
+            `[bookmark-add] ${v.replaced ? '更新(幂等)' : '新增'} id=${b.id} session=${b.sessionId}${b.anchorId ? ` anchor_id=${b.anchorId}` : b.messageId != null ? ` message_id=${b.messageId}` : ''}`,
           )
           lines.push(` label=${b.label || '(untitled)'}`)
           if (b.note) lines.push(` note=${b.note}`)
-          lines.push('（跳回：session_summary id=<sessionId>；或 session_index_search SCROLL session_id+message_id）')
+          lines.push('（跳回：session_summary id=<sessionId>；消息用 session_index_search 的 session_id+anchor_id，旧版数字锚点才用 message_id）')
         } else if (v.action === 'list') {
           lines.push(
             `[bookmark-list] total=${v.total ?? 0} matched=${v.matched ?? 0} returned=${v.returned ?? 0}${v.indexReady ? '' : ' (index 未就绪，未做 stale 判定)'}${v.skippedBad ? ` skippedBad=${v.skippedBad}` : ''}`,
           )
-          for (const b of (v.bookmarks ?? []) as { id: string; sessionId: string; messageId?: number | null; label: string; note?: string | null; stale?: boolean; updatedAt?: number }[]) {
+          for (const b of (v.bookmarks ?? []) as { id: string; sessionId: string; anchorId?: string; messageId?: number | null; label: string; note?: string | null; stale?: boolean; updatedAt?: number }[]) {
             lines.push(
-              ` ${b.stale ? 'STALE ' : ''}${b.id} | ${b.sessionId}${b.messageId != null ? `#${b.messageId}` : ''} | ${b.label || '(untitled)'}${b.note ? ` | ${b.note}` : ''} | ${new Date(b.updatedAt ?? 0).toISOString()}`,
+              ` ${b.stale ? 'STALE ' : ''}${b.id} | ${b.sessionId}${b.anchorId ? ` anchor_id=${b.anchorId}` : b.messageId != null ? ` message_id=${b.messageId}` : ''} | ${b.label || '(untitled)'}${b.note ? ` | ${b.note}` : ''} | ${new Date(b.updatedAt ?? 0).toISOString()}`,
             )
           }
           if ((v.returned ?? 0) === 0) lines.push('（无书签：action=add 落一个，或用 session_index_search 找锚点）')
@@ -1435,6 +1771,7 @@ export function apply(ctx: Context, config: Config): void {
           sessionId: meta.id,
           sessionFile: meta.file,
           messageId,
+          anchorId:args.anchorId || undefined,
           label: typeof args.label === 'string' && args.label ? args.label : defaultLabel(meta.title, meta.firstUserText),
           note: typeof args.note === 'string' && args.note ? args.note : null,
           title: meta.title,
@@ -1450,10 +1787,13 @@ export function apply(ctx: Context, config: Config): void {
         const indexReady = !!idx
         const matched = bookmarks.filter((b) => bookmarkMatches(b, q))
         const sorted = sortBookmarks(matched).slice(0, limit)
-        const items = sorted.map((b) => {
-          const stale = indexReady ? !findSession(idx!, b.sessionId) : false
-          return { ...b, stale }
-        })
+        const items = await Promise.all(sorted.map(async b=>{
+          const stale=indexReady ? !findSession(idx!,b.sessionId) : false
+          const location=b.anchorId && fts?.ok && !stale ? await fts.around(b.sessionId,b.anchorId,1) : null
+          return {...b,stale,anchorAvailable:location?.ok ?? (!b.anchorId && b.messageId==null && !stale),
+            anchorStatus:location && !location.ok ? 'unresolved':b.anchorStatus,
+            unresolvedReason:location && !location.ok ? location.reason:b.unresolvedReason}
+        }))
         return {
           action: 'list',
           file: bookmarkFile,
@@ -1486,10 +1826,16 @@ export function apply(ctx: Context, config: Config): void {
   ctx.effect(
     () => () => {
       abortController.abort()
+      for (const cancelWait of startupWaits) cancelWait()
       clearDeferTimer()
+      clearLaggingPolling()
+      if (fallbackTimer) clearInterval(fallbackTimer)
+      fallbackTimer = null
       watcher.close()
       builder.dispose()
-      fts?.close()
+      const closingFts = fts?.close().catch(error => log(`[session-index] FTS close failed: ${String(error)}`))
+      // 工厂尚未返回时，初始化链会关闭迟到连接；卸载完成必须等待该链结束。
+      return Promise.all([closingFts, ftsInitialization]).then(() => {})
     },
     '@dsh-external/dsh-session-index: build cleanup',
   )

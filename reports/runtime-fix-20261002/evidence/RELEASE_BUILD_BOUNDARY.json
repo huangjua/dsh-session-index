@@ -1,0 +1,10 @@
+{
+  "candidate": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\release\\RUNTIME-20261002",
+  "configPath": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\evidence\\RELEASE_BUILD_CONFIG_VERIFIED.json",
+  "node": "v24.16.0",
+  "sourceFiles": 22,
+  "sourceDigest": "0d848e99e0f285d561842a610b39468e144b83557295552529b0ab63be4f8277",
+  "runtimeDigest": "d1d8ee4da8245483e3f1ff2cdb930ed1ebe4d1da94607c86b2db93d529e3acd8",
+  "scope": "copied verified source; locked work dependencies; no G build; portable template excluded from deployment",
+  "generatedAt": "2026-10-02T15:37:07.646Z"
+}

@@ -1,0 +1,103 @@
+DSH session-index 当前实施状态（2026-10-02，S6最终候选；S7待具体授权）
+
+本轮仅推进S6–S7范围，未重做S0–S5。
+S0–S6已完成：14项关闭证据逐项核对，当前165次测试执行全部通过，13项候选迁移演练通过。
+S7：候选/运行范围/runbook已具体化，生产部署、生产迁移、宿主停止/重启尚未获此候选授权，因此未执行。
+工作树 E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index
+分支 review/session-index-hardening；HEAD/基线70800ed7be77b31527a955ea2f6cc6a750dafef8；未提交diff、未push。
+候选0.0.3-rc.1：release/S6-20261002（CANDIDATE.json、SHA256.json、SOURCE_SHA256.json）。
+代码：FTS schema5，bookmarks v2兼读v1，parser checkpoint session-index/3-chunks，anchorId与rowid分离。
+书签是用户数据；旧numeric不是seq，缺证据的6条合成消息定位保留未解；生产数量未知。
+
+关闭矩阵（当前状态覆盖旧交接中的“待S3/S4/S5”历史文字）
+#01 已关闭：LIKE OR 范围过滤
+实现：src/fts.ts
+回归：test/fts-filter-safety.test.ts
+行为：OR各词整体受workspace/role/时间约束
+下一步：候选获批后S7生产验收，不重复实施。
+
+#02 已关闭：FTS原子替换与恢复
+实现：src/fts.ts; src/session-index-builder.ts; src/index.ts
+回归：test/fts-recovery.test.ts; test/builder-fts-sync.test.ts; test/index-fts-recovery.test.ts
+行为：故障保留旧正文/checkpoint，dirty重试，独立进程SQL锁竞争
+下一步：候选获批后S7生产验收，不重复实施。
+
+#03 已关闭：稳定消息锚点
+实现：src/message-anchor.ts; src/bookmark.ts
+回归：test/session-message-contract.test.ts; test/stage-search-integration.test.ts; test/s6-release-flow.test.ts
+行为：generation0..4；delta/force/restart/删派生副本重建后书签仍可用
+下一步：候选获批后S7生产验收，不重复实施。
+
+#04 已关闭：跨进程书签互斥
+实现：src/sidecar.ts; src/bookmark.ts
+回归：test/bookmark-multiprocess.test.ts
+行为：rename barrier交错add/remove、owner崩溃/活锁/旧token
+下一步：候选获批后S7生产验收，不重复实施。
+
+#05 已关闭：完整正文覆盖
+实现：src/streaming-parser.ts; src/fts.ts
+回归：test/fts-message-contract.test.ts; test/session-message-contract.test.ts; test/s6-release-flow.test.ts
+行为：头中尾、跨块AND、Unicode、长词、50k与正文预算明确诊断
+下一步：候选获批后S7生产验收，不重复实施。
+
+#06 已关闭：lineage代表元组
+实现：src/index.ts
+回归：test/stage-search-integration.test.ts; test/rank-integration.test.ts
+行为：实际sessionId/file/workspace/anchor/snippet/rank同源
+下一步：候选获批后S7生产验收，不重复实施。
+
+#07 已关闭：不完整扫描保护
+实现：src/core.ts; src/session-index-builder.ts
+回归：test/scan-safety.test.ts
+行为：根/子树/stat失败/cap保留旧索引；完整空目录确认删除
+下一步：候选获批后S7生产验收，不重复实施。
+
+#08 已关闭：启动/监听指纹对账
+实现：src/index.ts; src/watcher.ts
+回归：test/index.test.ts; test/reconcile-same-size.test.ts; test/watcher.test.ts
+行为：停机追加、等量替换、同大小改写、watch失败/迟到初始化
+下一步：候选获批后S7生产验收，不重复实施。
+
+#09 已关闭：会话级召回
+实现：src/fts.ts; src/index.ts
+回归：test/fts-message-contract.test.ts; test/rank-integration.test.ts
+行为：40/500重复消息不挤掉其他会话；totalExact/hasMore
+下一步：候选获批后S7生产验收，不重复实施。
+
+#10 已关闭：role和多词口径
+实现：src/query-plan.ts; src/session-worker.ts; src/worker-pool.ts
+回归：test/session-message-contract.test.ts; test/stage-search-integration.test.ts
+行为：role截断前过滤；原消息AND；全局零AND才OR；FTS开关一致
+下一步：候选获批后S7生产验收，不重复实施。
+
+#11 已关闭：SCROLL会话内窗口
+实现：src/fts.ts
+回归：test/fts-message-contract.test.ts; test/s6-release-flow.test.ts
+行为：A/B/A穿插按会话前后N原消息；错误session/过期锚点拒绝
+下一步：候选获批后S7生产验收，不重复实施。
+
+#12 已关闭：来源顺序
+实现：src/streaming-parser.ts; src/session-compat.ts
+回归：test/session-message-contract.test.ts; test/s6-release-flow.test.ts
+行为：fold后按来源seq排序；full/delta user→tool→assistant一致
+下一步：候选获批后S7生产验收，不重复实施。
+
+#13 已关闭：实际增量尾段I/O
+实现：src/native-zstd.ts
+回归：test/native-zstd.test.ts; test/s6-release-flow.test.ts
+行为：实际读取/分配尾帧；1/16/64MiB前缀15次均32B（继承S5基准）
+下一步：候选获批后S7生产验收，不重复实施。
+
+#14 已关闭：SQLite后台worker
+实现：src/fts-client.ts; src/fts-worker.ts; src/fts-spool.ts
+回归：test/fts-client.test.ts
+行为：有界RPC/背压/错误/重启/关闭；S5五轮max gap≤100ms与50k压力继承
+下一步：候选获批后S7生产验收，不重复实施。
+
+验证与证据
+TEST_RESULTS/S6_VALIDATION.json：当前测试/环境/13项迁移/原始失败与精准修复。
+BENCHMARK_RESULTS/S3-S5_PERFORMANCE.json：继承22文件相同SHA的S5性能，未重复跑基准。
+PATCHES/S6：独立FULL-S0-S6与按原S0–S5后应用的S6增量，均fresh clone重放核验。
+RELEASE_READINESS.txt：候选边界；DEPLOYMENT_RUNBOOK.txt：具体部署/迁移/备份/回滚；HANDOFF_S6_S7.txt：接续。
+G区68个src/lib SHA、HEAD/status与desktop junction不变；生产数据未读取/修改，未重启宿主。
+旧S0–S2、S3–S5交接文件/补丁/失败日志原样保留，不将历史通过算成本轮执行。

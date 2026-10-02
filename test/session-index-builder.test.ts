@@ -16,6 +16,7 @@ import { SessionIndexBuilder } from '../src/session-index-builder.js'
 import { RunMarker } from '../src/atomic-write.js'
 import { loadIndex, saveIndex } from '../src/core.js'
 import type { WorkerTaskSpec } from '../src/worker-pool.js'
+import type { FullSummary } from '../src/streaming-parser.js'
 import { alpha3Assistant, alpha3EventJson, alpha3Jsonl, alpha3ToolCall, alpha3User, type Alpha3Event } from './support/alpha3-log.js'
 
 const FIXTURES = fileURLToPath(new URL('../../test/fixtures', import.meta.url))
@@ -467,6 +468,35 @@ describe('SessionIndexBuilder alpha.3 变更文件安全重解析', () => {
     return specs
   }
 
+  /**
+   * C9b：捕获 spec **+ 结果**。旧用例只断言"派发过 delta 任务"，而 delta 当时
+   * 恒失败（窗口无 header）→ 假绿。增量是否真正生效只能看结果的 ok/lastSeq。
+   */
+  function captureRuns(b: SessionIndexBuilder): {
+    mode: string
+    startOffset?: number
+    delta?: boolean
+    ok?: boolean
+    error?: string
+    lastSeq?: number
+  }[] {
+    const runs: { mode: string; startOffset?: number; delta?: boolean; ok?: boolean; error?: string; lastSeq?: number }[] = []
+    const origRun = b.pool.run.bind(b.pool)
+    b.pool.run = (async (spec: WorkerTaskSpec, signal?: AbortSignal) => {
+      const r = await origRun(spec, signal)
+      runs.push({
+        mode: spec.mode,
+        startOffset: spec.startOffset,
+        delta: spec.delta,
+        ok: r.ok,
+        error: r.ok ? undefined : r.error,
+        lastSeq: r.ok ? (r.data as FullSummary | undefined)?.lastSeq : undefined,
+      })
+      return r
+    }) as typeof b.pool.run
+    return runs
+  }
+
   it('追加帧 → 全量重解析（counts/lastTime/lastText/indexedBytes/workspace 保留）', async () => {
     const sb = await makeSandbox()
     try {
@@ -492,9 +522,10 @@ describe('SessionIndexBuilder alpha.3 变更文件安全重解析', () => {
       const st = await stat(target)
 
       specs.length = 0
-      const rep2 = await b.build()
+      // C9：本用例锁定"全量重解析"契约（delta 关闭开关下的行为）
+      const rep2 = await b.build({ deltaEnabled: false })
       assert.equal(rep2.status, 'completed')
-      // alpha.3 的 replacement 可能跨越早期帧，必须全量重扫。
+      // alpha.3 的 replacement 可能跨越早期帧，必须全量重扫（deltaEnabled=false）。
       const fullSpec = specs.find((s) => s.mode === 'full')
       assert.ok(fullSpec, 'full task dispatched')
       assert.equal(fullSpec!.delta, false)
@@ -516,6 +547,251 @@ describe('SessionIndexBuilder alpha.3 变更文件安全重解析', () => {
       await b.build({ force: true })
       const forceSpec = specs.find((s) => s.mode === 'full')
       assert.equal(forceSpec!.delta, false)
+    } finally {
+      await rm(sb.root, { recursive: true, force: true })
+    }
+  })
+
+  it('C9 delta：纯 append 帧走增量（startOffset=indexedBytes），结果与全量一致', async () => {
+    const sb = await makeSandbox()
+    try {
+      const target = await addSession(sb.sessions, 's1')
+      const b = makeBuilder(sb.sessions, sb.indexFile)
+      builders.push(b)
+      const runs = captureRuns(b)
+
+      const rep1 = await b.build()
+      assert.equal(rep1.status, 'completed')
+      const before = loadIndex(sb.indexFile)!.sessions.find((s) => s.file.includes('s1'))!
+      const indexed0 = before.indexedBytes ?? 0
+      assert.ok(indexed0 > 0, '首建应写入 indexedBytes')
+      assert.ok(before.indexedSeq !== undefined, '首建应写入 indexedSeq（delta 播种所需）')
+
+      // 追加一帧：1 user + 1 assistant（时间戳晚于夹具既有 lastTime）
+      await appendFrame(target, 26, [
+        alpha3User('增量追加问题', 'delta-user', 1786900000000),
+        alpha3Assistant('增量追加回答', 'delta-assistant', 1786900001000),
+      ])
+      const st = await stat(target)
+
+      runs.length = 0
+      const rep2 = await b.build() // delta 默认开启
+      assert.equal(rep2.status, 'completed')
+      const full = runs.find((s) => s.mode === 'full')
+      assert.ok(full, 'full task dispatched')
+      assert.equal(full!.delta, true, '纯 append 追加应走增量')
+      assert.equal(full!.startOffset, indexed0, '增量起点应为上次 indexedBytes')
+      // C9b 关键断言（旧用例缺失 → 假绿）：增量必须**真的成功**。
+      // 此前窗口无 header，delta 恒失败并静默回退全量，只断言"派发过"就会误判为通过。
+      assert.equal(full!.ok, true, `增量解析必须成功，实际 error=${full!.error}`)
+      assert.ok(
+        !runs.some((s) => s.delta === false && s.startOffset === 0),
+        '不应出现全量回退',
+      )
+      assert.equal(full!.lastSeq, 27, '增量窗口应解到新增帧的最后一个 seq')
+
+      const after = loadIndex(sb.indexFile)!.sessions.find((s) => s.file.includes('s1'))!
+      // 结果与全量重解析等价：计数累加、lastTime/lastText 更新、indexedBytes 前进
+      assert.equal(after.counts['user/message'], before.counts['user/message'] + 1)
+      assert.equal(after.counts['assistant/message'], (before.counts['assistant/message'] ?? 0) + 1)
+      assert.equal(after.lastTime, 1786900001000)
+      assert.ok(after.lastAssistantText.includes('增量追加回答'))
+      assert.equal(after.indexedBytes, st.size)
+      assert.equal(after.indexedSeq, 27, 'indexedSeq 应推进到新增帧末尾')
+      assert.equal(after.id, before.id) // first-wins：header 帧字段保留
+      assert.equal(after.workspace, before.workspace)
+    } finally {
+      await rm(sb.root, { recursive: true, force: true })
+    }
+  })
+
+  it('C9b delta：跨窗口 replace（引用窗口外旧 seq）→ 结构性失败 → 全量回退，结果正确', async () => {
+    const sb = await makeSandbox()
+    try {
+      const target = await addSession(sb.sessions, 's1')
+      const b = makeBuilder(sb.sessions, sb.indexFile)
+      builders.push(b)
+      const runs = captureRuns(b)
+
+      const rep1 = await b.build()
+      assert.equal(rep1.status, 'completed')
+      const before = loadIndex(sb.indexFile)!.sessions.find((s) => s.file.includes('s1'))!
+
+      // 追加帧里的 replace 引用**窗口外**的旧 seq 7（夹具里已索引的 user 消息）。
+      // 窗口 surface 数组不含 seq 7 → foldSurface 找不到 start/end → 抛错 →
+      // 走 !r.ok 全量回退。这是 C9b 的兜底：跨窗口替换不需要额外标记字段。
+      const replaceEvent: Alpha3Event = {
+        ...alpha3User('跨窗口替身消息', 'cross-user', 1786900007000),
+        surfaceOp: { op: 'replace', start: 7, end: 7 },
+        sourceEventSeqs: [7],
+      }
+      await appendFrame(target, 26, [
+        replaceEvent,
+        alpha3Assistant('跨窗口后的回答', 'cross-assistant', 1786900008000),
+      ])
+      const st = await stat(target)
+
+      runs.length = 0
+      const rep2 = await b.build()
+      assert.equal(rep2.status, 'completed')
+      const fulls = runs.filter((s) => s.mode === 'full')
+      // 回退链：先尝试 delta（失败）→ 再以 startOffset=0 全量重解析（成功）
+      assert.ok(
+        fulls.some((s) => s.delta === true && s.ok === false)
+        && fulls.some((s) => s.delta === false && s.startOffset === 0 && s.ok === true),
+        `应出现 delta 失败 + 全量回退，实际 ${JSON.stringify(fulls)}`,
+      )
+
+      const after = loadIndex(sb.indexFile)!.sessions.find((s) => s.file.includes('s1'))!
+      assert.equal(after.lastTime, 1786900008000)
+      assert.ok(after.lastAssistantText.includes('跨窗口后的回答'))
+      assert.equal(after.indexedBytes, st.size)
+      assert.equal(after.indexedSeq, 27)
+      // counts 按事件计数：追加帧 1 条 user（替身）+ 1 条 assistant
+      assert.equal(after.counts['user/message'], before.counts['user/message'] + 1)
+      assert.equal(after.counts['assistant/message'], (before.counts['assistant/message'] ?? 0) + 1)
+    } finally {
+      await rm(sb.root, { recursive: true, force: true })
+    }
+  })
+
+  it('C9b delta：多轮增量累加后与"强制全量重解析"逐字段一致', async () => {
+    const sb = await makeSandbox()
+    try {
+      const target = await addSession(sb.sessions, 's1')
+      const b = makeBuilder(sb.sessions, sb.indexFile)
+      builders.push(b)
+
+      await b.build()
+
+      // 连续三轮追加，每轮都走增量（模拟活跃会话被 watcher 反复重建）
+      await appendFrame(target, 26, [
+        alpha3User('第一轮问题', 'r1-user', 1786900000000),
+        alpha3Assistant('第一轮回答', 'r1-assistant', 1786900001000),
+      ])
+      await b.build()
+      await appendFrame(target, 28, [
+        alpha3ToolCall('grep', 'r2-tool', 1786900002000),
+        alpha3User('第二轮问题', 'r2-user', 1786900003000),
+      ])
+      await b.build()
+      await appendFrame(target, 30, [
+        alpha3Assistant('第三轮回答', 'r3-assistant', 1786900004000),
+        { type: 'session/title', time: 1786900005000, data: { title: '三轮后的标题' } },
+      ])
+      const rep = await b.build()
+      assert.equal(rep.status, 'completed')
+      assert.equal(rep.deltaParsed, 1, '第三轮应走增量')
+      assert.equal(rep.deltaFallbacks ?? 0, 0, '不应有回退')
+
+      const inc = loadIndex(sb.indexFile)!.sessions.find((s) => s.file.includes('s1'))!
+
+      // 同一文件另起一个索引做"强制全量"，逐字段对比。
+      // 这条断言是本次修复的核心回归网：旧实现里 delta 恒失败并静默回退，
+      // 只断言"派发过 delta 任务"的用例无法发现结果层面的一致性丧失。
+      const bFull = makeBuilder(sb.sessions, join(sb.root, 'index-full.json'))
+      builders.push(bFull)
+      await bFull.build({ force: true })
+      const full = loadIndex(join(sb.root, 'index-full.json'))!.sessions.find((s) => s.file.includes('s1'))!
+
+      for (const key of ['counts', 'toolCallCounts', 'lastTime', 'title', 'firstUserText',
+        'lastAssistantText', 'indexedSeq', 'indexedBytes', 'size', 'createdAt', 'id'] as const) {
+        assert.deepEqual(inc[key], full[key], `${key} 应与全量重解析一致`)
+      }
+    } finally {
+      await rm(sb.root, { recursive: true, force: true })
+    }
+  })
+
+  it('C9 delta：窗口内出现 surface 替换 → 保守回退全量，结果仍正确', async () => {
+    const sb = await makeSandbox()
+    try {
+      const target = await addSession(sb.sessions, 's1')
+      const b = makeBuilder(sb.sessions, sb.indexFile)
+      builders.push(b)
+      const runs = captureRuns(b)
+
+      const rep1 = await b.build()
+      assert.equal(rep1.status, 'completed')
+      const before = loadIndex(sb.indexFile)!.sessions.find((s) => s.file.includes('s1'))!
+
+      // 追加一帧：含 surface 替换，替换**窗口内**刚追加的那条 user 消息（seq 26）。
+      // 增量视图其实能解析成功（start/end 都在窗口内），但 hadSurfaceReplace 是
+      // 保守判据：replace 可能遮蔽窗口外旧帧 → 一律回退全量。
+      // 实测代价可忽略：24 个真实会话 1,145,638 事件里仅 13 次 replace（0.0011%）。
+      const replaceEvent: Alpha3Event = {
+        ...alpha3User('压缩后的替身消息', 'rep-user', 1786900005500),
+        surfaceOp: { op: 'replace', start: 26, end: 26 },
+        sourceEventSeqs: [26],
+      }
+      await appendFrame(target, 26, [
+        alpha3User('将被替换的原消息', 'orig-user', 1786900005000),
+        replaceEvent,
+        alpha3Assistant('替换后的回答', 'rep-assistant', 1786900006000),
+      ])
+      const st = await stat(target)
+
+      runs.length = 0
+      const rep2 = await b.build()
+      assert.equal(rep2.status, 'completed')
+      const fulls = runs.filter((s) => s.mode === 'full')
+      assert.ok(fulls.length >= 1, '应至少派发一次 full 任务')
+      // 回退链：先尝试 delta（成功但带 hadSurfaceReplace 标记）→ 再全量重解析
+      assert.ok(
+        fulls.some((s) => s.delta === true && s.ok === true)
+        && fulls.some((s) => s.delta === false && s.startOffset === 0 && s.ok === true),
+        `应出现 delta 尝试 + 全量回退，实际 ${JSON.stringify(fulls)}`,
+      )
+
+      const after = loadIndex(sb.indexFile)!.sessions.find((s) => s.file.includes('s1'))!
+      assert.equal(after.lastTime, 1786900006000)
+      assert.ok(after.lastAssistantText.includes('替换后的回答'))
+      assert.equal(after.indexedBytes, st.size)
+      // counts 按事件计数：追加帧里 2 条 user/message（原消息 + 替换它的替身）
+      assert.equal(after.counts['user/message'], before.counts['user/message'] + 2)
+      assert.equal(after.counts['assistant/message'], (before.counts['assistant/message'] ?? 0) + 1)
+    } finally {
+      await rm(sb.root, { recursive: true, force: true })
+    }
+  })
+
+  it('C9b delta：旧索引缺 indexedSeq → 不启用增量（先全量补齐，再增量）', async () => {
+    const sb = await makeSandbox()
+    try {
+      const target = await addSession(sb.sessions, 's1')
+      const b = makeBuilder(sb.sessions, sb.indexFile)
+      builders.push(b)
+      const runs = captureRuns(b)
+
+      await b.build()
+      // 模拟 P0/P1 时代的旧索引条目：有 indexedBytes 但没有 indexedSeq。
+      // 没有窗口起点就无法播种 expectedSeq → 必须全量，否则窗口首事件 seq 对不上。
+      const idx = loadIndex(sb.indexFile)!
+      const s1 = idx.sessions.find((s) => s.file.includes('s1'))!
+      delete s1.indexedSeq
+      saveIndex(sb.indexFile, idx)
+
+      await appendFrame(target, 26, [
+        alpha3User('旧索引补齐问题', 'legacy-user', 1786900000000),
+      ])
+
+      runs.length = 0
+      await b.build()
+      const full = runs.find((s) => s.mode === 'full')
+      assert.equal(full!.delta, false, '缺 indexedSeq 时不得启用增量')
+      assert.equal(full!.startOffset, 0)
+      const after = loadIndex(sb.indexFile)!.sessions.find((s) => s.file.includes('s1'))!
+      assert.ok(after.indexedSeq !== undefined, '全量补齐后应写回 indexedSeq')
+
+      // 补齐后下一次变更即可走增量
+      await appendFrame(target, 27, [
+        alpha3User('补齐后的增量问题', 'legacy-user-2', 1786900002000),
+      ])
+      runs.length = 0
+      await b.build()
+      const inc = runs.find((s) => s.mode === 'full')
+      assert.equal(inc!.delta, true, '补齐 indexedSeq 后应恢复增量')
+      assert.equal(inc!.ok, true, `增量应成功，实际 error=${inc!.error}`)
     } finally {
       await rm(sb.root, { recursive: true, force: true })
     }
@@ -548,7 +824,8 @@ describe('SessionIndexBuilder alpha.3 变更文件安全重解析', () => {
       const st = await stat(target)
 
       specs.length = 0
-      const rep2 = await b.build()
+      // C9：本用例锁定全量路径（delta 关闭）
+      const rep2 = await b.build({ deltaEnabled: false })
       assert.equal(rep2.status, 'completed')
       // replacement 的跨帧影响要求从头解析。
       const fullSpec = specs.find((s) => s.mode === 'full')
@@ -625,7 +902,7 @@ describe('SessionIndexBuilder alpha.3 变更文件安全重解析', () => {
     }
   })
 
-  it('尾帧截断（mid-write）→ 全量解析失败，旧条目保留 + error 记录', async () => {
+  it('尾帧截断（mid-write）→ degraded/raced，保留旧完整快照供有界追平', async () => {
     const sb = await makeSandbox()
     try {
       const target = await addSession(sb.sessions, 's1')
@@ -642,13 +919,19 @@ describe('SessionIndexBuilder alpha.3 变更文件安全重解析', () => {
       assert.ok(st.size > size0)
 
       const rep = await b.build()
-      assert.equal(rep.status, 'completed')
-      assert.ok(rep.failed >= 1, `failed=${rep.failed}`)
+      assert.equal(rep.status, 'degraded')
+      assert.equal(rep.failed, 0)
+      assert.equal(rep.raced, 1)
       const after = loadIndex(sb.indexFile)!.sessions.find((s) => s.file.includes('s1'))!
       // 旧条目保留（含旧 indexedBytes），不写入半帧数据
       assert.equal(after.counts['user/message'], before.counts['user/message'])
       assert.equal(after.indexedBytes, size0)
-      assert.ok(after.error)
+      assert.equal(after.error, before.error)
+      assert.equal(after.unindexable, before.unindexable)
+      assert.equal(after.size, before.size)
+      assert.equal(after.mtimeMs, before.mtimeMs)
+      assert.equal(after.ctimeMs, before.ctimeMs)
+      assert.equal(after.raced, true)
     } finally {
       await rm(sb.root, { recursive: true, force: true })
     }
@@ -674,7 +957,8 @@ describe('SessionIndexBuilder alpha.3 变更文件安全重解析', () => {
       assert.ok(calls[0].n > 0, '首建应收集到消息行')
       assert.equal(loadIndex(sb.indexFile)!.sessions.length, 1)
 
-      // 变更后全量重解析：FTS 侧必须替换该会话的全部消息，而非追加局部帧。
+      // 纯 append 变更：C9b 起 delta 真正生效 → FTS 侧只追加新帧消息（append=true），
+      // 而不是替换全部历史行。这正是增量要省的重复写入。
       await appendFrame(target, 26, [
         alpha3User('FTS增量消息', 'fts-user', 1786900000000),
       ])
@@ -688,8 +972,8 @@ describe('SessionIndexBuilder alpha.3 变更文件安全重解析', () => {
       })
       assert.equal(rep2.status, 'completed')
       assert.equal(calls.length, 1)
-      assert.equal(calls[0].append, false)
-      assert.ok(calls[0].n > 1, '全量重解析应包含历史和新帧消息')
+      assert.equal(calls[0].append, true, '纯 append 走增量 → FTS 追加而非替换')
+      assert.ok(calls[0].n >= 1, '增量窗口应收集到新帧消息')
     } finally {
       await rm(sb.root, { recursive: true, force: true })
     }
@@ -729,7 +1013,7 @@ describe('SessionIndexBuilder alpha.3 变更文件安全重解析', () => {
         alpha3User('x', 'force-user', 1786905000000),
       ])
       specs.length = 0
-      const pIncr = b.build() // 在飞普通构建（同样是安全全量重解析）
+      const pIncr = b.build({ deltaEnabled: false }) // 在飞普通构建（同样是安全全量重解析）
       const pForce = b.build({ force: true }) // 撞上在飞 → 应排队补跑
       assert.notEqual(pIncr, pForce, 'force 请求不得被单飞吸收')
       const rForce = await pForce

@@ -1,0 +1,416 @@
+[
+  {
+    "path": "README.md",
+    "expected": "a5819c5a0249319aa3bfdf26cddb0cd0cd9d122c78b681a868a202a7d97a30f2",
+    "actual": "a5819c5a0249319aa3bfdf26cddb0cd0cd9d122c78b681a868a202a7d97a30f2",
+    "match": true
+  },
+  {
+    "path": "README_zh.md",
+    "expected": "6a015bc41f31270b225c3ce429f8b1faf6cda8e1ee13a2256dd32081ac0dde91",
+    "actual": "6a015bc41f31270b225c3ce429f8b1faf6cda8e1ee13a2256dd32081ac0dde91",
+    "match": true
+  },
+  {
+    "path": "lib/atomic-write.js",
+    "expected": "8f7ede4657c9515eb6faf0e6372853bc92479ec10883ccb2e626cdfa01921e3c",
+    "actual": "8f7ede4657c9515eb6faf0e6372853bc92479ec10883ccb2e626cdfa01921e3c",
+    "match": true
+  },
+  {
+    "path": "lib/atomic-write.js.map",
+    "expected": "892fa3246c444462cbe5074cbf617e40bd77d6af4c30dc2832574f1c3f214933",
+    "actual": "892fa3246c444462cbe5074cbf617e40bd77d6af4c30dc2832574f1c3f214933",
+    "match": true
+  },
+  {
+    "path": "lib/bookmark.js",
+    "expected": "7aaa44927ab6335c8d56b4c209e376a72f410c01861f3a9774256ff9b8dc38f9",
+    "actual": "7aaa44927ab6335c8d56b4c209e376a72f410c01861f3a9774256ff9b8dc38f9",
+    "match": true
+  },
+  {
+    "path": "lib/bookmark.js.map",
+    "expected": "202b32c9e5b4a9e0239c88b0ed8ceb7921e05b711a413b31383390c9792f59f8",
+    "actual": "202b32c9e5b4a9e0239c88b0ed8ceb7921e05b711a413b31383390c9792f59f8",
+    "match": true
+  },
+  {
+    "path": "lib/cancel.js",
+    "expected": "a408ae76f7c4b0118c289268b45fe34a035c92f3721dfce19b68e9783ede2712",
+    "actual": "a408ae76f7c4b0118c289268b45fe34a035c92f3721dfce19b68e9783ede2712",
+    "match": true
+  },
+  {
+    "path": "lib/cancel.js.map",
+    "expected": "033eaebaa21bad8acecebbccedc23308727904c4f71ea4ac44e0c014d3b62341",
+    "actual": "033eaebaa21bad8acecebbccedc23308727904c4f71ea4ac44e0c014d3b62341",
+    "match": true
+  },
+  {
+    "path": "lib/core.js",
+    "expected": "f6e42f450ce5dab313be248f9c289e82950aa5c9b3c235b5d5fd74840b4cda98",
+    "actual": "f6e42f450ce5dab313be248f9c289e82950aa5c9b3c235b5d5fd74840b4cda98",
+    "match": true
+  },
+  {
+    "path": "lib/core.js.map",
+    "expected": "9a0a16eacbdb18020884f38f02a4e5d6ae6601564008a8d5961de5e85eafc6b1",
+    "actual": "9a0a16eacbdb18020884f38f02a4e5d6ae6601564008a8d5961de5e85eafc6b1",
+    "match": true
+  },
+  {
+    "path": "lib/fts-client.js",
+    "expected": "0b3fffc6793b362b736259483455432834a1a2e7a7e2c4f3237be7283e23e7af",
+    "actual": "0b3fffc6793b362b736259483455432834a1a2e7a7e2c4f3237be7283e23e7af",
+    "match": true
+  },
+  {
+    "path": "lib/fts-client.js.map",
+    "expected": "6600481cc38ed3967b05f269b11118b4da550328c1c9ceb727d8d6422e988da7",
+    "actual": "6600481cc38ed3967b05f269b11118b4da550328c1c9ceb727d8d6422e988da7",
+    "match": true
+  },
+  {
+    "path": "lib/fts-spool.js",
+    "expected": "974dba6d8a5261ead9c9ab07c78d7c00c5de34bab2c13e67ded8dbb74d33fabf",
+    "actual": "974dba6d8a5261ead9c9ab07c78d7c00c5de34bab2c13e67ded8dbb74d33fabf",
+    "match": true
+  },
+  {
+    "path": "lib/fts-spool.js.map",
+    "expected": "a13166c3e8abedcede37be49e84505aebf4f3df6395ff2cd2fb99454127bcc93",
+    "actual": "a13166c3e8abedcede37be49e84505aebf4f3df6395ff2cd2fb99454127bcc93",
+    "match": true
+  },
+  {
+    "path": "lib/fts-worker.js",
+    "expected": "ecd64008016424e5e78a60f7f774a4299faed192f8a9def1fdb8d6e353aa4721",
+    "actual": "ecd64008016424e5e78a60f7f774a4299faed192f8a9def1fdb8d6e353aa4721",
+    "match": true
+  },
+  {
+    "path": "lib/fts-worker.js.map",
+    "expected": "3fda1421fd078b7429b21c5b9b71c827761e66eb5ffa9ddb053bfa403edab7ae",
+    "actual": "3fda1421fd078b7429b21c5b9b71c827761e66eb5ffa9ddb053bfa403edab7ae",
+    "match": true
+  },
+  {
+    "path": "lib/fts.js",
+    "expected": "42507d088099ae0fb5f4561b1b3a8c74e6721171594fb0d239c17dfc134cea8d",
+    "actual": "42507d088099ae0fb5f4561b1b3a8c74e6721171594fb0d239c17dfc134cea8d",
+    "match": true
+  },
+  {
+    "path": "lib/fts.js.map",
+    "expected": "3c19c9a32417fbb85ed82474c9ad20601d078eb10951f0f47e93a5f3129ab187",
+    "actual": "3c19c9a32417fbb85ed82474c9ad20601d078eb10951f0f47e93a5f3129ab187",
+    "match": true
+  },
+  {
+    "path": "lib/index.js",
+    "expected": "2c296c8ef30fa067461e85966e0d4f20eacf7798ebdf19de11be7853524d4440",
+    "actual": "2c296c8ef30fa067461e85966e0d4f20eacf7798ebdf19de11be7853524d4440",
+    "match": true
+  },
+  {
+    "path": "lib/index.js.map",
+    "expected": "675fbbad9a531a0ca950a8bf7bd9b2e0ee19fb42e7bfddb3d37cb9e9cf707302",
+    "actual": "675fbbad9a531a0ca950a8bf7bd9b2e0ee19fb42e7bfddb3d37cb9e9cf707302",
+    "match": true
+  },
+  {
+    "path": "lib/llm-summary.js",
+    "expected": "1fd482a767c6f09ccd3b917fbb50dd3b3b2cea063c52214592e8969864182d58",
+    "actual": "1fd482a767c6f09ccd3b917fbb50dd3b3b2cea063c52214592e8969864182d58",
+    "match": true
+  },
+  {
+    "path": "lib/llm-summary.js.map",
+    "expected": "20447d0e0f258b550cf80514bd1d8900408921b645979850c69e9888e33d0189",
+    "actual": "20447d0e0f258b550cf80514bd1d8900408921b645979850c69e9888e33d0189",
+    "match": true
+  },
+  {
+    "path": "lib/message-anchor.js",
+    "expected": "61e5a085f29578fbc75073bb6fd6f4218e94d07429924784fdf9530aa4750fb6",
+    "actual": "61e5a085f29578fbc75073bb6fd6f4218e94d07429924784fdf9530aa4750fb6",
+    "match": true
+  },
+  {
+    "path": "lib/message-anchor.js.map",
+    "expected": "7053c10dee32aa80fefd9ed6c593f2f7dd2d60def8ed7bcc8a6d8c70c3a53e1f",
+    "actual": "7053c10dee32aa80fefd9ed6c593f2f7dd2d60def8ed7bcc8a6d8c70c3a53e1f",
+    "match": true
+  },
+  {
+    "path": "lib/native-zstd.js",
+    "expected": "2a30234be3987e13b508299a3d0f4743a66ced1e40c049eda6a12633f69c57d9",
+    "actual": "2a30234be3987e13b508299a3d0f4743a66ced1e40c049eda6a12633f69c57d9",
+    "match": true
+  },
+  {
+    "path": "lib/native-zstd.js.map",
+    "expected": "68fde16ec7675ffa2838e886ff704fe9e6ed8eb93c18b9eb499b3f27442c9ad1",
+    "actual": "68fde16ec7675ffa2838e886ff704fe9e6ed8eb93c18b9eb499b3f27442c9ad1",
+    "match": true
+  },
+  {
+    "path": "lib/query-plan.js",
+    "expected": "9481b296eaa6cfaf31b57b15c1a381b67e2309cde484d2f61093c7570252fd29",
+    "actual": "9481b296eaa6cfaf31b57b15c1a381b67e2309cde484d2f61093c7570252fd29",
+    "match": true
+  },
+  {
+    "path": "lib/query-plan.js.map",
+    "expected": "bcac59fdcd2769d45a6b11902729cd284c326e7cbb515ca3c2988a5f4f4651e9",
+    "actual": "bcac59fdcd2769d45a6b11902729cd284c326e7cbb515ca3c2988a5f4f4651e9",
+    "match": true
+  },
+  {
+    "path": "lib/rank.js",
+    "expected": "5d701230aae37458c1671b70964eb47ed795a5ae103c52496d72bb961be805ad",
+    "actual": "5d701230aae37458c1671b70964eb47ed795a5ae103c52496d72bb961be805ad",
+    "match": true
+  },
+  {
+    "path": "lib/rank.js.map",
+    "expected": "838d1268d20aa356d18867623472ea2649276ed8865d6bd711b84125428b93c0",
+    "actual": "838d1268d20aa356d18867623472ea2649276ed8865d6bd711b84125428b93c0",
+    "match": true
+  },
+  {
+    "path": "lib/reverse-jsonl-scanner.js",
+    "expected": "9f489da95d4610d508b0b94fee3be5a6b39c576c0c59fe27a56dec10050d9c78",
+    "actual": "9f489da95d4610d508b0b94fee3be5a6b39c576c0c59fe27a56dec10050d9c78",
+    "match": true
+  },
+  {
+    "path": "lib/reverse-jsonl-scanner.js.map",
+    "expected": "2cb28022e2f0e93f17e655a0dfb065a7e396e8e5708de3034a324c2a027d5f2f",
+    "actual": "2cb28022e2f0e93f17e655a0dfb065a7e396e8e5708de3034a324c2a027d5f2f",
+    "match": true
+  },
+  {
+    "path": "lib/session-compat.js",
+    "expected": "d2701ddbcb38fe57b1fa9f08dbc6591cd4169234154c7a80898cad15ae036f05",
+    "actual": "d2701ddbcb38fe57b1fa9f08dbc6591cd4169234154c7a80898cad15ae036f05",
+    "match": true
+  },
+  {
+    "path": "lib/session-compat.js.map",
+    "expected": "6f4d01c35a63d8bd0134f3571111bfeef6660e14bf79d75ea56acf64be77b50d",
+    "actual": "6f4d01c35a63d8bd0134f3571111bfeef6660e14bf79d75ea56acf64be77b50d",
+    "match": true
+  },
+  {
+    "path": "lib/session-index-builder.js",
+    "expected": "b1e0b55023dd84fc9f3718cc8ec7090214d8cec4c7e4f6f46ce790752b9da85c",
+    "actual": "b1e0b55023dd84fc9f3718cc8ec7090214d8cec4c7e4f6f46ce790752b9da85c",
+    "match": true
+  },
+  {
+    "path": "lib/session-index-builder.js.map",
+    "expected": "58d26453bcc25aed8944cd4467154a690e9c3b030333265c2edc2ef63bbfed11",
+    "actual": "58d26453bcc25aed8944cd4467154a690e9c3b030333265c2edc2ef63bbfed11",
+    "match": true
+  },
+  {
+    "path": "lib/session-worker.js",
+    "expected": "98b2deee5a433ace183c1b9ef631d9170e474184e2bb790c1bb5daa227214430",
+    "actual": "98b2deee5a433ace183c1b9ef631d9170e474184e2bb790c1bb5daa227214430",
+    "match": true
+  },
+  {
+    "path": "lib/session-worker.js.map",
+    "expected": "37a1b33b25ba4d63d0fd1236cca86431b7391b95beb2733f1480d7c1ae8d0276",
+    "actual": "37a1b33b25ba4d63d0fd1236cca86431b7391b95beb2733f1480d7c1ae8d0276",
+    "match": true
+  },
+  {
+    "path": "lib/sidecar.js",
+    "expected": "e6cc43ae74cefacbce54d8651ace151b6fd21d90bbf44bada9e67bcf7b044ac0",
+    "actual": "e6cc43ae74cefacbce54d8651ace151b6fd21d90bbf44bada9e67bcf7b044ac0",
+    "match": true
+  },
+  {
+    "path": "lib/sidecar.js.map",
+    "expected": "e89193ceeaf234e71ee95d47f7025f378c0b6ecece750fae2e534cd07165be7c",
+    "actual": "e89193ceeaf234e71ee95d47f7025f378c0b6ecece750fae2e534cd07165be7c",
+    "match": true
+  },
+  {
+    "path": "lib/streaming-parser.js",
+    "expected": "0a1e7ad4b16f659589eaefd36fae3a5498dd7831df5922bd955eb79c8ed9763e",
+    "actual": "0a1e7ad4b16f659589eaefd36fae3a5498dd7831df5922bd955eb79c8ed9763e",
+    "match": true
+  },
+  {
+    "path": "lib/streaming-parser.js.map",
+    "expected": "4ad588eff58bbd07431169efc510305add3130e924cf04c1b447084c7da62c26",
+    "actual": "4ad588eff58bbd07431169efc510305add3130e924cf04c1b447084c7da62c26",
+    "match": true
+  },
+  {
+    "path": "lib/types/atomic-write.d.ts",
+    "expected": "d4102a1e66f47a2f424aab7d2b179a54e7c898620097d819a26b0dd762ec9263",
+    "actual": "d4102a1e66f47a2f424aab7d2b179a54e7c898620097d819a26b0dd762ec9263",
+    "match": true
+  },
+  {
+    "path": "lib/types/bookmark.d.ts",
+    "expected": "a4ec4fc13f6ec9bf388422a8d9e3e430a61ad87a976bb59cf097fdc0bd912722",
+    "actual": "a4ec4fc13f6ec9bf388422a8d9e3e430a61ad87a976bb59cf097fdc0bd912722",
+    "match": true
+  },
+  {
+    "path": "lib/types/cancel.d.ts",
+    "expected": "32e1e5c74f0bbc08e37c784e26250acbf60e018122527a5b8b2960a8ec8ac7f3",
+    "actual": "32e1e5c74f0bbc08e37c784e26250acbf60e018122527a5b8b2960a8ec8ac7f3",
+    "match": true
+  },
+  {
+    "path": "lib/types/core.d.ts",
+    "expected": "cff838bfa6fd12557aa9e8094c4977a49fa2bed7d5d49a5ebdc9366b23f0f968",
+    "actual": "cff838bfa6fd12557aa9e8094c4977a49fa2bed7d5d49a5ebdc9366b23f0f968",
+    "match": true
+  },
+  {
+    "path": "lib/types/fts-client.d.ts",
+    "expected": "aa6755c215c642f00388087c251d8858162243f9f66818eb4ccdf0352f93db12",
+    "actual": "aa6755c215c642f00388087c251d8858162243f9f66818eb4ccdf0352f93db12",
+    "match": true
+  },
+  {
+    "path": "lib/types/fts-spool.d.ts",
+    "expected": "c828e653276e932bee3cb4480e7cea4fa12477b3b653b37342f4d24d170d553a",
+    "actual": "c828e653276e932bee3cb4480e7cea4fa12477b3b653b37342f4d24d170d553a",
+    "match": true
+  },
+  {
+    "path": "lib/types/fts-worker.d.ts",
+    "expected": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881",
+    "actual": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881",
+    "match": true
+  },
+  {
+    "path": "lib/types/fts.d.ts",
+    "expected": "0b3fe24f6303fb949fa38b31bed02592fb41291bb55f852662167662925f08f2",
+    "actual": "0b3fe24f6303fb949fa38b31bed02592fb41291bb55f852662167662925f08f2",
+    "match": true
+  },
+  {
+    "path": "lib/types/index.d.ts",
+    "expected": "a059cd81b4fec8a8d250939709da8c57270a0a344479a1da4697d20916ba0f70",
+    "actual": "a059cd81b4fec8a8d250939709da8c57270a0a344479a1da4697d20916ba0f70",
+    "match": true
+  },
+  {
+    "path": "lib/types/llm-summary.d.ts",
+    "expected": "abfe19561c6b5751e526ea55db690f99a1298ed1949be890c006e3670c7a1bbc",
+    "actual": "abfe19561c6b5751e526ea55db690f99a1298ed1949be890c006e3670c7a1bbc",
+    "match": true
+  },
+  {
+    "path": "lib/types/message-anchor.d.ts",
+    "expected": "9056570cece9893bc1e4fba95d0b8bdd26221a2ecd0a026953b4639008ff0b7e",
+    "actual": "9056570cece9893bc1e4fba95d0b8bdd26221a2ecd0a026953b4639008ff0b7e",
+    "match": true
+  },
+  {
+    "path": "lib/types/native-zstd.d.ts",
+    "expected": "85ce7ae1936f6c2e4a8d7b03e19ac88479088129744b34e2c285f06aa52fce18",
+    "actual": "85ce7ae1936f6c2e4a8d7b03e19ac88479088129744b34e2c285f06aa52fce18",
+    "match": true
+  },
+  {
+    "path": "lib/types/query-plan.d.ts",
+    "expected": "cf5309a4c1671c30702c3a91524e7a67669a16e03e4ad93d036672a02693f02e",
+    "actual": "cf5309a4c1671c30702c3a91524e7a67669a16e03e4ad93d036672a02693f02e",
+    "match": true
+  },
+  {
+    "path": "lib/types/rank.d.ts",
+    "expected": "9053a769d2793987d3de9f6774f0186e9d5611b698f993f5b181a8b8527cbcde",
+    "actual": "9053a769d2793987d3de9f6774f0186e9d5611b698f993f5b181a8b8527cbcde",
+    "match": true
+  },
+  {
+    "path": "lib/types/reverse-jsonl-scanner.d.ts",
+    "expected": "d7755457acd2758b6c1a85fca59b98c47d4ad76cfa174f7b8886ac9166d50cab",
+    "actual": "d7755457acd2758b6c1a85fca59b98c47d4ad76cfa174f7b8886ac9166d50cab",
+    "match": true
+  },
+  {
+    "path": "lib/types/session-compat.d.ts",
+    "expected": "522726cc80e78ba2abb0f14b02cfd813c0b2c62629b6265e807fdc8b8f0b26f7",
+    "actual": "522726cc80e78ba2abb0f14b02cfd813c0b2c62629b6265e807fdc8b8f0b26f7",
+    "match": true
+  },
+  {
+    "path": "lib/types/session-index-builder.d.ts",
+    "expected": "f08edbc54eefda9e555345906dd6e9b86031c1b771dd843b5c8242d27bf55985",
+    "actual": "f08edbc54eefda9e555345906dd6e9b86031c1b771dd843b5c8242d27bf55985",
+    "match": true
+  },
+  {
+    "path": "lib/types/session-worker.d.ts",
+    "expected": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881",
+    "actual": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881",
+    "match": true
+  },
+  {
+    "path": "lib/types/sidecar.d.ts",
+    "expected": "62447412fbfb407db504f7585f11d1e6355e311414787cbbc6d1a40cfa5fcb0a",
+    "actual": "62447412fbfb407db504f7585f11d1e6355e311414787cbbc6d1a40cfa5fcb0a",
+    "match": true
+  },
+  {
+    "path": "lib/types/streaming-parser.d.ts",
+    "expected": "7b3a51aa27d952cccd2779389eca173b6702d6aa5fe97d0b25070322da1a78cf",
+    "actual": "7b3a51aa27d952cccd2779389eca173b6702d6aa5fe97d0b25070322da1a78cf",
+    "match": true
+  },
+  {
+    "path": "lib/types/watcher.d.ts",
+    "expected": "5b523b678ecdb71fbc807aa241a77e34622c58f6cabeb497ce07b276736cafcc",
+    "actual": "5b523b678ecdb71fbc807aa241a77e34622c58f6cabeb497ce07b276736cafcc",
+    "match": true
+  },
+  {
+    "path": "lib/types/worker-pool.d.ts",
+    "expected": "1723e73d37365257f3165c6a8cc3ff51eb95acf3e0e30f4ee2b5f7fe2bb77287",
+    "actual": "1723e73d37365257f3165c6a8cc3ff51eb95acf3e0e30f4ee2b5f7fe2bb77287",
+    "match": true
+  },
+  {
+    "path": "lib/watcher.js",
+    "expected": "e9814da5b7c5c1d83d943aa87bdf6399ea92e1c348c511b04ff6b1462bc05235",
+    "actual": "e9814da5b7c5c1d83d943aa87bdf6399ea92e1c348c511b04ff6b1462bc05235",
+    "match": true
+  },
+  {
+    "path": "lib/watcher.js.map",
+    "expected": "4352272397064d5337d32273732b5ed33aa0852860928ae32bd1a3fdbc51c9fe",
+    "actual": "4352272397064d5337d32273732b5ed33aa0852860928ae32bd1a3fdbc51c9fe",
+    "match": true
+  },
+  {
+    "path": "lib/worker-pool.js",
+    "expected": "7603082aa6213a48953f0069556ead5c0e8f73c8ac8a8a1852f97d76b0c6cdfc",
+    "actual": "7603082aa6213a48953f0069556ead5c0e8f73c8ac8a8a1852f97d76b0c6cdfc",
+    "match": true
+  },
+  {
+    "path": "lib/worker-pool.js.map",
+    "expected": "7785d545b305283919635a019364e4830977b3c3625eb1e51a4ad0777092fae6",
+    "actual": "7785d545b305283919635a019364e4830977b3c3625eb1e51a4ad0777092fae6",
+    "match": true
+  },
+  {
+    "path": "package.json",
+    "expected": "034442d8b5018088b55923de74c62404398aec731dc3b039162b719c8c8057b3",
+    "actual": "034442d8b5018088b55923de74c62404398aec731dc3b039162b719c8c8057b3",
+    "match": true
+  }
+]

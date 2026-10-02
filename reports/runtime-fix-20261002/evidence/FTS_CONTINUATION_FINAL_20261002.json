@@ -1,0 +1,69 @@
+{
+  "exitCode": 0,
+  "status": "affected FTS correctness coverage complete; original suite failure retained",
+  "evidenceBoundary": "62 unchanged passing cases from the original 63-case run plus the single corrected progressing-fixture retest; no new whole-suite pass claimed",
+  "coverage": {
+    "originalPassingCases": 62,
+    "targetedPassingCases": 1,
+    "affectedCasesCovered": 63
+  },
+  "originalRun": {
+    "report": "FTS_CONTINUATION_4f2e52be-fff1-4e65-a642-6d765d7a00d0.json",
+    "output": "FTS_CONTINUATION_4f2e52be-fff1-4e65-a642-6d765d7a00d0.txt",
+    "exitCode": 1,
+    "tests": 63,
+    "pass": 62,
+    "fail": 1,
+    "failedCase": "ready deadline does not kill progressing migration; status returns parent progress",
+    "code": "EFTSMIGRATIONSTALL"
+  },
+  "correctedRun": {
+    "report": "FTS_CONTINUATION_7b887725-a046-4dc6-af55-1fb5aea112cd.json",
+    "output": "FTS_CONTINUATION_7b887725-a046-4dc6-af55-1fb5aea112cd.txt",
+    "exitCode": 0,
+    "tests": 1,
+    "pass": 1,
+    "fail": 0
+  },
+  "fixtureCorrection": {
+    "observedGapEvidence": [
+      "FTS_PROGRESS_GAP_e53f902b-f6f8-4358-91cd-ceff080ebb36.json",
+      "FTS_PROGRESS_GAP_edf78875-ede3-47cf-9c8f-31ae6f1fa55c.json"
+    ],
+    "maxObservedGapMs": 274,
+    "observedTwentyBatchRunMs": 3539,
+    "beforeStallMs": 100,
+    "beforeTotalMs": 2000,
+    "afterStallMs": 1000,
+    "afterTotalMs": 10000,
+    "rationale": "real SQLite autocommit for each fixture batch; actual migration batches share one transaction",
+    "ordinaryReadyRequestMs": 50,
+    "dedicatedStallFaultMs": 100,
+    "dedicatedTotalFaultMs": 180,
+    "productionMigrationTotalMs": 90000,
+    "productionMigrationLockMs": 60000,
+    "productionMigrationStallMs": 20000,
+    "ordinaryQueryMs": 10000
+  },
+  "candidateSourceStability": [
+    {
+      "path": "src/fts-client.ts",
+      "identical": true,
+      "sha256": "6f79688b256de399016fe9805ffaa6efb86384b6c3fdac6c9515fdd1b66cff6a"
+    },
+    {
+      "path": "src/fts-worker.ts",
+      "identical": true,
+      "sha256": "9aa56bd6477711bd2ac9328dc5c09d265f2e9902e0c29f4da02c2762059fb980"
+    },
+    {
+      "path": "src/fts.ts",
+      "identical": true,
+      "sha256": "840a9ea25477bcf1e40e4fc64df43cc805559ccdfd042a4ab14b3237600054b2"
+    }
+  ],
+  "compileOutput": ".fts-continuation-build",
+  "workLibModified": false,
+  "performanceMeasurement": false,
+  "productionOpened": false
+}

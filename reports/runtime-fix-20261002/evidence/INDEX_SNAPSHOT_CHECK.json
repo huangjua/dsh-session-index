@@ -1,0 +1,8 @@
+{
+  "entries": 331,
+  "converged": 331,
+  "dirty": 0,
+  "jsonStableDuringCopy": true,
+  "sha256": "3f2243e68c19facbdfbf7a3373a86615725e20c9e3b8ee86db0fa757c86b9921",
+  "boundary": "JSON copied separately from SQL backup; checkpoint fingerprints matched; no cross-file atomicity claim"
+}

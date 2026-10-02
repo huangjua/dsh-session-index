@@ -1,0 +1,90 @@
+DSH session-index 实施状态（2026-10-02；仅 S0–S2）
+
+本轮完成：S0、S1、S2。整个 S0–S6 计划尚未完成，候选未部署。
+工作树：E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index
+分支：review/session-index-hardening
+基线/当前 HEAD：70800ed7be77b31527a955ea2f6cc6a750dafef8
+实现以未提交 diff 与 PATCHES/ 补丁交付；没有 push。
+
+共同契约：
+1. index.json 记录解析进度；fts_checkpoints 记录已提交来源指纹/seq/字节，互不替代。
+2. 对外稳定锚点必须与 SQLite rowid 分离；此改造待 S3，本轮不能把 numeric messageId 解释成 eventSeq。
+3. 书签是用户数据，继续保留独立 JSONL sidecar，不放入可重建的 fts.db。
+4. 完整扫描才能按缺席或 retention 清理；部分扫描更新确认的文件并报告 degraded。
+
+S0 已完成：
+- G main/HEAD/status 与 desktop junction 已确认，基于当前本地 HEAD 创建 E worktree。
+- node_modules 为复制的普通文件，无运行区 junction 依赖，无安装或重建 G 依赖。
+- base-commit.txt；TEST_RESULTS/runtime-baseline-hashes.json；S0-baseline.json。
+- 修复前正确行为断言在基线失败：#01/#02/#07；role、bookmark、startup 和 same-size 另有基线失败证据。
+- typecheck、check:dsh-contract、测试编译通过；审查原始文件未覆盖。
+
+#01 已关闭（S1）
+位置：src/fts.ts searchConstraints/searchLike。
+行为：LIKE 全部词的 AND/OR 表达式整体括号化，FTS 与 LIKE 复用参数绑定过滤。
+验证：test/fts-filter-safety.test.ts 两词/三词 OR、workspace/role/since/until 单独及组合、引号/%/_/反斜杠；既有 fts/filter 通过。
+证据：TEST_RESULTS/root-S1-targeted.txt、stages-S0-S2.txt。
+
+#02 已关闭（S2）
+位置：src/fts.ts syncSession/enqueue/flush/close/fts_checkpoints；src/session-index-builder.ts；src/index.ts。
+行为：metadata+删除+所有插入+checkpoint 同一 BEGIN IMMEDIATE 事务；任何故障回滚。
+所有公开写入、watermark、维护进入串行链；busy_timeout=0 + 有界异步重试（默认1500ms）。
+receipt/flush 报告失败，health 保留 lastWriteError/failedSessions/pendingWrites/acceptingWrites。
+搜索读取最近已提交快照；并发 flush 均能观察各自边界内的错误。
+checkpoint 保存 file/sessionId/size/mtimeMs/ctimeMs/indexedBytes/indexedSeq/complete/parserVersion/messageCount。
+重复投递幂等；delta 必须验证已提交基点、解析版本和进度；基点落后时 builder 全量补扫。
+builder await 同步/删除回调，持久化 ftsDirty；排空写链后释放 run-marker；失败报告 degraded。
+启动按各会话 checkpoint 回填，完整扫描确认孤儿后重试删除；维护失败不阻断关键恢复。
+close 停止接单→排空→关闭；dispose 禁止后续 build，迟到初始化立即关闭。
+验证：test/fts-recovery.test.ts 13项；test/index-fts-recovery.test.ts 8项；test/builder-fts-sync.test.ts 4项。
+故障矩阵：删除后、首条插入、第2001条插入、COMMIT、JSON提交失败、JSON领先、相等会话数无正文、删除同步失败重启、独立进程SQLite锁竞争、并发flush、卸载、空/坏会话收敛。
+证据：TEST_RESULTS/stages-S0-S2.txt、final-deltas.txt、recovery-first-run.txt、index-recovery-second-run.txt。
+
+#03 待 S3：稳定消息锚点；本轮 numeric rowid 仍存在重建/改写失效风险，未做书签迁移。
+
+#04 已关闭（S1）
+位置：src/sidecar.ts withFileLock/canonicalFilePath；src/bookmark.ts。
+行为：完整 owner 目录 fsync 后原子发布锁；实际路径归一；token 校验释放；只恢复已死 PID；存活锁明确超时。
+锁覆盖读现状→add/remove/update→fsync/rename→缓存失效；写入不使用旧缓存。
+仅 ENOENT 当空文件；坏行可读取诊断，但拒绝重写；保留无换行 EOF 的有效旧行。
+验证：test/bookmark-multiprocess.test.ts 独立进程确定性 barrier，remove/add、同锚点更新、崩溃持锁、活锁超时、旧 owner 不删新 owner、路径别名。
+证据：validation/bookmarks/tests-final.log（50/50含fake summary）、baseline-correct-assertion.log；TEST_RESULTS/final-deltas.txt。
+
+#05 待 S4：完整正文/分块，1000字符与50000行覆盖限制仍存在。
+#06 待 S3：分支代表元组。
+
+#07 已关闭（S1）
+位置：src/core.ts scanSessionFiles；src/session-index-builder.ts。
+行为：files/complete/truncated/errors/failedSubtrees；最高代际先选再计预算。
+readdir/stat 失败保留诊断；不完整扫描禁止按缺席与 retention 清理，已确认文件可更新并报告 degraded。
+验证：test/scan-safety.test.ts 缺根/EACCES/子树/stat/cap/最高代、完整空目录确认删除、部分更新保留失败子树；兼容 v3 既有扫描用例通过。
+证据：TEST_RESULTS/stages-S0-S2.txt、final-partial-scan.txt。
+
+#08 已关闭（S1）
+位置：src/index.ts indexNeedsReconcile/reconcileDisk；src/watcher.ts；src/session-index-builder.ts。
+行为：启动与 watcher 失败回退比较 root/file/size/mtime/ctime；共用 retention 规则和 MAX_SCAN_FILES。
+watcher 有 maxWait，失败后自动轮询；single-flight/dirty/频率限制保留；卸载取消资源和迟到初始化。
+同大小改写走 full，避免 EOF 空 delta 前移指纹却保留旧正文。
+验证：test/index.test.ts、watcher.test.ts、reconcile-same-size.test.ts，覆盖停机追加、等量替换、监听失效、持续写入、今日prune水印、dispose。
+证据：TEST_RESULTS/reconcile-pre-fix.txt、reconcile-regression.txt、reconcile-same-size-pre-fix.txt、stages-S0-S2.txt。
+
+#09 待 S4：会话级候选召回。
+#10 部分关闭：S1 role 完成（parser/pool/worker/index在截断前过滤，真实worker及inline各角色回归）；多词语义一致性待 S4。
+证据：TEST_RESULTS/role-pre-fix.txt、role-affected-files.txt（43/43）、stages-S0-S2.txt。
+#11 待 S3：SCROLL 会话内邻居。
+#12 待 S3：来源顺序。
+#13 待 S5：真实尾段读取。
+#14 待 S5：SQLite 专用 worker/背压；本轮事务中的SQL仍同步运行。
+
+最终验证（按diff选20个测试文件，未运行全部仓库）：
+- 首轮 238项：237通过/1旧时序测试失败；输出完整保留 stages-S0-S2.txt。
+- 终止测试改用收件barrier，相关取消/终止5/5；生产代码未因该用例修改。
+- 最终差异集合41/41（fts recovery 13 + index recovery 8 + bookmarks multiprocess 5 + worker pool15）。
+- 新增部分扫描更新1/1；合并已有首轮通过与对应重跑，247个不同断言均有通过证据。
+- typecheck/测试编译/DSH契约 COMPATIBLE（0.2.0-rc.2）/候选编译/diff check通过。
+- 初次bookmark验证Windows delete-pending竞争已修复；初次独立index验证漏编动态worker属验证入口错误，保留日志，未放宽正确断言或增加超时。
+- 初次阶段测试路径bookmarks名称写错，Node忽略不存在路径；已补跑正确multiprocess文件，脚本现校验每个命名测试存在。
+- 所有测试使用隔离DSH_HOME/TEMP/TMP及合成dataDir/sessionsRoot；LLM关闭或fake provider。
+
+运行区复核：TEST_RESULTS/runtime-final-verification.json；G HEAD/status不变，68个src/lib文件SHA256全部不变；生产数据未读写，junction未更改，宿主未重启。
+交接：HANDOFF_S0_S2.txt。下一任务从 S3 接续现有工作树，不在旧0.0.1副本实施，不从origin/main重来。

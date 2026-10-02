@@ -1,0 +1,3 @@
+COMPATIBLE: DSH 0.2.0-rc.2; Cordis 4.0.4; Schemastery 3.18.4
+note: peerDependencies.@deepseek-ai/dsh-llm is >=0.1.7-rc.1 <0.3.0 (script records >=0.2.0-rc.2 <0.3.0)
+note: peerDependencies.@deepseek-ai/dsh-tools is >=0.1.7-rc.1 <0.3.0 (script records >=0.2.0-rc.2 <0.3.0)

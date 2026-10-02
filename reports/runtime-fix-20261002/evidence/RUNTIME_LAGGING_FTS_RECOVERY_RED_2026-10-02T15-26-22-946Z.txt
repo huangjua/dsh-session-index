@@ -1,0 +1,4 @@
+test/runtime-lagging-retry.test.ts(244,70): error TS2339: Property 'ftsHealth' does not exist on type 'Record<string, any> | {}'.
+  Property 'ftsHealth' does not exist on type '{}'.
+test/runtime-lagging-retry.test.ts(245,17): error TS2339: Property 'ftsHealth' does not exist on type 'Record<string, any> | {}'.
+  Property 'ftsHealth' does not exist on type '{}'.

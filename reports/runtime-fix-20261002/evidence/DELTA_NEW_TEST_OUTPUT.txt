@@ -1,0 +1,18 @@
+✔ pure append reads only the compressed tail and equals full including anchors (513.0681ms)
+✔ within-window replacement keeps full fallback with one delta attempt (429.4906ms)
+✔ cross-window replacement keeps full fallback with one delta attempt (391.302ms)
+✔ invalid persisted frame offset is classified without repeating deterministic delta (456.4786ms)
+✔ sequence mismatch is explicit and one full pass restores the correct checkpoint (357.8346ms)
+✔ insufficient delta coverage budget retains the necessary full rebuild (372.719ms)
+✔ unclassified failures retain unknown and the existing bounded retry even when text resembles a known cause (524.9567ms)
+✔ a temporarily incomplete frame is retried once; changed source is retained until stable follow-up (557.1739ms)
+✔ parser worker exit is explicit and safely falls back without claiming unobserved read metrics (409.2645ms)
+✔ cancel after a real delta read without returned stats marks the reported zero as a lower bound (334.2399ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4614.4885

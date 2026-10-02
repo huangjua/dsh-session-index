@@ -1,0 +1,460 @@
+✔ S2 builder awaits async FTS receipt before releasing the run marker or reporting completion (755.9992ms)
+✔ S2 JSON can lead failed FTS; unchanged-file retry performs a full parse from the committed base (998.4109ms)
+✔ S2 FTS COMMIT followed by JSON failure recovers without duplicate append or checkpoint regression (767.698ms)
+✔ S2 builder dispose drains the dispatched callback and refuses later builds (533.7624ms)
+▶ FTS worker RPC and bounded transport
+  ✖ all reads, checkpoints, short-word search, metadata and maintenance work through RPC (264.6195ms)
+  ✖ failed multi-batch replace preserves old complete snapshot and checkpoint, and flush reports it (221.3524ms)
+  ✖ concurrent flush calls both observe their accepted write failure boundary (269.2773ms)
+  ✖ two producers obey the shared two-batch, 512 KiB and 8 MiB limits, including Unicode slice boundaries (296.6589ms)
+  ✖ queries can observe the old complete snapshot while disk staging is still in progress (300.4599ms)
+  ✖ restart releases pending operations and retains committed checkpoints (264.085ms)
+  ✖ waiting producers retain a bounded input queue and all admitted sessions settle (259.199ms)
+  ✖ cancelling before staging acknowledgement cleans the known client staging token (252.0719ms)
+  ✔ cancelled queries settle promptly and do not retain queue bytes (763.9039ms)
+  ✖ hang timeout rejects every pending request and automatically restarts the worker (656.0474ms)
+  ✔ worker exit rejects pending requests and bounded request admission returns a structured error (896.6313ms)
+  ✔ reconnection runs its recovery callback exactly once, and callback errors keep the transport usable (943.5269ms)
+  ✔ unload suppresses a recovery callback during a pending restart (394.6159ms)
+[session-index] FTS spool cleanup warning {"code":"EFTSSPOOLPATH","message":"Refusing cleanup of a staging directory not created by this client","id":"b5a04aea-e6d8-4b35-8032-96a2c27bbca4","path":"E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\validation\\temp\\dsh-fts-client-imRmlA\\.fts-staging-10212-36819e40-ccbf-4ea5-a4a9-f7036963138f-reader","phase":"restart","at":1790950432447}
+  ✔ repeated crashes stop automatic restart loops and can be recovered explicitly (1386.7834ms)
+  ✔ oversized query DTO limits fail explicitly (381.489ms)
+  ✖ legacy search and searchPage truncate message DTOs explicitly, retaining tail-match snippets (258.6263ms)
+  ✖ a session body exceeding 64 MiB fails before transport and preserves its checkpoint (351.6271ms)
+  ✖ a response beyond 8 MiB fails explicitly and leaves the worker usable (217.6985ms)
+  ✔ close has a bounded drain even when its worker is unresponsive (516.7574ms)
+  ✖ close drains accepted staged writes, refuses new work and terminates every transport (337.4883ms)
+  ✖ FTS unavailable returns null, and repeated apply/dispose removes staging resources (475.0235ms)
+✖ FTS worker RPC and bounded transport (9712.9809ms)
+✔ SCROLL neighbors use session source order despite A/B/A writes; force and new database keep stable anchor (753.1803ms)
+✔ full original text verifies head/middle/tail, distributed AND, Unicode and longer-than-overlap queries (472.7414ms)
+✔ 40/500 repeated messages cannot starve another session; independent-session total and cap are explicit (767.8429ms)
+✔ schema v2 adds identity columns without interpreting rowid as eventSeq and retains numeric compatibility only for legacy rows (672.5379ms)
+▶ S2 FTS 原子提交与恢复
+  ✔ after-delete 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛 (317.3342ms)
+  ✔ first-insert 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛 (393.1543ms)
+  ✔ middle-insert 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛 (1656.3993ms)
+  ✔ commit 故障保留旧正文/metadata/checkpoint，flush 报错，重试收敛 (561.9897ms)
+  ✔ FTS 已提交而 JSON 尚旧：重启重投 delta 幂等；错误基点不能追加 (285.7094ms)
+  ✔ FTS 删除失败保留孤儿标记，重启可发现并重试清理 (373.9841ms)
+  ✔ append rejects parser-version mismatch and regressing committed progress without changing the snapshot (325.7336ms)
+  ✔ 会话数量相等但正文缺失需要回填；已提交空会话及坏会话不反复回填 (409.3439ms)
+  ✔ close 停止接单并排空已接受写入；所有 Promise settle 后可重开数据库 (1011.1768ms)
+  ✔ flush 仅报告调用边界前的写失败，后续失败仍由后续 flush 报告 (602.8502ms)
+  ✔ 同一写边界的并发 flush 都报告失败，后续 flush 可在消费后成功 (539.5457ms)
+✔ S2 FTS 原子提交与恢复 (6483.4413ms)
+▶ S2 SQLite 独立进程锁竞争
+  ✔ 持锁子进程释放后，等待的写入成功提交且未阻塞计时器 (1098.3537ms)
+  ✔ 持锁超过等待上限明确失败，旧快照保留；释放后重试成功 (682.8746ms)
+✔ S2 SQLite 独立进程锁竞争 (1781.8281ms)
+▶ FTS spool cleanup outcome and read-only owner diagnostics
+  ✔ PID probes distinguish alive/dead/unknown without treating permission denial as dead (2.5647ms)
+  ✔ inventory reports live owner, malformed metadata, legacy uncertainty and scan errors without deletion (75.855ms)
+  ✔ inventory refuses to follow a spool junction (52.1259ms)
+  ✖ client close surfaces its own cleanup failure and leaves unrelated historical paths alone (257.444ms)
+  ✖ restart records cleanup warnings, still recovers SQLite, and close retries only its retired directories (197.6387ms)
+  ✖ unlink failure after COMMIT remains a cleanup warning, preserving the successful receipt and checkpoint (197.5268ms)
+  ✖ cleanup failure after rollback cannot replace the primary SQL error or lose stage diagnostics (446.1609ms)
+  ✖ a retained stage can retry cleanup on the next write without another failed transaction (377.3959ms)
+  ✖ hard owner-process death leaves a diagnosed orphan that reopening never deletes (543.9805ms)
+✖ FTS spool cleanup outcome and read-only owner diagnostics (2155.7858ms)
+▶ S2 apply 启动 FTS 恢复
+  ✔ 启动不执行重型维护，仍恢复 JSON 领先的正文与 checkpoint (1894.913ms)
+  ✔ JSON 指纹/游标领先 FTS 而会话数相等，启动自动补齐当前完整正文 (3286.8024ms)
+  ✔ 会话数相等但 FTS 无正文/无 checkpoint，启动仍自动回填 (1869.4725ms)
+  ✖ INSERT 失败标记 dirty/降级与健康错误，恢复写入后后台重试成功 (1213.0649ms)
+  ✔ JSON 删除已提交但 FTS 删除失败，重启识别孤儿并继续清理 (1233.9937ms)
+  ✔ 已提交空会话与已有 unindexable 坏条目不会触发回填循环 (2557.2917ms)
+✖ S2 apply 启动 FTS 恢复 (12060.7259ms)
+▶ S2 apply 卸载生命周期
+  ✔ dispose 期间已接受的 FTS 队列排空，停止新写入且无后台再建库 (2323.1523ms)
+  ✔ dispose 后延迟 FTS 工厂返回的连接立即关闭，启动写入不会复活 (1507.3818ms)
+✔ S2 apply 卸载生命周期 (3831.458ms)
+▶ native tail range reads
+  ✔ reads only the requested frame and applies the cap to actual input/allocation (119.4688ms)
+  ✔ handles partial FileHandle reads without rereading a prefix (60.8967ms)
+  ✔ rejects an oversized tail before reading or allocating it (34.5913ms)
+  ✔ rejects invalid offsets before opening/reading (1.8989ms)
+  ✔ rejects a source already shorter than the delta offset with an observable race (37.2383ms)
+  ✔ rejects an offset inside a frame, empty range and malformed tail (62.6586ms)
+  ✔ detects shrink during reading and closes its handle (29.9932ms)
+  ✔ detects append during reading before emitting any decoded output (53.0293ms)
+  ✔ detects source changes during sink processing (29.8618ms)
+  ✔ checks abort before reading, between reads and after sink, always closing an opened handle (23.8976ms)
+  ✔ closes on decode and sink errors (28.6825ms)
+  ✔ retains multi-frame decode, early stop and full-read counter semantics (13.228ms)
+  ✔ retains tail-frame integrity and total decompression limits (58.7797ms)
+  ✔ validates skippable lengths and skips embedded frame magic in their payload (1.0223ms)
+✔ native tail range reads (596.1311ms)
+✖ public full/SCROLL expose actual FTS backend and bounded diagnostics without source/query/body text (10944.8391ms)
+✔ source backend is explicit when FTS is disabled and results retain full coverage (432.4635ms)
+ℹ tests 75
+ℹ suites 7
+ℹ pass 53
+ℹ fail 22
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 56605.9081
+
+✖ failing tests:
+
+test at .test-build\test\fts-client.test.js:36:5
+✖ all reads, checkpoints, short-word search, metadata and maintenance work through RPC (264.6195ms)
+  AssertionError [ERR_ASSERTION]: Node SQLite is available in the validation runtime
+      at real (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:31:12)
+      at async file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:37:24
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:21:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1794:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-client.test.js:62:5
+✖ failed multi-batch replace preserves old complete snapshot and checkpoint, and flush reports it (221.3524ms)
+  AssertionError [ERR_ASSERTION]: Node SQLite is available in the validation runtime
+      at real (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:31:12)
+      at async file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:63:24
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:21:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-client.test.js:82:5
+✖ concurrent flush calls both observe their accepted write failure boundary (269.2773ms)
+  AssertionError [ERR_ASSERTION]: Node SQLite is available in the validation runtime
+      at real (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:31:12)
+      at async file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:83:24
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:21:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-client.test.js:98:5
+✖ two producers obey the shared two-batch, 512 KiB and 8 MiB limits, including Unicode slice boundaries (296.6589ms)
+  AssertionError [ERR_ASSERTION]: Node SQLite is available in the validation runtime
+      at real (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:31:12)
+      at async file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:99:24
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:21:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-client.test.js:127:5
+✖ queries can observe the old complete snapshot while disk staging is still in progress (300.4599ms)
+  AssertionError [ERR_ASSERTION]: Node SQLite is available in the validation runtime
+      at real (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:31:12)
+      at async file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:128:24
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:21:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-client.test.js:142:5
+✖ restart releases pending operations and retains committed checkpoints (264.085ms)
+  AssertionError [ERR_ASSERTION]: Node SQLite is available in the validation runtime
+      at real (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:31:12)
+      at async file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:143:24
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:21:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-client.test.js:155:5
+✖ waiting producers retain a bounded input queue and all admitted sessions settle (259.199ms)
+  AssertionError [ERR_ASSERTION]: Node SQLite is available in the validation runtime
+      at real (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:31:12)
+      at async file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:156:24
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:21:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-client.test.js:170:5
+✖ cancelling before staging acknowledgement cleans the known client staging token (252.0719ms)
+  AssertionError [ERR_ASSERTION]: Node SQLite is available in the validation runtime
+      at real (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:31:12)
+      at async file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:171:24
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:21:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-client.test.js:205:5
+✖ hang timeout rejects every pending request and automatically restarts the worker (656.0474ms)
+  Error [FtsRpcError]: FTS sessionCount deadline exhausted during recovery
+      at rpcError (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/src/fts-client.js:74:12)
+      at Timeout.<anonymous> (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/src/fts-client.js:577:88)
+      at listOnTimeout (node:internal/timers:605:17)
+      at process.processTimers (node:internal/timers:541:7) {
+    code: 'EFTSTIMEOUT'
+  }
+
+test at .test-build\test\fts-client.test.js:291:5
+✖ legacy search and searchPage truncate message DTOs explicitly, retaining tail-match snippets (258.6263ms)
+  AssertionError [ERR_ASSERTION]: Node SQLite is available in the validation runtime
+      at real (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:31:12)
+      at async file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:292:24
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:21:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-client.test.js:307:5
+✖ a session body exceeding 64 MiB fails before transport and preserves its checkpoint (351.6271ms)
+  AssertionError [ERR_ASSERTION]: Node SQLite is available in the validation runtime
+      at real (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:31:12)
+      at async file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:308:24
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:21:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-client.test.js:320:5
+✖ a response beyond 8 MiB fails explicitly and leaves the worker usable (217.6985ms)
+  AssertionError [ERR_ASSERTION]: Node SQLite is available in the validation runtime
+      at real (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:31:12)
+      at async file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:321:24
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:21:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-client.test.js:345:5
+✖ close drains accepted staged writes, refuses new work and terminates every transport (337.4883ms)
+  AssertionError [ERR_ASSERTION]: Node SQLite is available in the validation runtime
+      at real (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:31:12)
+      at async file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:347:24
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:21:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-client.test.js:364:5
+✖ FTS unavailable returns null, and repeated apply/dispose removes staging resources (475.0235ms)
+  AssertionError [ERR_ASSERTION]: Node SQLite is available in the validation runtime
+      at real (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:31:12)
+      at async file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:367:28
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-client.test.js:21:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-spool.test.js:73:5
+✖ client close surfaces its own cleanup failure and leaves unrelated historical paths alone (257.444ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(client)
+  
+      at file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-spool.test.js:79:16
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-spool.test.js:25:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-spool.test.js:95:5
+✖ restart records cleanup warnings, still recovers SQLite, and close retries only its retired directories (197.6387ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(client)
+  
+      at file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-spool.test.js:98:16
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-spool.test.js:25:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-spool.test.js:116:5
+✖ unlink failure after COMMIT remains a cleanup warning, preserving the successful receipt and checkpoint (197.5268ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(client)
+  
+      at file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-spool.test.js:119:16
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-spool.test.js:25:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-spool.test.js:129:5
+✖ cleanup failure after rollback cannot replace the primary SQL error or lose stage diagnostics (446.1609ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(client)
+  
+      at file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-spool.test.js:132:16
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-spool.test.js:25:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-spool.test.js:143:5
+✖ a retained stage can retry cleanup on the next write without another failed transaction (377.3959ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(client)
+  
+      at file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-spool.test.js:145:16
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-spool.test.js:25:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\fts-spool.test.js:154:5
+✖ hard owner-process death leaves a diagnosed orphan that reopening never deletes (543.9805ms)
+  AssertionError [ERR_ASSERTION]: file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fixtures/fts-orphan-process.js:9
+      throw new Error('Crash fixture could not start SQLite workers');
+            ^
+  
+  Error: Crash fixture could not start SQLite workers
+      at file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fixtures/fts-orphan-process.js:9:11
+  
+  Node.js v24.18.1
+  
+      at file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-spool.test.js:166:16
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async scratch (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/fts-spool.test.js:25:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at .test-build\test\index-fts-recovery.test.js:209:5
+✖ INSERT 失败标记 dirty/降级与健康错误，恢复写入后后台重试成功 (1213.0649ms)
+  TypeError: Cannot read properties of undefined (reading 'status')
+      at file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/index-fts-recovery.test.js:223:40
+      at async withFixture (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/index-fts-recovery.test.js:152:9)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:911:7)
+
+test at .test-build\test\runtime-index.test.js:40:1
+✖ public full/SCROLL expose actual FTS backend and bounded diagnostics without source/query/body text (10944.8391ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(Date.now() < deadline)
+  
+      at fixture (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/runtime-index.test.js:29:24)
+      at async TestContext.<anonymous> (file:///E:/Do%20Something/DSH%E5%A4%87%E4%BB%BD/dsh-session-index%20work/runtime-fix-20261002/work/.test-build/test/runtime-index.test.js:41:15)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

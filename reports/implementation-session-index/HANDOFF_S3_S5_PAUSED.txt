@@ -1,0 +1,56 @@
+S3–S5 暂停交接（2026-10-02）
+
+停止原因：用户明确要求“手头最小的任务完成后暂停”。已完成当前4项集成回归(4/4)后暂停。
+不要自动继续、创建监控/自动化或标整个S3–S5完成；等待用户恢复。
+工作树：E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index
+分支：review/session-index-hardening；HEAD 70800ed7be77b31527a955ea2f6cc6a750dafef8。
+S0–S2未提交修复全部保留；S3–S5也是未提交diff。本轮没有部署、生产迁移、push或宿主重启。
+没有执行本轮G源码哈希复核；此前S0–S2证明保留，本轮没有向G写入的操作。
+
+先读 IMPLEMENTATION_STATUS.txt、S5_SQLITE_WORKER_HANDOFF.txt 和原 EXECUTION_PLAN S3–S5。
+不得reset当前diff或覆盖root fts.ts/core.ts/index.ts/bookmark.ts/builder的集成改动。
+validation/stage-agents/{parser,io,sqlite}是三份独立worktree；node_modules是指向本隔离checkout依赖的junction，
+仅用于读取，没有安装/重建宿主依赖。工作树与所有原始测试/基准证据保留，没有删除/归档。
+这三份是分工验证副本，不能整体复制回root；尤其sqlite内fts.ts/core.ts/query-plan.ts仅验证副本。
+所有正式交付源和新增tests/scripts已复制root；两个fts worker文件hash与最终21/21源码一致。
+
+当前接口：
+- FTS_PARSER_VERSION=session-index/3-chunks；schema_version=5；bookmark写v2/兼读v1。
+- FtsMessageRow新增anchorId/eventSeq/eventType/sourceMessageId/callId/generation/identityEvidence。
+- SessionMeta保留真实generation和coverage，legacy v1 resume不能按alpha3默认0回退身份。
+- searchPage返回每会话最佳原消息、matchCount、准确session total/hasMore；index再按lineage聚合。
+  matchCount按maxPer封顶，同anchor补查去重，FTS/raw排序的采样频率口径一致。
+- query-plan共用净化/分词；raw parser按调用者明确queryMode=and/or，index负责全局零AND才OR。
+- around稳定string anchor或legacy number rowid；新解析记录不能拿数字猜锚。
+  多SQL查询在读snapshot内，WAL reader在大writer事务期间能见旧完整或新完整版本。
+- engine增加syncSessionIterable/syncMessagesIterable，factory支持{readOnly:true}。
+  DatabaseSync第二参数normal必须{}，不能传undefined；readonly跳过schema/migration。
+- FtsClient异步read；builder needs/canAppend支持Promise；两条完整parse→FTS callback pipeline lane。
+  onParsed当前fts不可用必须throw保持dirty；onRecovered触发自动checkpoint回填。
+  maybeAutoRefresh异步调用都catch，避免恢复时unhandled rejection。
+- client512KiB包/最多2在飞，IPC+待传source8MiB；两个active session各正文总64MiB。
+  activeSourceBytes/activeBodyBytes另计，不能将8MiB声称成进程全部内存预算。
+- NativeDecodeStats新增discovered/read/allocated/decoded/delta；异常stats/raced透传至builder。
+  连续race保留旧FTS/JSON且不标unindexable；跨retry、delta→full合计实际读取。
+- 书签migrateBookmarks显式dryRun默认true；实际迁移必须独立backupPath，备份相同原文可重试。
+  每个物理旧行和自定义tags/notes/时间/旧数字保留；旧行只有已保留原始anchor+identityEvidence唯一匹配才迁移。
+
+验证结果详见IMPLEMENTATION_STATUS，不合并子任务断言重复计总数。
+本轮小任务最终验证：类型编译通过，TEST_RESULTS/pause-current-integration.txt 4/4。
+当前测试驱动run-isolated-tests.mjs已从spawnSync改为spawn并实时写原始输出，保留显式隔离env和测试存在校验。
+失败记录：s3-core.txt初始化options错误已修，s3-core-second.txt 7/7；初始app夹具调用不存在refresh工具导致失败，
+改用现有session_index_list(refresh:true)；实际delta通过watcher等待断言；最终4/4。
+最初buffered首组测试中断未形成完整日志，不能算成功/失败断言总数。原审查证据未覆盖。
+
+恢复后工作（仍只S3–S5，除非用户扩大范围）：
+1. 核对diff，编译包含新复制的fts-client测试及动态workers；按变动挑最小回归集合。
+   应覆盖fts/filter/recovery/bookmark multiprocess/parser/pool/compat相关代际/builder/index/rank integration，
+   不无条件全库跑；schemaVersion旧预期2需要改正确5，不能删除正确性断言。
+2. 再运行root新增核心与集成用例；把原审查复现转成正确行为断言，完成阶段关闭矩阵。
+3. 完成显式迁移dry-run整合报告（全新库、旧schema2、混合旧书签、重复/中断恢复）；不能读/写生产书签。
+4. 仅独立跑双worker最终5轮与scenarios，见worker交接；50k压力已通过，避免与大量测试并跑。
+5. 尚需复核的边界：默认4MiB单行的超限原文补查参数/工具说明；FTS不可用稳定消息书签验证状态；
+   worker宿主硬退出遗留staging目录的只读诊断/安全恢复；cleanup失败的可观测诊断仍可加强。
+   不得按TTL删除活owner，不自动删除既存资源。worker正常close/restart的自有目录清理已有测试。
+6. 最终S3–S5通过再更新状态，S6整体release/readiness/runbook/候选构建留给后续范围。
+不要调用build.sh，不push，不迁移生产，不部署G、不改插件junction、不重启宿主。

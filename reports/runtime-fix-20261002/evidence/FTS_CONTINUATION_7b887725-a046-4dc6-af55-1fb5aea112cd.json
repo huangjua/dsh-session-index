@@ -1,0 +1,46 @@
+{
+  "startedAt": "2026-10-02T15:32:42.623Z",
+  "exitCode": 0,
+  "signal": null,
+  "elapsedMs": 3972,
+  "args": [
+    "--no-warnings",
+    "--test",
+    "--test-concurrency=1",
+    "--test-reporter=tap",
+    "--test-name-pattern=ready deadline does not kill progressing migration",
+    ".fts-continuation-build/test/runtime-transport.test.js"
+  ],
+  "summary": {
+    "tests": 1,
+    "suites": 1,
+    "pass": 1,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "sourceDigests": {
+    "src/fts-client.ts": "6f79688b256de399016fe9805ffaa6efb86384b6c3fdac6c9515fdd1b66cff6a",
+    "src/fts-worker.ts": "9aa56bd6477711bd2ac9328dc5c09d265f2e9902e0c29f4da02c2762059fb980",
+    "src/fts.ts": "840a9ea25477bcf1e40e4fc64df43cc805559ccdfd042a4ab14b3237600054b2",
+    "test/runtime-transport.test.ts": "525ca0cd4be7892ffd963e5d50d3a0149acdb45284ddcedb550d1d65fca7328e"
+  },
+  "compile": "node node_modules/typescript/bin/tsc -p tsconfig.test.json --outDir .fts-continuation-build: exit0",
+  "environment": {
+    "ELECTRON_RUN_AS_NODE": "1",
+    "DSH_HOME": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\validation\\FTS_CONTINUATION_7b887725-a046-4dc6-af55-1fb5aea112cd\\dsh-home",
+    "TEMP": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\validation\\FTS_CONTINUATION_7b887725-a046-4dc6-af55-1fb5aea112cd\\temp",
+    "TMP": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\validation\\FTS_CONTINUATION_7b887725-a046-4dc6-af55-1fb5aea112cd\\temp",
+    "dataDir": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\validation\\FTS_CONTINUATION_7b887725-a046-4dc6-af55-1fb5aea112cd\\data",
+    "sessionsRoot": "E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\validation\\FTS_CONTINUATION_7b887725-a046-4dc6-af55-1fb5aea112cd\\sessions"
+  },
+  "boundary": {
+    "installedRuntime": true,
+    "testConcurrency": 1,
+    "performanceMeasurement": false,
+    "productionOpened": false,
+    "compiledOutput": ".fts-continuation-build",
+    "workLibModified": false
+  }
+}

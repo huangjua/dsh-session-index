@@ -10,7 +10,12 @@
  */
 import { parentPort } from 'node:worker_threads'
 import { parseHead, parseFull, parseSearch } from './streaming-parser.js'
-import type { HeadSummary, FullSummary, SearchHit } from './streaming-parser.js'
+import type { HeadSummary, FullSummary, SearchHit, SearchOptions } from './streaming-parser.js'
+import type { CompatResumeState } from './session-compat.js'
+import { sessionFailureOf } from './session-compat.js'
+import { CancelError } from './cancel.js'
+import type { FtsMessageRow } from './fts.js'
+import type { MessageIdentity } from './message-anchor.js'
 
 interface TaskMessage {
   type: 'task'
@@ -19,19 +24,68 @@ interface TaskMessage {
   file: string
   query?: string
   maxSnippets?: number
+  role?: SearchOptions['role']
+  queryMode?: SearchOptions['queryMode']
   maxDecompressedBytes?: number
+  maxLineBytes?: number
   startOffset?: number
   collectMessages?: boolean
+  maxMessages?: number
+  maxIndexedTextBytes?: number
+  /** C9b：delta 续读状态（窗口无 header，需播种 version/generation/header/seq） */
+  resume?: CompatResumeState
 }
 
 type TaskData = HeadSummary | FullSummary | SearchHit[]
 
 if (parentPort) {
   let current: AbortController | null = null
+  let transfer: { taskId: number; partId: number; resolve: () => void } | null = null
+
+  /** At most one bounded part is in flight; acknowledgements supply backpressure. */
+  const sendMessages = async (rows: FtsMessageRow[], taskId: number, signal: AbortSignal): Promise<void> => {
+    let partId = 0
+    for (const row of rows) {
+      const { text, toolName, sourceMessageId, callId, ...metadata } = row as FtsMessageRow & Partial<MessageIdentity>
+      const fields = Object.entries({ text, toolName, ...sourceMessageId ? { sourceMessageId } : {}, ...callId ? { callId } : {} })
+      let rowStart = true
+      for (let fieldIndex = 0; fieldIndex < fields.length; fieldIndex++) {
+        const [field, value] = fields[fieldIndex]
+        let offset = 0
+        do {
+          if (signal.aborted) throw new CancelError()
+          let end = Math.min(offset + 128 * 1024, value.length)
+          if (end < value.length && value.charCodeAt(end - 1) >= 0xd800 && value.charCodeAt(end - 1) <= 0xdbff) end--
+          const id = partId++
+          await new Promise<void>((resolve, reject) => {
+            const onAbort = (): void => { transfer = null; reject(new CancelError()) }
+            signal.addEventListener('abort', onAbort, { once: true })
+            transfer = { taskId, partId: id, resolve: () => { signal.removeEventListener('abort', onAbort); resolve() } }
+            parentPort!.postMessage({
+              type: 'message-part', taskId, partId: id, field, text: value.slice(offset, end),
+              ...rowStart ? { metadata } : {},
+              rowFinal: fieldIndex === fields.length - 1 && end === value.length,
+            })
+          })
+          rowStart = false
+          offset = end
+        } while (offset < value.length)
+      }
+    }
+  }
 
   parentPort.on('message', (msg: unknown) => {
     if (!msg || typeof msg !== 'object') return
     const m = msg as { type?: string }
+    if (m.type === 'message-ack') {
+      const ack = msg as { taskId?: number; partId?: number }
+      if (transfer && transfer.taskId === ack.taskId && transfer.partId === ack.partId) {
+        const accepted = transfer
+        transfer = null
+        accepted.resolve()
+      }
+      return
+    }
     if (m.type === 'cancel') {
       current?.abort()
       return
@@ -46,22 +100,35 @@ if (parentPort) {
         const signal = controller.signal
         const maxDecompressedBytes = task.maxDecompressedBytes
         if (task.mode === 'head') {
-          data = await parseHead(task.file, { signal, maxDecompressedBytes })
+          data = await parseHead(task.file, { signal, maxDecompressedBytes, maxLineBytes: task.maxLineBytes })
         } else if (task.mode === 'full') {
           data = await parseFull(task.file, {
             signal,
             maxDecompressedBytes,
+            maxLineBytes: task.maxLineBytes,
             startOffset: task.startOffset,
             collectMessages: task.collectMessages,
+            maxMessages: task.maxMessages,
+            maxIndexedTextBytes: task.maxIndexedTextBytes,
+            // C9b：增量窗口不含 header，需按上一轮结果播种 compat 状态
+            resume: task.resume,
           })
         } else if (task.mode === 'search') {
           data = await parseSearch(task.file, task.query || '', {
             signal,
             maxSnippets: task.maxSnippets,
+            role: task.role,
+            queryMode: task.queryMode,
             maxDecompressedBytes,
+            maxLineBytes: task.maxLineBytes,
           })
         } else {
           throw new Error(`unknown worker task mode: ${String(task.mode)}`)
+        }
+        if (task.mode === 'full' && task.collectMessages) {
+          const summary = data as FullSummary
+          await sendMessages(summary.messages ?? [], task.taskId, controller.signal)
+          data = { ...summary, messages: [] }
         }
         parentPort!.postMessage({
           type: 'done',
@@ -77,6 +144,9 @@ if (parentPort) {
           ok: false,
           aborted: controller.signal.aborted,
           error: e instanceof Error ? e.message : String(e),
+          stats: e && typeof e === 'object' && 'stats' in e ? e.stats : undefined,
+          raced: e && typeof e === 'object' && 'raced' in e ? e.raced === true : false,
+          diagnostic: sessionFailureOf(e),
         })
       } finally {
         if (current === controller) current = null

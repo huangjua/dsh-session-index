@@ -108,6 +108,8 @@ async function setup(opts: SetupOpts = {}): Promise<Env> {
   apply(ctx as never, {
     sessionsRoot,
     indexFile: join(home, 'session-index', 'index.json'),
+    // dataDir 显式指向测试 home（不能留空依赖 DSH_HOME 兜底——避免污染真实 ~/.dsh）
+    dataDir: join(home, 'session-index'),
     maxHits: 10,
     maxSnippetsPerSession: 3,
     ftsEnabled: opts.ftsEnabled ?? true,
@@ -264,10 +266,13 @@ describe('STAGE-1 Part A 集成', () => {
     // 代表行证据：d 来自正文 → kind=content
     const dHit = ftsR.hits.find((h: any) => h.sessionId === 'session-d')
     assert.equal(dHit.kind, 'content')
-    assert.equal(dHit.messageId > 0, true, 'FTS 路径代表行带真实 messageId（SCROLL 锚点可用）')
+    assert.equal(typeof dHit.anchorId, 'string', 'FTS 路径代表行带稳定 SCROLL 锚点')
+    assert.equal(dHit.messageId, undefined, '新记录不公开数据库 rowid')
+    const workerDHit = workerR.hits.find((h: any) => h.sessionId === 'session-d')
+    assert.equal(workerDHit.anchorId, dHit.anchorId, '同一来源在 FTS 与原文回退中使用相同锚点')
   })
 
-  it('search full：worker 回退代表行（messageId=0）+ 同一会话聚合为一条', async () => {
+  it('search full：worker 回退稳定锚点 + 同一会话聚合为一条', async () => {
     const now = Date.now()
     const env = await setup({
       ftsEnabled: false,
@@ -276,6 +281,7 @@ describe('STAGE-1 Part A 集成', () => {
     const r = await env.tools['session_index_search'].execute({ query: 'trigram', mode: 'full', limit: 10 })
     const xs = r.hits.filter((h: any) => h.sessionId === 'session-x')
     assert.equal(xs.length, 1, '同一会话多条命中聚合为一条代表行')
-    assert.equal(xs[0].messageId, 0, 'worker 路径代表行 messageId=0（无锚点）')
+    assert.equal(xs[0].messageId, undefined, '原文回退不伪造数字锚点')
+    assert.equal(typeof xs[0].anchorId, 'string', '原文回退保留来源稳定锚点')
   })
 })

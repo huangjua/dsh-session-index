@@ -1,0 +1,50 @@
+当前最终状态（2026-10-02；更新于 2026-10-02T10:56:44.588Z UTC）
+
+本轮分配的 S6–S7 已完成：候选 0.0.3-rc.1 已按明确授权部署，并完成真实宿主工具注册、查询/anchor、自然续写及检查点验收。
+最终 schema5：331 会话、47092 消息、47870 chunks、331 checkpoint 全部收敛；普通启动后只读复核稳定通过。
+插件活动数据/书签/备份在 E；C 旧插件索引已保全搬 E；官方原始会话日志仍在 C 原位。
+desktop 已优雅退出临时诊断并无参数恢复；main27608/host16488、仅 localhost19387，未留下 inspect/import 或诊断环境。
+实际 ctx/worker 健康证据来自恢复前真实 host15916；普通恢复后的 fresh ctx 未再次提取，普通进程/配置及数据库已另验。
+运行限制：旧库自动迁移的15秒超时未改（本机同版本离线升级恢复）；首次检索加两次SCROLL约76秒并有2次reader恢复；自然续写中间一次回退全量，另外两次尾段读取239/1167B。
+生产书签实际0条；不声称已验证非空生产书签迁移；session_summary仅验证注册，未调用LLM。
+候选清单SHA256仍为 a7ebe5aa640c1b37c2be8f122bd5f4968af802838d46231099e835c60a800ffb；96候选/69运行/22实现源hash保持一致。
+详见 LIVE_TEST_RESULTS.txt、DEPLOYMENT_RESULTS.txt、DEPLOYMENT_RESULTS/S7_STATE.json、PATCHES/S7/manifest.json。
+未push/远端发布，未卸载web；不重复部署/书签迁移/离线升级，不用G旧src build覆盖已验证lib。
+
+以下保留原批准前及曾延后实测的历史文字，只作追溯，不代表当前待办；批准时release目录文件保持不变：
+
+DSH session-index S7部署记录（2026-10-02 Asia/Hong_Kong）
+
+结论：候选0.0.3-rc.1已部署；用户最新要求“实测再等等，先部署”，真实宿主/生产实测延后。
+S6已完成；S7的部署阶段已完成，整个S7生产验收未标完成。
+
+批准与版本
+用户批准具体候选session-index-0.0.3-rc.1-S6-20261002，清单SHA256 a7ebe5aa640c1b37c2be8f122bd5f4968af802838d46231099e835c60a800ffb。
+另明确批准C旧索引保全搬到E。部署后没有改候选内容；最后69个运行文件SHA与候选一致。
+运行目录 G:\AI-Agent\deepseek harness\dsh-session-index
+候选目录 E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index\release\S6-20261002
+改动为lib完整目录（含worker/types）、package.json、README.md、README_zh.md。
+没有改junction、profile配置、运行依赖或G/src；G/src保持原基线。后续不要用G旧src直接build覆盖候选lib；实际候选src与FULL-S0-S6审查补丁在E实施树。
+HEAD 70800ed7be77b31527a955ea2f6cc6a750dafef8；本轮没有commit/push或远端发布，没有卸载web。
+
+数据与备份
+活动插件dataDir E:\Do Something\DSH备份\session-index-data
+完整部署备份 E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index\deployment-backups\S7-20261002-090316-e1190a1f
+旧运行lib就地保全 G:\AI-Agent\deepseek harness\dsh-session-index\lib.before-S7-20261002-090316-e1190a1f
+before数据/代码/额外迁移证据副本均在E，复制前后源与副本文件集/size/SHA一致。
+旧生产库schema2，331sessions/47089messages，额外副本quick_check=ok；原恢复快照不打开writer。
+生产书签实际0条，dryRun/apply各状态都是0，changed=false，空文件SHA保持不变；没有用合成6条未解统计冒充生产结果。
+C:\Users\admin\.dsh\session-index已保全搬到 E:\Do Something\DSH备份\dsh-session-index work\implementation-session-index\deployment-backups\S7-20261002-090316-e1190a1f\legacy-c-session-index；5文件SHA一致，C旧目录不再存在。
+自动命令审查拒绝了包含递归删除的搬移方案，改用校验绝对源/目标后的原生Move-Item成功；没有通过另一shell删除。
+G保留运行代码/旧lib恢复副本，没有向G创建插件索引库。
+官方原始会话日志仍在C:\Users\admin\.dsh\sessions；本轮移动的是插件索引/书签侧数据，未搬动/改写原始日志。
+
+待后续实测（遵从用户明确延后）
+实际desktop加载路径/版本、五工具注册、worker健康；首次实际加载schema5升级/FTS checkpoint与JSON进度收敛；生产只读搜索/SCROLL（书签0条不虚构已有跳回）；一次自然增量readBytes/deltaBytes/deltaParsed。
+曾尝试临时E诊断preload启动desktop，未得到actualHost就绪证据，不计为验收通过。诊断启动PID已退出，未留永久NODE_OPTIONS/ASAR修改；诊断方案和脱敏记录仅在E。
+后续从已部署候选继续实测，不重复迁移书签/部署，不把现有库直接force/delete。
+
+恢复入口
+按DEPLOYMENT_RUNBOOK已批准运行切换步骤，保全上线后最新用户数据再使用E before快照和G lib.before恢复。
+上线后新增书签不能被before旧快照盲目覆盖；本次0条仅描述切换时点，不推断将来的书签数量。
+备份/旧lib清理仍是单独动作，本轮没有清理这些恢复资源。

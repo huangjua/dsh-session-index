@@ -1,0 +1,29 @@
+../release/RUNTIME-20261002/src/core.ts(13,24): error TS2307: Cannot find module 'fzstd' or its corresponding type declarations.
+../release/RUNTIME-20261002/src/index.ts(12,30): error TS2307: Cannot find module '@deepseek-ai/cordis' or its corresponding type declarations.
+../release/RUNTIME-20261002/src/index.ts(13,15): error TS2307: Cannot find module '@deepseek-ai/schemastery' or its corresponding type declarations.
+../release/RUNTIME-20261002/src/index.ts(19,28): error TS2307: Cannot find module '@deepseek-ai/dsh-tools' or its corresponding type declarations.
+../release/RUNTIME-20261002/src/index.ts(20,35): error TS2307: Cannot find module '@deepseek-ai/dsh-llm' or its corresponding type declarations.
+../release/RUNTIME-20261002/src/index.ts(99,22): error TS2304: Cannot find name 'Schemastery'.
+../release/RUNTIME-20261002/src/index.ts(880,16): error TS7006: Parameter '_args' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/index.ts(880,23): error TS7006: Parameter 'v' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/index.ts(959,21): error TS7006: Parameter 'args' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/index.ts(1020,16): error TS7006: Parameter '_args' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/index.ts(1020,23): error TS7006: Parameter 'v' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/index.ts(1034,21): error TS7006: Parameter 'args' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/index.ts(1202,16): error TS7006: Parameter 'args' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/index.ts(1202,22): error TS7006: Parameter 'v' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/index.ts(1259,21): error TS7006: Parameter 'args' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/index.ts(1600,16): error TS7006: Parameter '_args' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/index.ts(1600,23): error TS7006: Parameter 'v' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/index.ts(1622,21): error TS7006: Parameter 'args' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/index.ts(1726,16): error TS7006: Parameter '_args' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/index.ts(1726,23): error TS7006: Parameter 'v' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/index.ts(1752,21): error TS7006: Parameter 'args' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/llm-summary.ts(49,30): error TS2307: Cannot find module '@deepseek-ai/cordis' or its corresponding type declarations.
+../release/RUNTIME-20261002/src/llm-summary.ts(50,51): error TS2307: Cannot find module '@deepseek-ai/dsh-llm' or its corresponding type declarations.
+../release/RUNTIME-20261002/src/llm-summary.ts(51,60): error TS2307: Cannot find module '@deepseek-ai/dsh-llm' or its corresponding type declarations.
+../release/RUNTIME-20261002/src/llm-summary.ts(282,20): error TS7006: Parameter 'b' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/llm-summary.ts(283,17): error TS7006: Parameter 'b' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/native-zstd.ts(21,24): error TS2307: Cannot find module 'fzstd' or its corresponding type declarations.
+../release/RUNTIME-20261002/src/native-zstd.ts(100,44): error TS7006: Parameter 'chunk' implicitly has an 'any' type.
+../release/RUNTIME-20261002/src/streaming-parser.ts(16,24): error TS2307: Cannot find module 'fzstd' or its corresponding type declarations.

@@ -1,0 +1,9 @@
+{
+  "startedAt": "2026-10-02T15:53:11.275Z",
+  "scope": "full quick_check on isolated candidate copy only; not on production and not in factory/query critical path",
+  "quickCheckMs": 49652.9424,
+  "rows": 1,
+  "ok": true,
+  "errorCount": 0,
+  "totalMs": 49653.7292
+}

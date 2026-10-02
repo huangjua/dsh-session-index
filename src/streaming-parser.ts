@@ -14,13 +14,19 @@
  */
 import { open } from 'node:fs/promises'
 import * as fzstd from 'fzstd'
-import { throwIfAborted } from './cancel.js'
+import { isCancelError, throwIfAborted } from './cancel.js'
 import { nativeDecodeZstd, type NativeDecodeStats } from './native-zstd.js'
 import type { FtsMessageRow } from './fts.js'
-import { MATCH_OPEN, MATCH_CLOSE, normalizeReservedMarkers } from './fts.js'
+import { normalizeReservedMarkers } from './fts.js'
+import { excerptAroundMatch } from './core.js'
+import { messageIdentity, type MessageIdentity } from './message-anchor.js'
+import { createQueryPlan, matchesQuery, queryMatchToken, type QueryMode } from './query-plan.js'
 import {
   SessionLogCompatibility,
+  SessionParseError,
+  sessionFailureOf,
   textFromCompatibleMessage,
+  type CompatResumeState,
   type SessionCompatibilityVersion,
 } from './session-compat.js'
 
@@ -43,13 +49,29 @@ export interface StreamStats {
   bytes: number
   oversized: number
   stopped: boolean
+  discoveredBytes?: number
+  readBytes?: number
+  allocatedBytes?: number
+  decodedBytes?: number
+  validationDecodedBytes?: number
+  /** 实际压缩尾段读取字节；失败重试/解码器回退也累计，full 为 0。 */
+  deltaBytes?: number
 }
 
 class StopStreaming extends Error {}
 
-/** P2 FTS 收集上限：单会话消息行数 / 单条文本长度（防超大会话内存与 postMessage 开销） */
-const MAX_FTS_ROWS = 50_000
-const MAX_FTS_TEXT = 1000
+/** Collection budgets are separate from snippet length and decompression limits. */
+export const MAX_FTS_ROWS = 50_000
+export const MAX_INDEXED_TEXT_BYTES = 64 * 1024 * 1024
+
+export interface MessageCoverage {
+  complete: boolean
+  reasons: string[]
+  indexedMessages: number
+  indexedTextBytes: number
+  maxMessages: number
+  maxTextBytes: number
+}
 
 /**
  * 流式解压 JSONL：逐行回调 onLine。返回 false 提前停止（head/search 早停）。
@@ -70,7 +92,13 @@ export async function streamJsonlLines(
     decoder: forcedDecoder = 'native',
     startOffset = 0,
   } = options
+  throwIfAborted(signal)
+  if (!Number.isSafeInteger(startOffset) || startOffset < 0) throw Object.assign(new RangeError('invalid compressed startOffset'), { reasonCode: 'invalid_offset', phase: 'compressed_read', retryable: false })
+  if (!Number.isSafeInteger(compressedChunkSize) || compressedChunkSize <= 0) throw new RangeError('invalid compressedChunkSize')
+  if (!Number.isSafeInteger(maxDecompressedBytes) || maxDecompressedBytes < 0) throw new RangeError('invalid maxDecompressedBytes')
+  if (!Number.isSafeInteger(maxLineBytes) || maxLineBytes <= 0) throw new RangeError('invalid maxLineBytes')
   const stats: StreamStats = { lines: 0, bytes: 0, oversized: 0, stopped: false }
+  let failedNativeIo: Partial<StreamStats> = {}
   let decoder = new TextDecoder('utf-8')
   let buffer = ''
 
@@ -81,7 +109,14 @@ export async function streamJsonlLines(
       const line = buffer.slice(0, idx)
       buffer = buffer.slice(idx + 1)
       if (line.length === 0) continue
+      // C11：maxLineBytes 是**字节**口径，旧实现比较的是 UTF-16 code unit 数
+      // （CJK 行实际字节可达名义值 3 倍）。两级判定：字符数超限必超字节；
+      // 否则只在"可能超"时用 Buffer.byteLength 精算（避免每行都算字节）。
       if (line.length > maxLineBytes) {
+        stats.oversized++
+        continue
+      }
+      if (line.length * 3 > maxLineBytes && Buffer.byteLength(line) > maxLineBytes) {
         stats.oversized++
         continue
       }
@@ -107,6 +142,7 @@ export async function streamJsonlLines(
   const flush = (): void => {
     if (stats.stopped) return
     buffer += decoder.decode()
+    if (buffer && !buffer.endsWith('\n')) buffer += '\n'
     emit()
   }
 
@@ -118,10 +154,26 @@ export async function streamJsonlLines(
         maxDecompressedBytes,
         startOffset,
       })
+      const io = ns as NativeDecodeStats & Partial<StreamStats>
+      for (const key of ['discoveredBytes', 'readBytes', 'allocatedBytes', 'decodedBytes', 'deltaBytes', 'validationDecodedBytes'] as const) {
+        if (io[key] !== undefined) stats[key] = io[key]
+      }
       if (ns.stopped || stats.stopped) return stats
       flush()
       return stats
     } catch (e) {
+      if (e instanceof Error && Object.isExtensible(e) && Object.getOwnPropertyDescriptor(e, 'stats')?.configurable !== false &&
+          (stats.lines > 0 || stats.oversized > 0)) {
+        const nativeStats = (e as Error & { stats?: Partial<StreamStats> }).stats
+        Object.defineProperty(e, 'stats', { value: { ...stats, ...nativeStats, lines: stats.lines, oversized: stats.oversized },
+          enumerable: true, configurable: true })
+      }
+      if (isCancelError(e) || signal?.aborted) throw e
+      // An explicitly identified boundary/compatibility/partial-frame rejection will
+      // have the same outcome in fzstd; replaying those bytes is unnecessary.
+      if (sessionFailureOf(e).reasonCode !== 'unknown') throw e
+      if (e instanceof RangeError) throw e
+      if (e && typeof e === 'object' && 'raced' in e && e.raced === true) throw e
       if (e instanceof StopStreaming) return stats
       if (stats.stopped) return stats
       // Fix ③（2026-09-10 回归修复）：回退只在"还没向 caller 喂过任何一行"时才安全。
@@ -132,6 +184,9 @@ export async function streamJsonlLines(
       // （未知事件类型 / 消息契约不符）整条掩盖——全量构建的 error 字段因此失去
       // 诊断价值。已喂过行时直接上抛原始错误。
       if (stats.lines > 0) throw e
+      if (e && typeof e === 'object' && 'stats' in e && e.stats && typeof e.stats === 'object') {
+        failedNativeIo = e.stats as Partial<StreamStats>
+      }
       // 回退：重置状态，走 fzstd 流式（仅首帧损坏等"零行喂出"场景）
       decoder = new TextDecoder('utf-8')
       buffer = ''
@@ -145,6 +200,14 @@ export async function streamJsonlLines(
   // ── fzstd 流式路径（保留对拼接多帧的完整支持）──
   const handle = await open(file, 'r')
   try {
+    const before = await handle.stat()
+    if (!Number.isSafeInteger(startOffset) || startOffset < 0 || startOffset > before.size) {
+      throw Object.assign(new RangeError('invalid compressed startOffset'), { reasonCode: 'invalid_offset', phase: 'compressed_read', retryable: false })
+    }
+    stats.discoveredBytes = Math.max(before.size, failedNativeIo.discoveredBytes ?? 0)
+    stats.readBytes = failedNativeIo.readBytes ?? 0
+    stats.validationDecodedBytes = failedNativeIo.validationDecodedBytes ?? 0
+    stats.allocatedBytes = (failedNativeIo.allocatedBytes ?? 0) + compressedChunkSize
     const stream = new fzstd.Decompress((chunk: Uint8Array) => {
       if (!feed(chunk)) throw new StopStreaming()
     })
@@ -154,6 +217,8 @@ export async function streamJsonlLines(
       throwIfAborted(signal)
       const { bytesRead } = await handle.read(readBuf, 0, readBuf.length, position)
       if (bytesRead === 0) break
+      stats.readBytes! += bytesRead
+      stats.allocatedBytes! += bytesRead
       // 关键：fzstd.Decompress 在帧头未凑齐时会内部持有 chunk 引用（this.c.push），
       // 复用 readBuf 会被下一轮 read 覆盖 → 帧头污染 → invalid zstd data。
       // 必须拷贝一份再 push。
@@ -162,26 +227,31 @@ export async function streamJsonlLines(
     }
     stream.push(new Uint8Array(0), true)
     flush()
+    const after = await handle.stat()
+    if (after.size !== before.size || after.mtimeMs !== before.mtimeMs || after.ctimeMs !== before.ctimeMs) {
+      throw Object.assign(new SessionParseError('session log changed during compressed read', 'source_changed', 'compressed_read', true), { raced: true })
+    }
+    stats.decodedBytes = (failedNativeIo.decodedBytes ?? 0) + stats.bytes
+    stats.deltaBytes = startOffset > 0 ? stats.readBytes : 0
     return stats
   } catch (e) {
+    stats.decodedBytes = (failedNativeIo.decodedBytes ?? 0) + stats.bytes
+    stats.deltaBytes = startOffset > 0 ? stats.readBytes : 0
     if (e instanceof StopStreaming) return stats
+    if (e instanceof Error && Object.isExtensible(e) && !('stats' in e)) {
+      Object.defineProperty(e, 'stats', { value: { ...stats }, enumerable: true, configurable: true })
+    }
+    if (e && typeof e === 'object' && 'code' in e && e.code === fzstd.ZstdErrorCode.UnexpectedEOF) {
+      throw Object.assign(new SessionParseError('incomplete zstd stream', 'partial_frame', 'decode', true), { stats: { ...stats } })
+    }
     throw e
   } finally {
     await handle.close()
   }
 }
 
-function textOf(content: unknown): string {
-  if (!Array.isArray(content)) return ''
-  return content
-    .filter(
-      (c): c is { type: string; text?: unknown } =>
-        !!c && typeof c === 'object' && (c as { type?: unknown }).type === 'text',
-    )
-    .map((c) => (typeof c.text === 'string' ? c.text : ''))
-    .join(' ')
-    .trim()
-}
+// C11：删除无引用的 textOf——消息文本一律走 session-compat 的
+// textFromCompatibleMessage（统一口径，避免两份文本提取规则漂移）。
 
 function eventTime(obj: Record<string, unknown>): number {
   const t = obj.time
@@ -240,6 +310,7 @@ export async function parseHead(
     compressedChunkSize?: number
     decoder?: 'native' | 'fzstd'
     maxDecompressedBytes?: number
+    maxLineBytes?: number
     startOffset?: number
   } = {},
 ): Promise<HeadSummary> {
@@ -297,10 +368,11 @@ export async function parseHead(
       compressedChunkSize: options.compressedChunkSize,
       decoder: options.decoder,
       maxDecompressedBytes: options.maxDecompressedBytes,
+      maxLineBytes: options.maxLineBytes,
       startOffset: options.startOffset,
     },
   )
-  for (const message of compat.finish()) {
+  for (const message of compat.finishBySource()) {
     if (message.type !== 'user/message' || out.firstUserText) continue
     const text = textFromCompatibleMessage(message)
     if (text) out.firstUserText = text.slice(0, 500)
@@ -328,6 +400,26 @@ export interface FullSummary {
   /** P2 FTS：collectMessages=true 时收集的消息行（user/assistant 文本 + tool 名） */
   messages?: FtsMessageRow[]
   compatibility: SessionCompatibilityVersion
+  /**
+   * C9：本次解析（可能是 delta 窗口）内发生过 surface 替换——delta 结果不可信，
+   * 调用方应回退全量重解析。
+   *
+   * 保守判据（实测代价可忽略：24 个真实会话 1,145,638 事件里仅 13 次 replace，
+   * 0.0011%，且近窗口内为 0）。**跨窗口** replace 另有结构性兜底：窗口内的
+   * surface 数组不含被替换的原帧，`foldSurface` 找不到 start/end 会直接抛错，
+   * 走调用方既有的 `!r.ok` → 全量回退路径。
+   */
+  hadSurfaceReplace?: boolean
+  /** C9b：已解析到的最大事件 seq（delta 合并后写回 indexedSeq，作为下次窗口起点）。 */
+  lastSeq?: number
+  generation?: number
+  coverage?: MessageCoverage
+  discoveredBytes?: number
+  readBytes?: number
+  allocatedBytes?: number
+  decodedBytes?: number
+  validationDecodedBytes?: number
+  deltaBytes?: number
 }
 
 export async function parseFull(
@@ -338,9 +430,21 @@ export async function parseFull(
     compressedChunkSize?: number
     decoder?: 'native' | 'fzstd'
     maxDecompressedBytes?: number
+    maxLineBytes?: number
     startOffset?: number
     /** P2 FTS：为 true 时逐条收集 user/assistant 文本与 tool 名（供 SQLite FTS） */
     collectMessages?: boolean
+    maxMessages?: number
+    maxIndexedTextBytes?: number
+    /**
+     * C9b（resume delta）：续读状态。传入后按"上一轮已解析到这里"播种 compat，
+     * 使**不含 header 的增量窗口**（startOffset > 0）可被解析。
+     *
+     * 必要性：DSH 会话文件 append-only 且只有第一帧带 header（实测 349 个真实
+     * 文件 0 个在后续帧重复写 header）。没有它，窗口首行会被当成 header 解析并抛
+     * "unsupported or malformed session header"——这正是此前 delta 恒失败的原因。
+     */
+    resume?: CompatResumeState
   } = {},
 ): Promise<FullSummary> {
   const lastTextLimit = options.lastTextLimit ?? 2000
@@ -360,18 +464,41 @@ export async function parseFull(
     compatibility: 'alpha3',
   }
   const messages: FtsMessageRow[] | undefined = collectMessages ? [] : undefined
-  const pushMessage = (role: FtsMessageRow['role'], text: string, toolName = ''): void => {
-    if (!messages || messages.length >= MAX_FTS_ROWS) return
+  const maxMessages = options.maxMessages ?? MAX_FTS_ROWS
+  const maxTextBytes = options.maxIndexedTextBytes ?? MAX_INDEXED_TEXT_BYTES
+  if (!Number.isSafeInteger(maxMessages) || maxMessages < 0 || !Number.isSafeInteger(maxTextBytes) || maxTextBytes < 0) {
+    throw new RangeError('message collection budgets must be non-negative safe integers')
+  }
+  const coverage: MessageCoverage = {
+    complete: true, reasons: [], indexedMessages: 0, indexedTextBytes: 0, maxMessages, maxTextBytes,
+  }
+  const incomplete = (reason: string): void => {
+    coverage.complete = false
+    if (!coverage.reasons.includes(reason)) coverage.reasons.push(reason)
+  }
+  const tools: Array<{ seq: number; type: string; data: Record<string, unknown> }> = []
+  const pushMessage = (event: { seq: number; type: string; data: Record<string, unknown> }, role: FtsMessageRow['role'], text: string, toolName = ''): void => {
+    if (!messages) return
     if (!text && !toolName) return
-    messages.push({
+    if (messages.length >= maxMessages) { incomplete('message-limit'); return }
+    const bytes = Buffer.byteLength(text) + Buffer.byteLength(toolName)
+    if (bytes > maxTextBytes - coverage.indexedTextBytes) { incomplete('text-byte-limit'); return }
+    const row = {
       sessionFile: file,
       role,
-      text: text.slice(0, MAX_FTS_TEXT),
-      toolName: toolName.slice(0, 200),
-    })
+      text,
+      toolName,
+      ...messageIdentity(compat.header.id, compat.generation, event, text, toolName),
+    }
+    messages.push(row)
+    coverage.indexedTextBytes += bytes
+    coverage.indexedMessages++
   }
   const compat = new SessionLogCompatibility()
-  await streamJsonlLines(
+  // C9b：增量窗口没有 header 行，先按上一轮结果播种（version/generation/header/
+  // expectedSeq）。全量解析不播种，仍走完整 header 校验。
+  if (options.resume) { compat.resume(options.resume); applyHeader(out, compat) }
+  const stats = await streamJsonlLines(
     file,
     (line) => {
       let parsed: unknown
@@ -394,7 +521,11 @@ export async function parseFull(
         }
         if (type === 'tool/call' && typeof data?.name === 'string' && data.name) {
           out.toolCallCounts[data.name] = (out.toolCallCounts[data.name] || 0) + 1
-          pushMessage('tool', '', data.name)
+          if (messages) {
+            if (tools.length < maxMessages) {
+              tools.push({ seq: obj.seq as number, type, data: { name: data.name, callId: data.callId ?? data.id } })
+            } else incomplete('message-limit')
+          }
         }
       }
       return true
@@ -404,27 +535,45 @@ export async function parseFull(
       compressedChunkSize: options.compressedChunkSize,
       decoder: options.decoder,
       maxDecompressedBytes: options.maxDecompressedBytes,
+      maxLineBytes: options.maxLineBytes,
       startOffset: options.startOffset,
     },
   )
-  for (const message of compat.finish()) {
+  let nextTool = 0
+  for (const message of compat.finishBySource()) {
+    while (nextTool < tools.length && tools[nextTool].seq < message.seq) {
+      const tool = tools[nextTool++]
+      pushMessage(tool, 'tool', '', tool.data.name as string)
+    }
     const text = textFromCompatibleMessage(message)
     if (message.type === 'user/message') {
       if (text && !out.firstUserText) out.firstUserText = text.slice(0, 500)
-      if (text) pushMessage('user', text)
+      if (text) pushMessage(message, 'user', text)
     } else if (message.type === 'assistant/message') {
       if (text) out.lastAssistantText = text.slice(0, lastTextLimit)
-      if (text) pushMessage('assistant', text)
+      if (text) pushMessage(message, 'assistant', text)
     }
   }
+  while (nextTool < tools.length) {
+    const tool = tools[nextTool++]
+    pushMessage(tool, 'tool', '', tool.data.name as string)
+  }
+  if (stats.oversized > 0) incomplete('oversized-jsonl-lines')
+  for (const key of ['discoveredBytes', 'readBytes', 'allocatedBytes', 'decodedBytes', 'deltaBytes', 'validationDecodedBytes'] as const) {
+    if (stats[key] !== undefined) out[key] = stats[key]
+  }
   out.compatibility = compat.version
-  if (messages) out.messages = messages
+  out.generation = compat.generation
+  // C9：窗口内出现 surface 替换 → 保守回退全量（判据宽松但代价实测可忽略）。
+  if (compat.replaceOps > 0) out.hadSurfaceReplace = true
+  out.lastSeq = compat.lastSeq
+  if (messages) { out.messages = messages; out.coverage = coverage }
   return out
 }
 
 /* ── search 模式（对应 search.rs::first_rollout_content_match_snippet）────── */
 
-export interface SearchHit {
+export interface SearchHit extends Partial<MessageIdentity> {
   type: string
   snippet: string
   /**
@@ -440,6 +589,10 @@ export interface SearchHit {
 export interface SearchOptions {
   signal?: AbortSignal
   maxSnippets?: number
+  /** 消息角色限制；在命中计数与 maxSnippets 截断前应用。 */
+  role?: 'user' | 'assistant' | 'tool' | 'any'
+  /** Global AND/OR orchestration belongs to the caller; no per-file relaxation. */
+  queryMode?: QueryMode
   /** 命中前上下文字符数（Codex MATCH_CONTEXT_BEFORE_CHARS=48） */
   contextBefore?: number
   /** 命中后上下文字符数（Codex MATCH_CONTEXT_AFTER_CHARS=96） */
@@ -448,13 +601,11 @@ export interface SearchOptions {
   compressedChunkSize?: number
   decoder?: 'native' | 'fzstd'
   maxDecompressedBytes?: number
+  maxLineBytes?: number
   startOffset?: number
 }
 
-/**
- * 逐行匹配 JSON 转义字面量（大小写不敏感），命中后从解析出的
- * user/message、assistant/message 文本取上下文 snippet，凑满 maxSnippets 即停。
- */
+/** Search complete original-message text under one caller-selected global query mode. */
 export async function parseSearch(
   file: string,
   query: string,
@@ -463,12 +614,14 @@ export async function parseSearch(
   const maxSnippets = options.maxSnippets ?? 3
   const contextBefore = options.contextBefore ?? 48
   const contextAfter = options.contextAfter ?? 96
-  const jsonEscaped = JSON.stringify(query).slice(1, -1).toLowerCase()
-  const qLower = query.toLowerCase()
+  if (!Number.isSafeInteger(maxSnippets) || maxSnippets < 0) throw new RangeError('invalid maxSnippets')
+  const plan = createQueryPlan(query)
+  const mode = options.queryMode ?? 'and'
+  const role = options.role ?? 'any'
   const hits: SearchHit[] = []
-  const toolNames: string[] = []
+  const toolHits: SearchHit[] = []
   const compat = new SessionLogCompatibility()
-  await streamJsonlLines(
+  const searchStats = await streamJsonlLines(
     file,
     (line) => {
       let parsed: unknown
@@ -479,9 +632,14 @@ export async function parseSearch(
       }
       const events = compat.consumeLine(parsed)
       for (const event of events) {
-        if (event.type !== 'tool/call') continue
+        if (event.type !== 'tool/call' || (role !== 'any' && role !== 'tool')) continue
         const data = event.data as Record<string, unknown> | undefined
-        if (typeof data?.name === 'string') toolNames.push(data.name)
+        if (typeof data?.name !== 'string' || toolHits.length >= maxSnippets || !matchesQuery(data.name, plan, mode)) continue
+        toolHits.push({
+          type: 'tool/call', snippet: '', role: 'tool', toolName: data.name,
+          ...messageIdentity(compat.header.id, compat.generation,
+            { seq: event.seq as number, type: 'tool/call', data }, '', data.name),
+        })
       }
       return true
     },
@@ -490,48 +648,33 @@ export async function parseSearch(
       compressedChunkSize: options.compressedChunkSize,
       decoder: options.decoder,
       maxDecompressedBytes: options.maxDecompressedBytes,
+      maxLineBytes: options.maxLineBytes,
+      startOffset: options.startOffset,
     },
   )
-  for (const name of toolNames) {
+  if (searchStats.oversized > 0) throw new Error('incomplete original-log search: oversized JSONL lines; increase maxLineBytes to inspect these messages')
+  let nextTool = 0
+  for (const message of compat.finishBySource()) {
+    while (nextTool < toolHits.length && (toolHits[nextTool].eventSeq as number) < message.seq && hits.length < maxSnippets) {
+      hits.push(toolHits[nextTool++])
+    }
+    if (message.type !== 'user/message' && message.type !== 'assistant/message') continue
+    const messageRole = message.type === 'user/message' ? 'user' : 'assistant'
+    if (role !== 'any' && role !== messageRole) continue
     if (hits.length >= maxSnippets) break
-    if (name.toLowerCase().includes(qLower)) hits.push({ type: 'tool/call', snippet: '', role: 'tool', toolName: name })
-  }
-  for (const message of compat.finish()) {
-    if (hits.length >= maxSnippets || (message.type !== 'user/message' && message.type !== 'assistant/message')) continue
     const text = textFromCompatibleMessage(message)
-    if (!text || !JSON.stringify(text).toLowerCase().includes(jsonEscaped)) continue
+    if (!text || !matchesQuery(text, plan, mode)) continue
     const normalized = normalizeReservedMarkers(text.split(/\s+/).filter(Boolean).join(' '))
-    const index = normalized.toLowerCase().indexOf(qLower)
-    if (index === -1) continue
-    const snippet = excerptAroundMatch(normalized, index, query.length, contextBefore, contextAfter)
-    if (snippet) hits.push({ type: message.type, snippet, role: message.type === 'user/message' ? 'user' : 'assistant' })
+    const token = queryMatchToken(normalized, plan)
+    const snippet = excerptAroundMatch(normalized, token, contextBefore, contextAfter)
+    hits.push({
+      type: message.type, snippet, role: messageRole,
+      ...messageIdentity(compat.header.id, compat.generation, message, text),
+    })
   }
+  while (nextTool < toolHits.length && hits.length < maxSnippets) hits.push(toolHits[nextTool++])
   return hits
 }
 
-/** 对应 search.rs::excerpt_around_match（normalize 后取 48/96 字符上下文）。 */
-function excerptAroundMatch(
-  text: string,
-  matchStart: number,
-  matchLength: number,
-  charsBefore: number,
-  charsAfter: number,
-): string | null {
-  const excerptStart = Math.max(0, matchStart - charsBefore)
-  const excerptEnd = Math.min(text.length, matchStart + matchLength + charsAfter)
-  const excerptRaw = text.slice(excerptStart, excerptEnd)
-  const trimShift = excerptRaw.length - excerptRaw.trimStart().length
-  const excerpt = excerptRaw.trim()
-  if (!excerpt) return null
-  // P1.4：命中区间用 >>> <<< 包住（Hermes MATCH_OPEN/CLOSE，与 FTS 路径同款）。
-  // 先去掉 trimStart 造成的偏移，保证标记落在命中原文上
-  const relStart = matchStart - excerptStart - trimShift
-  const relEnd = relStart + matchLength
-  let snippet = ''
-  if (excerptStart > 0) snippet += '... '
-  snippet += excerpt.slice(0, relStart)
-  snippet += MATCH_OPEN + excerpt.slice(relStart, relEnd) + MATCH_CLOSE
-  snippet += excerpt.slice(relEnd)
-  if (excerptEnd < text.length) snippet += ' ...'
-  return snippet
-}
+// C11：snippet 生成统一到 core.ts excerptAroundMatch（与 FTS 路径同款：
+// 空白归一化 + "…" 省略号 + >>> <<< 命中标记），消除两份实现各自漂移。

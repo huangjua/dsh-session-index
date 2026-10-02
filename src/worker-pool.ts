@@ -12,7 +12,10 @@ import { Worker } from 'node:worker_threads'
 import os from 'node:os'
 import { CancelError, isCancelError } from './cancel.js'
 import { parseHead, parseFull, parseSearch } from './streaming-parser.js'
-import type { HeadSummary, FullSummary, SearchHit } from './streaming-parser.js'
+import type { HeadSummary, FullSummary, SearchHit, SearchOptions, StreamStats } from './streaming-parser.js'
+import { SessionParseError, sessionFailureOf, type SessionFailureDiagnostic } from './session-compat.js'
+import type { CompatResumeState } from './session-compat.js'
+import type { FtsMessageRow } from './fts.js'
 
 export type WorkerTaskMode = 'head' | 'full' | 'search'
 export type WorkerTaskData = HeadSummary | FullSummary | SearchHit[]
@@ -22,18 +25,28 @@ export interface WorkerTaskSpec {
   file: string
   query?: string
   maxSnippets?: number
+  /** search 模式：过滤在 parser 命中计数前完成。 */
+  role?: SearchOptions['role']
+  queryMode?: SearchOptions['queryMode']
   maxDecompressedBytes?: number
+  maxLineBytes?: number
   /** P1 delta：压缩输入从该字节偏移开始读（须为帧边界；仅 full 模式） */
   startOffset?: number
   /** 仅 builder 内部记账用：本次是否为 delta 解析（worker 无需感知） */
   delta?: boolean
+  /** 仅 builder 内部记账用：本次是 delta 回退后的全量重解析（观测用） */
+  deltaFellBack?: boolean
+  /** C9b：delta 续读状态（窗口无 header，需播种 version/generation/header/seq） */
+  resume?: CompatResumeState
   /** P2 FTS：full 模式下收集消息行（user/assistant 文本 + tool 名） */
   collectMessages?: boolean
+  maxMessages?: number
+  maxIndexedTextBytes?: number
 }
 
 export type TaskResult<T = WorkerTaskData> =
   | { ok: true; data: T; aborted: boolean }
-  | { ok: false; aborted: boolean; error: string }
+  | { ok: false; aborted: boolean; error: string; stats?: Partial<StreamStats>; raced?: boolean; diagnostic?: SessionFailureDiagnostic }
 
 export interface WorkerPoolOptions {
   /** 池大小；缺省 Math.min(4, Math.max(1, availableParallelism - 1)) */
@@ -52,6 +65,9 @@ interface PendingTask {
   controller: AbortController
   timeout?: NodeJS.Timeout
   dispatched: boolean
+  transferredMessages?: FtsMessageRow[]
+  transferRow?: FtsMessageRow & Record<string, unknown>
+  transferBytes?: number
 }
 
 interface Slot {
@@ -104,16 +120,29 @@ export class WorkerPool {
         return
       }
       const controller = new AbortController()
+      // C5：调用方 signal 的 abort 监听必须在任务 settle 时自摘——once:true 只在
+      // 触发时移除，正常完成的构建（signal 从不 abort）会按文件数累积监听器
+      // （>10 触发 MaxListeners 告警）。挂到 wrapped resolve/reject 出口全覆盖。
+      const onCallerAbort = (): void => controller.abort()
+      const removeCallerAbort = (): void => {
+        signal?.removeEventListener('abort', onCallerAbort)
+      }
       const pending: PendingTask = {
         id: this.seq++,
         spec,
-        resolve: resolve as (r: TaskResult) => void,
-        reject,
+        resolve: (r: TaskResult) => {
+          removeCallerAbort()
+          resolve(r as TaskResult<T>)
+        },
+        reject: (e: unknown) => {
+          removeCallerAbort()
+          reject(e)
+        },
         controller,
         dispatched: false,
       }
       if (signal) {
-        signal.addEventListener('abort', () => controller.abort(), { once: true })
+        signal.addEventListener('abort', onCallerAbort)
       }
       controller.signal.addEventListener(
         'abort',
@@ -228,7 +257,7 @@ export class WorkerPool {
     worker.on('message', (msg: unknown) => this.onMessage(slot, msg))
     worker.on('error', (err: Error) => this.onWorkerError(slot, err))
     worker.on('exit', (code: number) => {
-      if (code !== 0) this.onWorkerError(slot, new Error(`worker exited with code ${code}`))
+      if (!slot.dead) this.onWorkerError(slot, new Error(`worker exited with code ${code}`))
     })
     this.slots.push(slot)
     return slot
@@ -245,14 +274,20 @@ export class WorkerPool {
         file: pending.spec.file,
         query: pending.spec.query,
         maxSnippets: pending.spec.maxSnippets,
+        role: pending.spec.role,
+        queryMode: pending.spec.queryMode,
         maxDecompressedBytes: pending.spec.maxDecompressedBytes,
+        maxLineBytes: pending.spec.maxLineBytes,
         startOffset: pending.spec.startOffset,
+        resume: pending.spec.resume,
         collectMessages: pending.spec.collectMessages,
+        maxMessages: pending.spec.maxMessages,
+        maxIndexedTextBytes: pending.spec.maxIndexedTextBytes,
       })
     } catch (e) {
       slot.pending = null
       this.onWorkerError(slot, e instanceof Error ? e : new Error(String(e)))
-      pending.reject(new Error(`postMessage failed: ${String(e)}`))
+      pending.reject(new SessionParseError(`postMessage failed: ${String(e)}`, 'worker_failure', 'worker'))
       return
     }
     if (this.timeoutMs > 0) {
@@ -279,23 +314,37 @@ export class WorkerPool {
       const signal = pending.controller.signal
       try {
         let data: WorkerTaskData
-        if (pending.spec.mode === 'head') data = await parseHead(pending.spec.file, { signal })
+        if (pending.spec.mode === 'head') data = await parseHead(pending.spec.file, { signal, maxDecompressedBytes: pending.spec.maxDecompressedBytes, maxLineBytes: pending.spec.maxLineBytes })
         else if (pending.spec.mode === 'full')
           data = await parseFull(pending.spec.file, {
             signal,
             startOffset: pending.spec.startOffset,
+            resume: pending.spec.resume,
             collectMessages: pending.spec.collectMessages,
+            maxMessages: pending.spec.maxMessages,
+            maxIndexedTextBytes: pending.spec.maxIndexedTextBytes,
+            maxDecompressedBytes: pending.spec.maxDecompressedBytes,
+            maxLineBytes: pending.spec.maxLineBytes,
           })
         else if (pending.spec.mode === 'search')
           data = await parseSearch(pending.spec.file, pending.spec.query || '', {
             signal,
             maxSnippets: pending.spec.maxSnippets,
+            role: pending.spec.role,
+            queryMode: pending.spec.queryMode,
+            maxDecompressedBytes: pending.spec.maxDecompressedBytes,
+            maxLineBytes: pending.spec.maxLineBytes,
           })
         else throw new Error(`unknown task mode: ${pending.spec.mode}`)
         pending.resolve({ ok: true, data, aborted: signal.aborted })
       } catch (e) {
         if (isCancelError(e) || signal.aborted) pending.reject(new CancelError())
-        else pending.resolve({ ok: false, aborted: false, error: e instanceof Error ? e.message : String(e) })
+        else pending.resolve({
+          ok: false, aborted: false, error: e instanceof Error ? e.message : String(e),
+          stats: e && typeof e === 'object' && 'stats' in e ? e.stats as Partial<StreamStats> : undefined,
+          raced: e && typeof e === 'object' && 'raced' in e ? e.raced === true : false,
+          diagnostic: sessionFailureOf(e),
+        })
       } finally {
         this.inlineActive = Math.max(0, this.inlineActive - 1)
         this.pump()
@@ -305,18 +354,44 @@ export class WorkerPool {
 
   private onMessage(slot: Slot, msg: unknown): void {
     if (!msg || typeof msg !== 'object') return
-    const m = msg as { type?: string; taskId?: number; ok?: boolean; aborted?: boolean; data?: unknown; error?: string }
-    if (m.type !== 'done') return
+    const m = msg as { type?: string; taskId?: number; ok?: boolean; aborted?: boolean; data?: unknown; error?: string; partId?: number; text?: string; rowFinal?: boolean; metadata?: Record<string, unknown>; field?: string; stats?: Partial<StreamStats>; raced?: boolean; diagnostic?: SessionFailureDiagnostic }
     const pending = slot.pending
     if (!pending || pending.id !== m.taskId) return
+    if (m.type === 'message-part') {
+      try {
+        if (typeof m.text !== 'string' || Buffer.byteLength(m.text) > 512 * 1024) throw new Error('oversized parser transfer part')
+        pending.transferBytes = (pending.transferBytes ?? 0) + Buffer.byteLength(m.text)
+        if (pending.transferBytes > 128 * 1024 * 1024) throw new Error('parser transfer exceeds 128 MiB budget')
+        if (!m.field || !['text', 'toolName', 'sourceMessageId', 'callId'].includes(m.field)) throw new Error('invalid parser transfer field')
+        if (m.metadata) {
+          if (pending.transferRow || Buffer.byteLength(JSON.stringify(m.metadata)) > 128 * 1024) throw new Error('invalid parser transfer metadata')
+          pending.transferRow = { ...m.metadata, text: '', toolName: '' } as FtsMessageRow & Record<string, unknown>
+        }
+        const row = pending.transferRow
+        if (!row) throw new Error('parser transfer has no row metadata')
+        row[m.field] = String(row[m.field] ?? '') + m.text
+        if (m.rowFinal) {
+          const rows = pending.transferredMessages ??= []
+          if (rows.length >= (pending.spec.maxMessages ?? 50_000)) throw new Error('parser transfer exceeds message budget')
+          rows.push(row)
+          pending.transferRow = undefined
+        }
+        slot.worker.postMessage({ type: 'message-ack', taskId: pending.id, partId: m.partId })
+      } catch (error) { this.onWorkerError(slot, error) }
+      return
+    }
+    if (m.type !== 'done') return
     if (pending.timeout) clearTimeout(pending.timeout)
     slot.pending = null
     if (m.aborted && !m.ok) {
       pending.reject(new CancelError())
     } else if (m.ok) {
+      if (pending.spec.mode === 'full' && pending.spec.collectMessages) {
+        (m.data as FullSummary).messages = pending.transferredMessages ?? []
+      }
       pending.resolve({ ok: true, data: m.data as WorkerTaskData, aborted: !!m.aborted })
     } else {
-      pending.resolve({ ok: false, aborted: false, error: String(m.error || 'unknown worker error') })
+      pending.resolve({ ok: false, aborted: false, error: String(m.error || 'unknown worker error'), stats: m.stats, raced: m.raced, diagnostic: m.diagnostic })
     }
     this.pump()
   }
@@ -331,7 +406,7 @@ export class WorkerPool {
     slot.worker.terminate().catch(() => {})
     if (pending) {
       if (pending.timeout) clearTimeout(pending.timeout)
-      pending.reject(new Error(`worker error: ${err instanceof Error ? err.message : String(err)}`))
+      pending.reject(new SessionParseError(`worker error: ${err instanceof Error ? err.message : String(err)}`, 'worker_failure', 'worker'))
     }
     if (!this.terminated) this.pump()
   }
@@ -342,7 +417,7 @@ export class WorkerPool {
     const i = this.slots.indexOf(slot)
     if (i !== -1) this.slots.splice(i, 1)
     slot.worker.terminate().catch(() => {})
-    pending.reject(new Error('task timeout'))
+    pending.reject(new SessionParseError('task timeout', 'worker_failure', 'worker'))
     if (!this.terminated) this.pump()
   }
 }
@@ -350,6 +425,9 @@ export class WorkerPool {
 /**
  * 通用有界并发映射（对应 PORT_TO_TS.md 的 mapLimit）。
  * 取消后不再调度新任务；已启动任务自然跑完。
+ *
+ * @internal C11：生产的构建并发由 SessionIndexBuilder.runPoolTasks 自行调度
+ * （分波派发 + 池上限），本函数仅 worker-pool.test.ts 使用。保留勿删。
  */
 export async function mapLimit<T, R>(
   items: readonly T[],

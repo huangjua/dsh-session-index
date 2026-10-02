@@ -1,0 +1,42 @@
+▶ FTS worker RPC and bounded transport
+  ✔ all reads, checkpoints, short-word search, metadata and maintenance work through RPC (797.9325ms)
+  ✔ failed multi-batch replace preserves old complete snapshot and checkpoint, and flush reports it (1205.3291ms)
+  ✔ concurrent flush calls both observe their accepted write failure boundary (1146.3721ms)
+FTS source memory evidence {"maxActiveSourceBytes":2942886,"maxActiveBodyBytes":2391898,"maxQueueBytes":1049020,"maxBatchBytes":524288,"maxInFlightBatches":2}
+  ✔ two producers obey the shared two-batch, 512 KiB and 8 MiB limits, including Unicode slice boundaries (2478.191ms)
+  ✔ queries can observe the old complete snapshot while disk staging is still in progress (3105.7716ms)
+  ✔ restart releases pending operations and retains committed checkpoints (1027.9307ms)
+  ✔ waiting producers retain a bounded input queue and all admitted sessions settle (1069.3029ms)
+  ✔ cancelling before staging acknowledgement cleans the known client staging token (869.8197ms)
+  ✔ cancelled queries settle promptly and do not retain queue bytes (351.6565ms)
+  ✔ hang timeout rejects pending reader requests; readiness waits for isolated recovery before a fresh short request (416.813ms)
+  ✔ worker exit rejects pending requests and bounded request admission returns a structured error (617.2566ms)
+  ✔ reconnection runs its recovery callback exactly once, and callback errors keep the transport usable (488.6413ms)
+  ✔ unload suppresses a recovery callback during a pending restart (228.2783ms)
+[session-index] FTS spool cleanup warning {"code":"EFTSSPOOLPATH","message":"Refusing cleanup of a staging directory not created by this client","id":"e04491e3-b436-4233-9675-6d95cc7e6e80","path":"E:\\Do Something\\DSH备份\\dsh-session-index work\\runtime-fix-20261002\\work\\validation\\temp\\dsh-fts-client-uNxHma\\.fts-staging-28244-ff1d9354-159e-4775-88d5-a3530b63b5ac-reader","phase":"restart","at":1790951297523}
+  ✔ repeated crashes stop automatic restart loops and can be recovered explicitly (728.5308ms)
+  ✔ oversized query DTO limits fail explicitly (232.8516ms)
+  ✔ legacy search and searchPage truncate message DTOs explicitly, retaining tail-match snippets (683.2344ms)
+  ✔ a session body exceeding 64 MiB fails before transport and preserves its checkpoint (649.2387ms)
+  ✔ a response beyond 8 MiB fails explicitly and leaves the worker usable (631.0746ms)
+  ✔ close has a bounded drain even when its worker is unresponsive (275.7795ms)
+  ✔ close drains accepted staged writes, refuses new work and terminates every transport (1701.1596ms)
+  ✔ FTS unavailable returns null, and repeated apply/dispose removes staging resources (1984.0145ms)
+✔ FTS worker RPC and bounded transport (20692.7874ms)
+✔ public full/SCROLL expose actual FTS backend and bounded diagnostics without source/query/body text (1127.4587ms)
+✔ source backend is explicit when FTS is disabled and results retain full coverage (330.6152ms)
+✔ default big-line omissions are explicit; raised bounded source queries recover final and middle rows identically with FTS on/off (1826.9982ms)
+✔ raising the source budget never accepts an unknown required event or presents an old FTS anchor (1006.5985ms)
+✔ source line budgets enforce integer lower and hard upper bounds before starting a query (72.4868ms)
+✔ SCROLL renders stable anchors and selects the center by anchorId, retaining explicit legacy rowid support (756.4385ms)
+✔ FTS on/off use global message AND then OR and return identical stable anchors including long tails (2055.1179ms)
+✔ parent metadata and child content aggregation replaces the complete representative tuple and metadata has no fake numeric anchor (879.1846ms)
+✔ real worker stable bookmark survives delta, force and restart without a rowid alias (6694.1395ms)
+ℹ tests 30
+ℹ suites 1
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 36567.0633

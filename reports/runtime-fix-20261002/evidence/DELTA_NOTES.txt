@@ -1,0 +1,26 @@
+R3 delta 定向修复说明（2026-10-02，隔离候选）
+
+根因证据与边界
+1. 旧 runWithRetry 对所有失败统一执行两次任务；delta->full 原始触发点只辨识 ok/hadSurfaceReplace/coverage，并丢失具体原因。
+2. 确定性 cross-window reference、invalid offset、sequence mismatch 和 compatibility reject 重复读取相同窗口不会修复判据。本候选在观察现场携带原因码，直接转 full。
+3. historical 18,263B 窗口依旧为 unknown：已有脱敏 NATURAL_DELTA_NUMERIC_CLOSURE 中只证明 2x18,263 + 79,858 = 116,384B。三个历史窗口实际总读取 117,790B，不能改写为仅读尾段，也不能从该样本推算长期回退率。
+4. 历史证据没有携带解析拒绝原因，也没有可确认的完整前后帧快照；本次没有读取额外生产会话正文或伪造其重放。delta-samples 下是可审查的合成同类样本，并非真实历史窗口。下一次生产自然采样须另获授权。
+
+候选行为
+- SessionCompatibilityError/SessionParseError 显式携带 reasonCode、phase、retryable；worker 与 inline 路径完整传递。
+- 原因码：surface_replace、cross_window_reference、partial_frame、invalid_offset、sequence_mismatch、compatibility_reject、source_changed、coverage_incomplete、worker_failure、unknown。
+- 已证明确定的失败只执行一次 delta；surface/跨窗口/coverage/兼容性必需的 full 均保留。
+- unknown 不按错误文本猜原因，继续旧有最多两次任务；partial_frame/source_changed 仍最多两次、150ms 退避。没有要求全量回退归零。
+- native magic 切帧是启发式；只在整段 fzstd 验证亦明确 UnexpectedEOF 时判定末帧半帧。不能把 magic 碰撞误当半帧而去掉独立解码器正确性回退。
+- parser worker 意外退出（包括 exit=0）、error、postMessage 失败与任务超时明确标为 worker_failure，不把 infrastructure failure 当用户取消。
+- DeltaDiagnostic 记录脱敏 sourceId、扫描/当前/此前字节与 seq、offset、attempt、累积真实读量、native+验证解压输出、fallback/总耗时、source 稳定性、最终 checkpoint 和 FTS receipt。
+- complete 表示解析及发布前检查完成；commit 才表示 index.json 原子提交完成。published 在 atomic commit 后才为 true。worker 被杀且未返统计时 metricsExact=false，已知 readBytes 是下界，绝不伪称崩溃前实际读取为零。
+- raced 成功结果虽未发布，已执行读取仍计入 BuildReport，修复旧统计漏掉这部分读取的口径。
+- 主 index.ts 的 sourceLagging 与有界后台 follow-up 由 root 合并，防止最后一次 watcher 事件停止后永久滞后。R3 控制测试证明半帧补齐后一轮稳定 follow-up 恢复；index 时钟测试归 root 验证。
+
+回归与可验证样本
+新增 runtime-delta-fallback.test.ts：纯 append、窗口内替换、跨窗口替换、invalid offset、sequence mismatch、coverage budget、unknown 文本不猜类别、瞬时半帧与发布竞态、真实 parser worker exit、实际读后取消却未返回 stats 的诚实下界。
+纯 append 实际读取=尾帧；替换/offset/seq 的读取=单次 delta+一次 full；unknown 保留两次 delta。完整结果（消息、stable anchor identity、覆盖、counts、indexedBytes/Seq）逐字段等同独立 force-full。
+历史未知窗口及每个控制样本完整诊断/字节闭合存于 DELTA_FALLBACK.json；before.zstd/after.zstd 及 SHA256 留存 delta-samples，可直接重放，无私有正文。
+最小旧回归（builder、builder-race、builder-fts-sync、native-zstd、worker-pool、session-compat）及最初新增 6 用例曾 77/77 通过，输出 DELTA_TEST_OUTPUT.txt；新增原因强化后 9/9 通过。最后 native/parser-worker 共用契约最小复测 38/38 通过，输出 DELTA_FINAL_TEST_OUTPUT.txt。首次未设置 DSH_HOME 的 native/race 测试环境守卫拒绝运行；设置隔离 .delta-test-home 后通过，不能把守卫拒绝算实现失败或假装首次全部通过。
+最后取消统计修复后，专用 compile 通过，R3 单文件最终 10/10 通过，输出 DELTA_NEW_TEST_OUTPUT.txt；无可靠取消 stats 时 metricsExact=false。统一候选最终 compile 与 root 最小回归需包含最后提交的共享源码；所有测试仅隔离目录，无 G 盘 build、生产写入、部署、宿主重启或 push。

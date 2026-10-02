@@ -1,0 +1,38 @@
+{
+  "at": "2026-10-02T13:54:18.4310830Z",
+  "cpu": {
+    "PercentProcessorTime": 26,
+    "PercentUserTime": 14,
+    "PercentPrivilegedTime": 10
+  },
+  "disk": [
+    {
+      "Name": "0 D: E:",
+      "DiskReadBytesPerSec": 0,
+      "DiskWriteBytesPerSec": 0,
+      "AvgDiskQueueLength": 0,
+      "PercentDiskTime": 0
+    },
+    {
+      "Name": "1 C:",
+      "DiskReadBytesPerSec": 338910,
+      "DiskWriteBytesPerSec": 1329415,
+      "AvgDiskQueueLength": 0,
+      "PercentDiskTime": 24
+    },
+    {
+      "Name": "2 G:",
+      "DiskReadBytesPerSec": 0,
+      "DiskWriteBytesPerSec": 0,
+      "AvgDiskQueueLength": 0,
+      "PercentDiskTime": 0
+    },
+    {
+      "Name": "_Total",
+      "DiskReadBytesPerSec": 338910,
+      "DiskWriteBytesPerSec": 1329415,
+      "AvgDiskQueueLength": 0,
+      "PercentDiskTime": 8
+    }
+  ]
+}

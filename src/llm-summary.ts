@@ -43,9 +43,9 @@
  * - 只写本模块 sidecar（llm-summary.jsonl）；绝不写 index.json / fts.db /
  *   官方库 / 会话文件；主线程不阻塞（全部异步 IO + 流式聚合）。
  */
-import { open, mkdir, readFile, stat } from 'node:fs/promises'
-import type { FileHandle } from 'node:fs/promises'
-import { join, dirname } from 'node:path'
+import { join } from 'node:path'
+// C10：与 bookmark.ts 共享的旁车文件公共层（锁 / 追加 / 指纹缓存 / 校验守卫）
+import { withPathLock, appendLine, isRecord, str, num, createFingerprintCache } from './sidecar.js'
 import type { Context } from '@deepseek-ai/cordis'
 import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, Message, StreamChunk } from '@deepseek-ai/dsh-llm'
@@ -293,19 +293,7 @@ export function createHostLlmProvider(
   }
 }
 
-/* ── 进程内 per-path 互斥（照 bookmark.ts withPathLock，codex SESSION_INDEX_LOCK 进程内语义）── */
-
-const pathLocks = new Map<string, Promise<unknown>>()
-
-function withPathLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
-  const prev = pathLocks.get(path) ?? Promise.resolve()
-  const next = prev.then(fn)
-  // 链上保留（即使本次失败也不阻塞后续）；调用方仍收到本次的 rejection
-  pathLocks.set(path, next.catch(() => undefined))
-  return next
-}
-
-/* ── 缓存 sidecar（照 bookmark.ts：append-only + 容错读 + 指纹 + per-path 互斥）─ */
+/* ── 缓存 sidecar（C10：append-only + 容错读 + 指纹 + per-path 互斥，公共层 sidecar.ts）─ */
 
 /** 单条缓存（v:1 行结构；key=sessionId） */
 export interface SummaryCacheEntry {
@@ -335,16 +323,6 @@ export interface SessionFingerprint {
 /** 指纹命中判定（size + mtimeMs 全等才算命中） */
 export function fingerprintMatches(entry: Pick<SummaryCacheEntry, 'size' | 'mtimeMs'>, fp: SessionFingerprint): boolean {
   return entry.size === fp.size && entry.mtimeMs === fp.mtimeMs
-}
-
-function isRecord(x: unknown): x is Record<string, unknown> {
-  return !!x && typeof x === 'object'
-}
-function str(v: unknown): string | null {
-  return typeof v === 'string' ? v : null
-}
-function num(v: unknown): number | null {
-  return typeof v === 'number' && Number.isFinite(v) ? v : null
 }
 
 /** 校验并归一化一行缓存；形状不符（含 v!==1）→ null（计坏行）。 */
@@ -385,17 +363,11 @@ export function parseSummaryLines(text: string): { entries: SummaryCacheEntry[];
   return { entries: Array.from(byKey.values()), skippedBad }
 }
 
-interface SummaryCacheSnapshot {
-  mtimeMs: number
-  size: number
-  entries: SummaryCacheEntry[]
-  skippedBad: number
-}
-const summaryCache = new Map<string, SummaryCacheSnapshot>()
+const summaryCache = createFingerprintCache<{ entries: SummaryCacheEntry[]; skippedBad: number }>()
 
 /** 显式失效（追加后调用），防同 ms 同 size 撞车。 */
 export function invalidateSummaryCache(path: string): void {
-  summaryCache.delete(path)
+  summaryCache.invalidate(path)
 }
 
 /**
@@ -403,49 +375,14 @@ export function invalidateSummaryCache(path: string): void {
  * core.ts loadIndex 模式）。文件缺失/读失败 → 空列表（fail-open，绝不抛）。
  */
 export async function readSummaryCache(path: string): Promise<{ entries: SummaryCacheEntry[]; skippedBad: number }> {
-  let st
-  try {
-    st = await stat(path)
-  } catch {
-    invalidateSummaryCache(path)
-    return { entries: [], skippedBad: 0 }
-  }
-  const cached = summaryCache.get(path)
-  if (cached && cached.mtimeMs === st.mtimeMs && cached.size === st.size) {
-    return { entries: cached.entries, skippedBad: cached.skippedBad }
-  }
-  let text: string
-  try {
-    text = await readFile(path, 'utf8')
-  } catch {
-    invalidateSummaryCache(path)
-    return { entries: [], skippedBad: 0 }
-  }
-  const parsed = parseSummaryLines(text)
-  summaryCache.set(path, { mtimeMs: st.mtimeMs, size: st.size, entries: parsed.entries, skippedBad: parsed.skippedBad })
-  return parsed
+  // C10：指纹缓存 + 整读容错下沉到 sidecar（与 bookmark 同一实现）
+  return summaryCache.read(path, parseSummaryLines, () => ({ entries: [], skippedBad: 0 }))
 }
 
 /** 追加一条缓存行（append + flush；per-path 互斥，照 bookmark addBookmark）。 */
 export function appendSummaryEntry(path: string, entry: SummaryCacheEntry): Promise<void> {
   return withPathLock(path, async () => {
-    await mkdir(dirname(path), { recursive: true })
-    let fh: FileHandle | null = null
-    try {
-      fh = await open(path, 'a')
-      await fh.writeFile(JSON.stringify(entry) + '\n', 'utf8')
-      await fh.sync()
-      await fh.close()
-      fh = null
-    } finally {
-      if (fh) {
-        try {
-          await fh.close()
-        } catch {
-          /* 忽略 */
-        }
-      }
-    }
+    await appendLine(path, JSON.stringify(entry))
     invalidateSummaryCache(path)
   })
 }
